@@ -1,3 +1,6 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import {
   CalendarBlank,
   CaretDown,
@@ -57,6 +60,9 @@ function StepBadge({ step }: { step: RequestRow["step"] }) {
 }
 
 export function RequestsBoard() {
+  const router = useRouter();
+  const openDetail = () => router.push("/user/requests/detail");
+
   return (
     <main className="requests-board-page" aria-label="Danh sách đơn từ">
       <header className="requests-tabs">
@@ -132,7 +138,19 @@ export function RequestsBoard() {
           </thead>
           <tbody>
             {requestRows.map((row) => (
-              <tr key={row.id}>
+              <tr
+                className="requests-table-row-link"
+                key={row.id}
+                tabIndex={0}
+                aria-label={`Mở chi tiết ${row.type} ngày ${row.createdAt}`}
+                onClick={openDetail}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openDetail();
+                  }
+                }}
+              >
                 <td>
                   <span className="request-checkbox" aria-hidden="true" />
                 </td>
@@ -147,7 +165,11 @@ export function RequestsBoard() {
                 <td>
                   <StepBadge step={row.step} />
                 </td>
-                <td>{row.type}</td>
+                <td>
+                  <a className="request-table-link" href="/user/requests/detail">
+                    {row.type}
+                  </a>
+                </td>
                 <td>{row.department}</td>
                 <td>{row.position}</td>
                 <td>{row.reason}</td>

@@ -9,7 +9,7 @@ type CollapseButtonProps = {
   size?: number;
 };
 
-const collapseTargetSelector = ".employee-profile-panel, .user-panel, .leave-create-section";
+const collapseTargetSelector = ".employee-profile-panel, .user-panel, .leave-create-section, .request-detail-panel";
 
 export function CollapseButton({ className = "icon-button", label, size = 16 }: CollapseButtonProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
