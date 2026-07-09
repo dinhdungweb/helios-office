@@ -20,6 +20,7 @@ import {
 } from "@/lib/icons";
 
 import { LeaveFormSelect } from "@/components/user/leave-form-select";
+import { CollapseButton } from "@/components/user/collapse-button";
 
 const editorTools = [
   Microphone,
@@ -59,9 +60,7 @@ export function AbsenceRequestCreateBoard() {
       <form className="leave-create-form">
         <section className="leave-create-section leave-create-section--wide" aria-labelledby="absence-general-title">
           <header className="leave-create-section-header">
-            <button className="leave-create-collapse" type="button" aria-expanded="true" aria-label="Thu gọn thông tin đơn">
-              <CaretDown size={16} weight="duotone" aria-hidden="true" />
-            </button>
+            <CollapseButton className="leave-create-collapse" label="Thông tin đơn" />
             <h2 id="absence-general-title">Thông tin đơn</h2>
           </header>
 
@@ -176,9 +175,7 @@ export function AbsenceRequestCreateBoard() {
 
         <section className="leave-create-section" aria-labelledby="absence-related-title">
           <header className="leave-create-section-header">
-            <button className="leave-create-collapse" type="button" aria-expanded="true" aria-label="Thu gọn đối tượng liên quan">
-              <CaretDown size={16} weight="duotone" aria-hidden="true" />
-            </button>
+            <CollapseButton className="leave-create-collapse" label="Đối tượng liên quan" />
             <h2 id="absence-related-title">Đối tượng liên quan</h2>
           </header>
 

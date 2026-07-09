@@ -1,6 +1,5 @@
 import {
   ArrowSquareOut,
-  Briefcase,
   CalendarBlank,
   Check,
   Clock,
@@ -14,7 +13,6 @@ import {
   HouseLine,
   ImageBroken,
   Medal,
-  Minus,
   Money,
   Package,
   PencilSimple,
@@ -28,6 +26,7 @@ import {
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import type { ReactNode } from "react";
+import { CollapseButton } from "@/components/user/collapse-button";
 
 type ProfileInfoRow = {
   label: string;
@@ -441,9 +440,7 @@ function ProfilePanel({
       <header className="employee-profile-panel-header">
         <h2 id={id}>{title}</h2>
         {action ?? (
-          <button className="icon-button" type="button" aria-label={`Thu gọn ${title}`}>
-            <Minus size={16} weight="duotone" aria-hidden="true" />
-          </button>
+          <CollapseButton label={title} />
         )}
       </header>
       {children}
@@ -502,16 +499,14 @@ function WorkHistoryPanel() {
           <button className="icon-button" type="button" aria-label="Lọc quá trình làm việc">
             <FunnelSimple size={16} weight="duotone" aria-hidden="true" />
           </button>
-          <button className="icon-button" type="button" aria-label="Thu gọn quá trình làm việc">
-            <Minus size={16} weight="duotone" aria-hidden="true" />
-          </button>
+          <CollapseButton label="quá trình làm việc" />
         </div>
       }
     >
       <div className="profile-work-timeline">
         <div className="profile-work-node">
           <span className="profile-work-dot">
-            <Briefcase size={15} weight="duotone" aria-hidden="true" />
+            <Clock size={15} weight="duotone" aria-hidden="true" />
           </span>
           <div className="profile-work-content">
             <header>
@@ -657,8 +652,10 @@ function DebtPanel() {
     <ProfilePanel title="Công nợ" id="profile-debt">
       <div className="profile-debt-body">
         <div className="profile-debt-banner">
-          <span>Tổng công nợ</span>
-          <strong>0 đ</strong>
+          <div>
+            <span>Tổng công nợ</span>
+            <strong>0 đ</strong>
+          </div>
           <Wallet size={54} weight="duotone" aria-hidden="true" />
         </div>
         <dl className="profile-simple-list">
@@ -696,9 +693,7 @@ function DisciplinePanel() {
           <button className="icon-button" type="button" aria-label="Mở chi tiết khen thưởng, kỷ luật">
             <ArrowSquareOut size={16} weight="duotone" aria-hidden="true" />
           </button>
-          <button className="icon-button" type="button" aria-label="Thu gọn khen thưởng, kỷ luật">
-            <Minus size={16} weight="duotone" aria-hidden="true" />
-          </button>
+          <CollapseButton label="khen thưởng, kỷ luật" />
         </div>
       }
     >
@@ -1000,16 +995,14 @@ function WorkTimelineTabsPanel() {
           <button className="icon-button" type="button" aria-label="Lọc quá trình làm việc">
             <FunnelSimple size={16} weight="duotone" aria-hidden="true" />
           </button>
-          <button className="icon-button" type="button" aria-label="Thu gọn quá trình làm việc">
-            <Minus size={16} weight="duotone" aria-hidden="true" />
-          </button>
+          <CollapseButton label="quá trình làm việc" />
         </div>
       </header>
 
       <div className="profile-work-timeline">
         <div className="profile-work-node">
           <span className="profile-work-dot">
-            <Briefcase size={15} weight="duotone" aria-hidden="true" />
+            <Clock size={15} weight="duotone" aria-hidden="true" />
           </span>
           <div className="profile-work-content">
             <header>
@@ -1049,9 +1042,7 @@ function InsuranceInfoPanel() {
     <section className="employee-profile-panel" aria-labelledby="profile-insurance-info">
       <header className="employee-profile-panel-header">
         <h2 id="profile-insurance-info">Thông tin bảo hiểm</h2>
-        <button className="icon-button" type="button" aria-label="Thu gọn thông tin bảo hiểm">
-          <Minus size={16} weight="duotone" aria-hidden="true" />
-        </button>
+        <CollapseButton label="thông tin bảo hiểm" />
       </header>
 
       <div className="profile-insurance-sections">
@@ -1146,9 +1137,7 @@ function ProfilePanelCalendarActions({ label }: { label: string }) {
       <button className="icon-button" type="button" aria-label={`Chọn kỳ ${label}`}>
         <CalendarBlank size={16} weight="duotone" aria-hidden="true" />
       </button>
-      <button className="icon-button" type="button" aria-label={`Thu gọn ${label}`}>
-        <Minus size={16} weight="duotone" aria-hidden="true" />
-      </button>
+      <CollapseButton label={label} />
     </div>
   );
 }

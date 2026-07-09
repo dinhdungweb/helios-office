@@ -11,6 +11,7 @@ import {
 } from "@/lib/icons";
 
 import { LeaveFormSelect } from "@/components/user/leave-form-select";
+import { CollapseButton } from "@/components/user/collapse-button";
 
 const overtimeReasons = [
   { label: "Hoàn thành deadline" },
@@ -26,9 +27,7 @@ export function OvertimeRequestCreateBoard() {
       <form className="leave-create-form">
         <section className="leave-create-section leave-create-section--full" aria-labelledby="overtime-general-title">
           <header className="leave-create-section-header">
-            <button className="leave-create-collapse" type="button" aria-expanded="true" aria-label="Thu gọn thông tin chung">
-              <CaretDown size={16} weight="duotone" aria-hidden="true" />
-            </button>
+            <CollapseButton className="leave-create-collapse" label="Thông tin chung" />
             <h2 id="overtime-general-title">Thông tin chung</h2>
           </header>
 
@@ -150,9 +149,7 @@ export function OvertimeRequestCreateBoard() {
 
         <section className="leave-create-section" aria-labelledby="overtime-related-title">
           <header className="leave-create-section-header">
-            <button className="leave-create-collapse" type="button" aria-expanded="true" aria-label="Thu gọn đối tượng liên quan">
-              <CaretDown size={16} weight="duotone" aria-hidden="true" />
-            </button>
+            <CollapseButton className="leave-create-collapse" label="Đối tượng liên quan" />
             <h2 id="overtime-related-title">Đối tượng liên quan</h2>
           </header>
 

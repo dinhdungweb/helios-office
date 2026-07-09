@@ -9,6 +9,7 @@ import {
 } from "@/lib/icons";
 
 import { LeaveFormSelect } from "@/components/user/leave-form-select";
+import { CollapseButton } from "@/components/user/collapse-button";
 
 const resignationReasons = [
   { label: "Lý do cá nhân" },
@@ -24,9 +25,7 @@ export function ResignationRequestCreateBoard() {
       <form className="leave-create-form">
         <section className="leave-create-section leave-create-section--resignation" aria-labelledby="resignation-general-title">
           <header className="leave-create-section-header">
-            <button className="leave-create-collapse" type="button" aria-expanded="true" aria-label="Thu gọn thông tin chung">
-              <CaretDown size={16} weight="duotone" aria-hidden="true" />
-            </button>
+            <CollapseButton className="leave-create-collapse" label="Thông tin chung" />
             <h2 id="resignation-general-title">Thông tin chung</h2>
           </header>
 
@@ -100,9 +99,7 @@ export function ResignationRequestCreateBoard() {
 
         <section className="leave-create-section" aria-labelledby="resignation-related-title">
           <header className="leave-create-section-header">
-            <button className="leave-create-collapse" type="button" aria-expanded="true" aria-label="Thu gọn đối tượng liên quan">
-              <CaretDown size={16} weight="duotone" aria-hidden="true" />
-            </button>
+            <CollapseButton className="leave-create-collapse" label="Đối tượng liên quan" />
             <h2 id="resignation-related-title">Đối tượng liên quan</h2>
           </header>
 

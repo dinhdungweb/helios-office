@@ -9,6 +9,7 @@ import {
   ArrowRight02Icon,
   ArrowUp01Icon,
   ArrowUpRight01Icon,
+  AppleIcon,
   Attachment01Icon,
   BankIcon,
   BellIcon,
@@ -33,6 +34,7 @@ import {
   DashboardSquare02Icon,
   DollarCircleIcon,
   DollarReceive01Icon,
+  EyeIcon,
   File02Icon,
   FileClockIcon,
   FileExportIcon,
@@ -51,6 +53,7 @@ import {
   Key01Icon,
   LanguageCircleIcon,
   Link02Icon,
+  LockPasswordIcon,
   Logout01Icon,
   MagicWand02Icon,
   Mail01Icon,
@@ -65,6 +68,7 @@ import {
   News01Icon,
   PackageIcon,
   PencilEdit02Icon,
+  PlayStoreIcon,
   Search01Icon,
   SealIcon,
   SecurityCheckIcon,
@@ -87,6 +91,7 @@ import {
   Upload01Icon,
   UserCircleIcon,
   UserGroupIcon,
+  UserIcon,
   UserMultiple02Icon,
   Wallet02Icon
 } from "@hugeicons/core-free-icons";
@@ -113,6 +118,7 @@ function createIcon(icon: IconSvgElement) {
 
 export const ArrowRight = createIcon(ArrowRight02Icon);
 export const ArrowSquareOut = createIcon(ArrowUpRight01Icon);
+export const Apple = createIcon(AppleIcon);
 export const Bank = createIcon(BankIcon);
 export const Bell = createIcon(BellIcon);
 export const BookOpenText = createIcon(BookOpen02Icon);
@@ -138,6 +144,7 @@ export const Columns = createIcon(LayoutTwoColumnIcon);
 export const CurrencyDollar = createIcon(DollarCircleIcon);
 export const DotsThree = createIcon(MenuCircleIcon);
 export const EnvelopeSimple = createIcon(Mail01Icon);
+export const Eye = createIcon(EyeIcon);
 export const Export = createIcon(FileExportIcon);
 export const FileText = createIcon(File02Icon);
 export const FileClock = createIcon(FileClockIcon);
@@ -156,6 +163,7 @@ export const ImageBroken = createIcon(ImageNotFound01Icon);
 export const Key = createIcon(Key01Icon);
 export const Language = createIcon(LanguageCircleIcon);
 export const LinkSimple = createIcon(Link02Icon);
+export const Lock = createIcon(LockPasswordIcon);
 export const Logout = createIcon(Logout01Icon);
 export const List = createIcon(Menu01Icon);
 export const ListBullets = createIcon(LeftToRightListBulletIcon);
@@ -175,6 +183,7 @@ export const PaperPlaneTilt = createIcon(SentIcon);
 export const Paperclip = createIcon(Attachment01Icon);
 export const PencilSimple = createIcon(PencilEdit02Icon);
 export const Phone = createIcon(Call02Icon);
+export const PlayStore = createIcon(PlayStoreIcon);
 export const Plus = createIcon(Add01Icon);
 export const SealCheck = createIcon(SealIcon);
 export const ShareFat = createIcon(Share05Icon);
@@ -194,6 +203,7 @@ export const ThumbsDown = createIcon(ThumbsDownIcon);
 export const ThumbsUp = createIcon(ThumbsUpIcon);
 export const Umbrella = createIcon(UmbrellaIcon);
 export const UploadSimple = createIcon(Upload01Icon);
+export const User = createIcon(UserIcon);
 export const UserCircle = createIcon(UserCircleIcon);
 export const Users = createIcon(UserGroupIcon);
 export const UsersThree = createIcon(UserMultiple02Icon);

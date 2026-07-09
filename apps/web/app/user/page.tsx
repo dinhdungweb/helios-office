@@ -7,7 +7,6 @@ import {
   ClipboardText,
   Clock,
   Heart,
-  Minus,
   ThumbsUp,
   WarningCircle
 } from "@/lib/icons";
@@ -21,6 +20,7 @@ import { ResignationRequestCreateBoard } from "@/components/user/resignation-req
 import { RequestsBoard } from "@/components/user/requests-board";
 import { SalaryBoard } from "@/components/user/salary-board";
 import { ShiftChangeRequestCreateBoard } from "@/components/user/shift-change-request-create-board";
+import { CollapseButton } from "@/components/user/collapse-button";
 import { UserFrame } from "@/components/user/user-frame";
 import { announcements } from "@/lib/mock-data";
 
@@ -79,9 +79,7 @@ function EmptyWorkPanel({ panel }: { panel: EmptyPanel }) {
             {panel.filter}
             <CaretDown size={14} weight="duotone" aria-hidden="true" />
           </button>
-          <button className="icon-button" type="button" aria-label={`Thu gọn ${panel.title}`}>
-            <Minus size={16} weight="duotone" aria-hidden="true" />
-          </button>
+          <CollapseButton label={panel.title} />
         </div>
       </header>
 
@@ -108,9 +106,7 @@ function AttendancePanel() {
           <button className="icon-button" type="button" aria-label="Chọn ngày">
             <CalendarBlank size={17} weight="duotone" aria-hidden="true" />
           </button>
-          <button className="icon-button" type="button" aria-label="Thu gọn chấm công">
-            <Minus size={16} weight="duotone" aria-hidden="true" />
-          </button>
+          <CollapseButton label="chấm công" />
         </div>
       </header>
 
@@ -159,9 +155,7 @@ function TrainingPanel() {
     <section className="user-panel" aria-labelledby="training-title">
       <header className="user-panel-header">
         <h2 id="training-title">Lịch đào tạo phần mềm 1Office</h2>
-        <button className="icon-button" type="button" aria-label="Thu gọn lịch đào tạo">
-          <Minus size={16} weight="duotone" aria-hidden="true" />
-        </button>
+        <CollapseButton label="lịch đào tạo" />
       </header>
 
       <article className="training-row">
@@ -185,6 +179,7 @@ function CompanyNoticesPanel() {
     <section className="user-panel" aria-labelledby="user-notice-title">
       <header className="user-panel-header">
         <h2 id="user-notice-title">Thông báo công ty</h2>
+        <CollapseButton label="thông báo công ty" />
       </header>
 
       <div className="user-notice-list">
