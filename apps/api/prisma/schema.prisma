@@ -1,0 +1,316 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum EmployeeStatus {
+  active
+  onboarding
+  offboarding
+  resigned
+}
+
+enum ApprovalStatus {
+  draft
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+enum PostScope {
+  company
+  department
+  group
+  private
+}
+
+enum AttendanceStatus {
+  valid
+  late
+  early_leave
+  missing_checkout
+  needs_review
+}
+
+enum PayrollStatus {
+  draft
+  reviewing
+  approved
+  published
+  locked
+}
+
+model UserAccount {
+  id             String    @id @default(uuid())
+  keycloakUserId String    @unique
+  email          String    @unique
+  displayName    String
+  employee       Employee?
+  roles          String[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Employee {
+  id                String             @id @default(uuid())
+  code              String             @unique
+  fullName          String
+  title             String
+  status            EmployeeStatus     @default(active)
+  startDate         DateTime
+  endDate           DateTime?
+  userAccountId     String?            @unique
+  departmentId      String
+  managerId         String?
+  userAccount       UserAccount?       @relation(fields: [userAccountId], references: [id])
+  department        Department         @relation(fields: [departmentId], references: [id])
+  manager           Employee?          @relation("EmployeeManager", fields: [managerId], references: [id])
+  directReports     Employee[]         @relation("EmployeeManager")
+  contracts         Contract[]
+  attendanceRecords AttendanceRecord[]
+  leaveRequests     LeaveRequest[]
+  payrollItems      PayrollItem[]
+  assetAssignments  AssetAssignment[]
+  auditLogs         AuditLog[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+model Department {
+  id        String       @id @default(uuid())
+  name      String       @unique
+  parentId  String?
+  headId    String?
+  parent    Department?  @relation("DepartmentTree", fields: [parentId], references: [id])
+  children  Department[] @relation("DepartmentTree")
+  employees Employee[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model Contract {
+  id         String    @id @default(uuid())
+  employeeId String
+  type       String
+  startDate  DateTime
+  endDate    DateTime?
+  status     String
+  fileUrl    String?
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Post {
+  id          String     @id @default(uuid())
+  authorId    String
+  scope       PostScope
+  title       String
+  body        String
+  requiresAck Boolean    @default(false)
+  publishedAt DateTime?
+  comments    Comment[]
+  reactions   Reaction[]
+  readMarks   PostReadMark[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  postId    String
+  authorId  String
+  body      String
+  post      Post     @relation(fields: [postId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Reaction {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  emoji     String
+  post      Post     @relation(fields: [postId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId, emoji])
+}
+
+model PostReadMark {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  readAt    DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id])
+
+  @@unique([postId, userId])
+}
+
+model Announcement {
+  id          String    @id @default(uuid())
+  title       String
+  body        String
+  audience    String
+  publishedAt DateTime?
+  readRate    Decimal   @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model ApprovalRequest {
+  id          String         @id @default(uuid())
+  type        String
+  requesterId String
+  assigneeId  String?
+  status      ApprovalStatus @default(pending)
+  priority    String         @default("normal")
+  payload     Json
+  decidedAt   DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model AttendanceRecord {
+  id         String           @id @default(uuid())
+  employeeId String
+  workDate   DateTime
+  checkIn    DateTime?
+  checkOut   DateTime?
+  source     String
+  status     AttendanceStatus @default(valid)
+  employee   Employee         @relation(fields: [employeeId], references: [id])
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@unique([employeeId, workDate, source])
+}
+
+model LeaveRequest {
+  id          String         @id @default(uuid())
+  employeeId  String
+  type        String
+  fromDate    DateTime
+  toDate      DateTime
+  totalDays   Decimal
+  reason      String?
+  status      ApprovalStatus @default(pending)
+  employee    Employee       @relation(fields: [employeeId], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model PayrollCycle {
+  id                 String        @id @default(uuid())
+  name               String
+  periodStart        DateTime
+  periodEnd          DateTime
+  status             PayrollStatus @default(draft)
+  lockedAttendanceAt DateTime?
+  items              PayrollItem[]
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+}
+
+model PayrollItem {
+  id             String       @id @default(uuid())
+  payrollCycleId String
+  employeeId      String
+  grossAmount     Decimal
+  netAmount       Decimal
+  currency        String       @default("VND")
+  payload         Json
+  payrollCycle    PayrollCycle @relation(fields: [payrollCycleId], references: [id])
+  employee        Employee     @relation(fields: [employeeId], references: [id])
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([payrollCycleId, employeeId])
+}
+
+model Objective {
+  id          String   @id @default(uuid())
+  ownerId     String
+  cycle       String
+  title       String
+  progress    Decimal  @default(0)
+  status      String
+  parentId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TrainingCourse {
+  id          String   @id @default(uuid())
+  title       String
+  ownerId     String
+  startDate   DateTime
+  endDate     DateTime?
+  status      String
+  enrollments TrainingEnrollment[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TrainingEnrollment {
+  id        String         @id @default(uuid())
+  courseId  String
+  learnerId String
+  status    String
+  score     Decimal?
+  course    TrainingCourse @relation(fields: [courseId], references: [id])
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([courseId, learnerId])
+}
+
+model Asset {
+  id          String            @id @default(uuid())
+  code        String            @unique
+  name        String
+  category    String
+  status      String
+  assignments AssetAssignment[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model AssetAssignment {
+  id         String    @id @default(uuid())
+  assetId    String
+  employeeId String
+  assignedAt DateTime
+  returnedAt DateTime?
+  asset      Asset     @relation(fields: [assetId], references: [id])
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  event     String
+  title     String
+  body      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String?
+  action      String
+  entityType  String
+  entityId    String
+  beforeValue Json?
+  afterValue  Json?
+  ipAddress   String?
+  employee    Employee? @relation(fields: [actorId], references: [id])
+  createdAt   DateTime @default(now())
+}
