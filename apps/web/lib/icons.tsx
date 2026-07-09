@@ -20,11 +20,12 @@ import {
   Building03Icon,
   Calendar03Icon,
   CalendarCheckIcon,
+  Call02Icon,
   Cancel01Icon,
   ChartLineData01Icon,
   ChartNetworkIcon,
   Chatting01Icon,
-  CheckmarkBadge01Icon,
+  CheckIcon,
   CheckmarkCircle02Icon,
   CircleIcon,
   ClipboardListIcon,
@@ -33,21 +34,24 @@ import {
   DollarCircleIcon,
   DollarReceive01Icon,
   File02Icon,
+  FileClockIcon,
   FileExportIcon,
   Flag02Icon,
   FunnelIcon,
-  GearsIcon,
   Globe02Icon,
   GraduationCapIcon,
   HeartIcon,
-  House02Icon,
-  House03Icon,
+  Home03Icon,
+  Home04Icon,
   IdIcon,
   ImageNotFound01Icon,
   LayoutTwoColumnIcon,
   LeftToRightListBulletIcon,
   LeftToRightListNumberIcon,
+  Key01Icon,
+  LanguageCircleIcon,
   Link02Icon,
+  Logout01Icon,
   MagicWand02Icon,
   Mail01Icon,
   MaleSymbolIcon,
@@ -58,13 +62,14 @@ import {
   Mic01Icon,
   MinusSignIcon,
   Money03Icon,
+  News01Icon,
   PackageIcon,
   PencilEdit02Icon,
-  PhoneArrowUpIcon,
   Search01Icon,
   SealIcon,
   SecurityCheckIcon,
   SentIcon,
+  Settings02Icon,
   Share05Icon,
   SlidersHorizontalIcon,
   SmileIcon,
@@ -124,7 +129,7 @@ export const CaretUp = createIcon(ArrowUp01Icon);
 export const ChartLineUp = createIcon(ChartLineData01Icon);
 export const ChatCircle = createIcon(BubbleChatIcon);
 export const ChatCircleText = createIcon(Chatting01Icon);
-export const Check = createIcon(CheckmarkBadge01Icon);
+export const Check = createIcon(CheckIcon);
 export const CheckCircle = createIcon(CheckmarkCircle02Icon);
 export const Circle = createIcon(CircleIcon);
 export const ClipboardText = createIcon(ClipboardListIcon);
@@ -135,19 +140,23 @@ export const DotsThree = createIcon(MenuCircleIcon);
 export const EnvelopeSimple = createIcon(Mail01Icon);
 export const Export = createIcon(FileExportIcon);
 export const FileText = createIcon(File02Icon);
+export const FileClock = createIcon(FileClockIcon);
 export const Flag = createIcon(Flag02Icon);
 export const FlowArrow = createIcon(ChartNetworkIcon);
 export const FunnelSimple = createIcon(FunnelIcon);
-export const GearSix = createIcon(GearsIcon);
+export const GearSix = createIcon(Settings02Icon);
 export const GenderMale = createIcon(MaleSymbolIcon);
 export const GlobeHemisphereWest = createIcon(Globe02Icon);
 export const GraduationCap = createIcon(GraduationCapIcon);
 export const Heart = createIcon(HeartIcon);
-export const House = createIcon(House02Icon);
-export const HouseLine = createIcon(House03Icon);
+export const House = createIcon(Home04Icon);
+export const HouseLine = createIcon(Home03Icon);
 export const IdentificationBadge = createIcon(IdIcon);
 export const ImageBroken = createIcon(ImageNotFound01Icon);
+export const Key = createIcon(Key01Icon);
+export const Language = createIcon(LanguageCircleIcon);
 export const LinkSimple = createIcon(Link02Icon);
+export const Logout = createIcon(Logout01Icon);
 export const List = createIcon(Menu01Icon);
 export const ListBullets = createIcon(LeftToRightListBulletIcon);
 export const ListNumbers = createIcon(LeftToRightListNumberIcon);
@@ -160,11 +169,12 @@ export const Minus = createIcon(MinusSignIcon);
 export const Money = createIcon(Money03Icon);
 export const MoneyWavy = createIcon(DollarReceive01Icon);
 export const Network = createIcon(ChartNetworkIcon);
+export const News = createIcon(News01Icon);
 export const Package = createIcon(PackageIcon);
 export const PaperPlaneTilt = createIcon(SentIcon);
 export const Paperclip = createIcon(Attachment01Icon);
 export const PencilSimple = createIcon(PencilEdit02Icon);
-export const Phone = createIcon(PhoneArrowUpIcon);
+export const Phone = createIcon(Call02Icon);
 export const Plus = createIcon(Add01Icon);
 export const SealCheck = createIcon(SealIcon);
 export const ShareFat = createIcon(Share05Icon);

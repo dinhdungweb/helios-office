@@ -5,6 +5,7 @@ import {
   CalendarCheck,
   ChartLineUp,
   ClipboardText,
+  FileClock,
   Flag,
   IdentificationBadge,
   GraduationCap,
@@ -149,7 +150,7 @@ export const modules: ModuleItem[] = [
 export const socialNavigation: SocialNavItem[] = [
   { label: "Bảng tin", icon: ChatCircle, active: true },
   { label: "Tường công ty", icon: Buildings },
-  { label: "Bài viết chờ duyệt", icon: Users },
+  { label: "Bài viết chờ duyệt", icon: FileClock },
   { label: "Nhóm, thảo luận", icon: Users },
   { label: "Lộ trình thăng tiến", icon: ArrowSquareOut },
   { label: "Sơ đồ tổ chức", icon: Network },

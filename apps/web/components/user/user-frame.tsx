@@ -5,6 +5,7 @@ import {
   CalendarCheck,
   ChatCircle,
   ClipboardText,
+  GearSix,
   House,
   IdentificationBadge,
   MagicWand,
@@ -16,6 +17,7 @@ import {
 import type { Icon } from "@/lib/icons";
 import type { ReactNode } from "react";
 import { AppLauncher } from "@/components/dashboard/app-launcher";
+import { ProfileMenu } from "@/components/user/profile-menu";
 import { UserQuickCreateMenu } from "@/components/user/user-quick-create-menu";
 import { currentUser } from "@/lib/mock-data";
 
@@ -150,9 +152,10 @@ function UserTopbar({
         <button className="icon-button" type="button" aria-label="Thông báo">
           <Bell size={18} weight="duotone" aria-hidden="true" />
         </button>
-        <a className="avatar-button" href="/user" aria-label={`Mở hồ sơ ${currentUser.name}`}>
-          <span>{currentUser.avatar}</span>
-        </a>
+        <button className="icon-button" type="button" aria-label="Cài đặt">
+          <GearSix size={18} weight="duotone" aria-hidden="true" />
+        </button>
+        <ProfileMenu user={currentUser} />
       </nav>
     </header>
   );

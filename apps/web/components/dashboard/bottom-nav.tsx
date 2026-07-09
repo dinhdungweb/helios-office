@@ -1,4 +1,4 @@
-import { Bell, House, MagnifyingGlass, Plus, UserCircle } from "@/lib/icons";
+import { House, MagnifyingGlass, News, Plus, UserCircle } from "@/lib/icons";
 
 export function BottomNav() {
   return (
@@ -8,7 +8,7 @@ export function BottomNav() {
         <span>Trang chủ</span>
       </a>
       <a href="#feed-title" aria-label="Bảng tin">
-        <Bell size={18} weight="duotone" aria-hidden="true" />
+        <News size={18} weight="duotone" aria-hidden="true" />
         <span>Bảng tin</span>
       </a>
       <button type="button" aria-label="Tạo mới">

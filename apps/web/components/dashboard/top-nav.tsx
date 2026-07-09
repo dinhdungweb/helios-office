@@ -1,13 +1,13 @@
 import {
   Bell,
   BookmarkSimple,
-  Buildings,
   ChatCircle,
   GearSix,
   House,
   MagnifyingGlass
 } from "@/lib/icons";
 import { AppLauncher } from "@/components/dashboard/app-launcher";
+import { ProfileMenu } from "@/components/user/profile-menu";
 import type { UserProfile } from "@/lib/mock-data";
 
 type TopNavProps = {
@@ -40,28 +40,23 @@ export function TopNav({ user }: TopNavProps) {
       </form>
 
       <nav className="nav-actions" aria-label="Truy cập nhanh">
-        <button className="icon-button nav-accent" type="button" aria-label="Trung tâm vận hành">
-          <Buildings size={19} weight="duotone" aria-hidden="true" />
-        </button>
-        <button className="icon-button" type="button" aria-label="Bài đã lưu">
+        <button className="icon-button mobile-visible-action" type="button" aria-label="Bài đã lưu">
           <BookmarkSimple size={18} weight="duotone" aria-hidden="true" />
         </button>
-        <button className="icon-button is-active" type="button" aria-label="Trang chủ">
+        <a className="icon-button is-active" href="/user" aria-label="Trang chủ">
           <House size={18} weight="duotone" aria-hidden="true" />
-        </button>
+        </a>
         <button className="icon-button has-badge" type="button" aria-label="Tin nhắn, 1 chưa đọc">
           <ChatCircle size={18} weight="duotone" aria-hidden="true" />
           <span aria-hidden="true">1</span>
         </button>
-        <button className="icon-button" type="button" aria-label="Thông báo">
+        <button className="icon-button mobile-visible-action" type="button" aria-label="Thông báo">
           <Bell size={18} weight="duotone" aria-hidden="true" />
         </button>
-        <button className="icon-button" type="button" aria-label="Cài đặt">
+        <button className="icon-button mobile-visible-action" type="button" aria-label="Cài đặt">
           <GearSix size={18} weight="duotone" aria-hidden="true" />
         </button>
-        <a className="avatar-button" href="/user" aria-label={`Mở hồ sơ ${user.name}`}>
-          <span>{user.avatar}</span>
-        </a>
+        <ProfileMenu user={user} />
       </nav>
     </header>
   );
