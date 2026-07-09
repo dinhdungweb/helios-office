@@ -3,9 +3,12 @@ import {
   CaretDown,
   CaretLeft,
   CaretRight,
+  ChatCircle,
   ClipboardText,
   Clock,
+  Heart,
   Minus,
+  ThumbsUp,
   WarningCircle
 } from "@phosphor-icons/react/dist/ssr";
 import { AbsenceRequestCreateBoard } from "@/components/user/absence-request-create-board";
@@ -182,16 +185,17 @@ function CompanyNoticesPanel() {
     <section className="user-panel" aria-labelledby="user-notice-title">
       <header className="user-panel-header">
         <h2 id="user-notice-title">Thông báo công ty</h2>
-        <button className="icon-button" type="button" aria-label="Thu gọn thông báo công ty">
-          <Minus size={16} weight="duotone" aria-hidden="true" />
-        </button>
       </header>
 
       <div className="user-notice-list">
-        {announcements.map((announcement) => (
+        {announcements.map((announcement, index) => {
+          const comments = index === 0 ? 1 : 0;
+          const reactions = index === 0 ? 2 : 1;
+
+          return (
           <article className="user-notice-card" key={announcement.id}>
             <header>
-              <span className="avatar avatar--accent">AD</span>
+              <span className="user-notice-author-avatar" aria-hidden="true" />
               <div>
                 <strong>Admin</strong>
                 <p>
@@ -200,14 +204,34 @@ function CompanyNoticesPanel() {
                 </p>
               </div>
             </header>
-            <h3>{announcement.title}</h3>
+            <h3>{index === 0 || index === 2 ? announcement.title.toUpperCase() : announcement.title}</h3>
             <footer>
-              <span className="reaction-dot">1</span>
-              <span>0 Thảo luận</span>
-              <span className="avatar">{announcement.audience.slice(0, 1)}</span>
+              <div className="user-notice-engagement">
+                <span className="user-notice-reactions" aria-label={`${reactions} lượt tương tác`}>
+                  <span className="reaction-dot reaction-dot--like">
+                    <ThumbsUp size={12} weight="fill" aria-hidden="true" />
+                  </span>
+                  {index === 0 ? (
+                    <span className="reaction-dot reaction-dot--heart">
+                      <Heart size={12} weight="fill" aria-hidden="true" />
+                    </span>
+                  ) : null}
+                </span>
+                <span>{reactions}</span>
+                <span aria-hidden="true">·</span>
+                <span className="user-notice-comments">
+                  <ChatCircle size={15} weight="duotone" aria-hidden="true" />
+                  {comments} Thảo luận
+                </span>
+              </div>
+              <div className="user-notice-targets" aria-label={announcement.audience}>
+                <span>N</span>
+                {index === 0 ? <span className="user-notice-target-photo" aria-hidden="true" /> : null}
+              </div>
             </footer>
           </article>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
