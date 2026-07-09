@@ -1,4 +1,4 @@
-import { Cake, CaretRight, Megaphone, UsersThree } from "@phosphor-icons/react/dist/ssr";
+import { Cake, CaretRight, Megaphone, UsersThree } from "@/lib/icons";
 import type { Announcement } from "@/lib/mock-data";
 
 type RightSidebarProps = {

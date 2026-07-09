@@ -25,8 +25,8 @@ import {
   UploadSimple,
   UserCircle,
   Wallet
-} from "@phosphor-icons/react/dist/ssr";
-import type { Icon } from "@phosphor-icons/react";
+} from "@/lib/icons";
+import type { Icon } from "@/lib/icons";
 import type { ReactNode } from "react";
 
 type ProfileInfoRow = {

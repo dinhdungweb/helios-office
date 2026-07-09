@@ -7,7 +7,7 @@ import {
   Smiley,
   ThumbsUp,
   SpeakerHigh
-} from "@phosphor-icons/react/dist/ssr";
+} from "@/lib/icons";
 import type { FeedPost } from "@/lib/mock-data";
 
 type IntranetFeedProps = {

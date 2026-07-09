@@ -17,7 +17,7 @@ import {
   TextUnderline,
   UploadSimple,
   X
-} from "@phosphor-icons/react/dist/ssr";
+} from "@/lib/icons";
 
 import { LeaveReasonSelect } from "@/components/user/leave-reason-select";
 

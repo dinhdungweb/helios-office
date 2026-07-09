@@ -6,7 +6,7 @@ import {
   Clock,
   FileText,
   UsersThree
-} from "@phosphor-icons/react/dist/ssr";
+} from "@/lib/icons";
 import type { Announcement, PendingApproval } from "@/lib/mock-data";
 
 type WorkspaceTabsProps = {

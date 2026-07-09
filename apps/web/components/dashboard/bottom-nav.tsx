@@ -1,4 +1,4 @@
-import { Bell, House, MagnifyingGlass, Plus, UserCircle } from "@phosphor-icons/react/dist/ssr";
+import { Bell, House, MagnifyingGlass, Plus, UserCircle } from "@/lib/icons";
 
 export function BottomNav() {
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { CaretRight, Plus } from "@phosphor-icons/react/dist/ssr";
+import { CaretRight, Plus } from "@/lib/icons";
 
 const requestCreateItems = [
   { label: "Đơn xin nghỉ", href: "/user/requests/new?type=leave" },

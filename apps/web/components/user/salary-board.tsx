@@ -2,7 +2,7 @@ import {
   CalendarBlank,
   CaretDown,
   CaretUp
-} from "@phosphor-icons/react/dist/ssr";
+} from "@/lib/icons";
 
 type SalaryMonth = {
   month: string;

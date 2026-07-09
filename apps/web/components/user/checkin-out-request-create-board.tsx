@@ -7,7 +7,7 @@ import {
   Plus,
   UploadSimple,
   X
-} from "@phosphor-icons/react/dist/ssr";
+} from "@/lib/icons";
 
 import { LeaveFormSelect } from "@/components/user/leave-form-select";
 

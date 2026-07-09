@@ -23,8 +23,8 @@ import {
   Users,
   UsersThree,
   X
-} from "@phosphor-icons/react/dist/ssr";
-import type { Icon } from "@phosphor-icons/react";
+} from "@/lib/icons";
+import type { Icon } from "@/lib/icons";
 
 type LauncherItem = {
   label: string;

@@ -3,7 +3,7 @@ import {
   CheckCircle,
   Circle,
   FlowArrow
-} from "@phosphor-icons/react/dist/ssr";
+} from "@/lib/icons";
 import type { Workflow as WorkflowItem } from "@/lib/mock-data";
 
 type HrmWorkflowsProps = {

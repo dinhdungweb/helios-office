@@ -10,7 +10,7 @@ import {
   Minus,
   ThumbsUp,
   WarningCircle
-} from "@phosphor-icons/react/dist/ssr";
+} from "@/lib/icons";
 import { AbsenceRequestCreateBoard } from "@/components/user/absence-request-create-board";
 import { AttendanceBoard } from "@/components/user/attendance-board";
 import { CheckinOutRequestCreateBoard } from "@/components/user/checkin-out-request-create-board";

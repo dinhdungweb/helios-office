@@ -12,8 +12,8 @@ import {
   Megaphone,
   MoneyWavy,
   SlidersHorizontal
-} from "@phosphor-icons/react/dist/ssr";
-import type { Icon } from "@phosphor-icons/react";
+} from "@/lib/icons";
+import type { Icon } from "@/lib/icons";
 import type { ReactNode } from "react";
 import { AppLauncher } from "@/components/dashboard/app-launcher";
 import { UserQuickCreateMenu } from "@/components/user/user-quick-create-menu";

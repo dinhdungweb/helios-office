@@ -4,7 +4,7 @@ import {
   CaretDown,
   Clock,
   X
-} from "@phosphor-icons/react/dist/ssr";
+} from "@/lib/icons";
 
 type AttendanceDay = {
   day?: string;

@@ -1,4 +1,4 @@
-import { Bell, GearSix } from "@phosphor-icons/react/dist/ssr";
+import { Bell, GearSix } from "@/lib/icons";
 import type { SocialNavItem, SystemNotice, UserProfile } from "@/lib/mock-data";
 
 type LeftSidebarProps = {

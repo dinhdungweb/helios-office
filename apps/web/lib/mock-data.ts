@@ -16,8 +16,8 @@ import {
   ShieldCheck,
   ArrowSquareOut,
   Users
-} from "@phosphor-icons/react/dist/ssr";
-import type { Icon } from "@phosphor-icons/react";
+} from "@/lib/icons";
+import type { Icon } from "@/lib/icons";
 
 export type UserProfile = {
   name: string;

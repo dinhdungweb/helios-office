@@ -6,7 +6,7 @@ import {
   GearSix,
   House,
   MagnifyingGlass
-} from "@phosphor-icons/react/dist/ssr";
+} from "@/lib/icons";
 import { AppLauncher } from "@/components/dashboard/app-launcher";
 import type { UserProfile } from "@/lib/mock-data";
 

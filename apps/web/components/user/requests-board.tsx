@@ -8,7 +8,7 @@ import {
   List,
   SlidersHorizontal,
   Tag
-} from "@phosphor-icons/react/dist/ssr";
+} from "@/lib/icons";
 
 type RequestRow = {
   id: string;

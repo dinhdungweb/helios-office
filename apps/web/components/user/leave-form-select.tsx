@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { CaretDown } from "@phosphor-icons/react";
+import { CaretDown } from "@/lib/icons";
 
 export type LeaveFormSelectOption = {
   label: string;
