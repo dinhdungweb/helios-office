@@ -53,9 +53,9 @@ export function TopNav({ user }: TopNavProps) {
         <button className="icon-button mobile-visible-action" type="button" aria-label="Thông báo">
           <Bell size={18} weight="duotone" aria-hidden="true" />
         </button>
-        <button className="icon-button mobile-visible-action" type="button" aria-label="Cài đặt">
+        <a className="icon-button mobile-visible-action" href="/admin/settings#system-settings" aria-label="Cài đặt hệ thống">
           <GearSix size={18} weight="duotone" aria-hidden="true" />
-        </button>
+        </a>
         <ProfileMenu user={user} />
       </nav>
     </header>

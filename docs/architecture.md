@@ -12,6 +12,8 @@ Helios Office starts as a modular monolith because the team size and expected tr
 ## Domain Modules
 
 - Employees: employee profile, department, manager relationship, contract, organization chart.
+- Account Access: user account lifecycle, admin/user roles, license plans, permission groups, and per-user overrides.
+- Admin Settings: system settings, module settings, operational logs, reconciliation, import/export, and Open API connections.
 - Posts: intranet feed, reactions, comments, read tracking.
 - Announcements: company notices, targeting, acknowledgements.
 - Approvals: shared approval workflow for leave, attendance edits, payroll, recruitment, and assets.

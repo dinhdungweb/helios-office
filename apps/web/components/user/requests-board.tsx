@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import {
   CalendarBlank,
@@ -61,7 +62,7 @@ function StepBadge({ step }: { step: RequestRow["step"] }) {
 
 export function RequestsBoard() {
   const router = useRouter();
-  const openDetail = () => router.push("/user/requests/detail");
+  const openDetail = () => router.push("/user/requests/detail" as Route);
 
   return (
     <main className="requests-board-page" aria-label="Danh sách đơn từ">

@@ -32,6 +32,7 @@ import {
   ClipboardListIcon,
   Clock01Icon,
   DashboardSquare02Icon,
+  Delete01Icon,
   DollarCircleIcon,
   DollarReceive01Icon,
   EyeIcon,
@@ -201,6 +202,7 @@ export const TextItalic = createIcon(TextItalicIcon);
 export const TextUnderline = createIcon(TextUnderlineIcon);
 export const ThumbsDown = createIcon(ThumbsDownIcon);
 export const ThumbsUp = createIcon(ThumbsUpIcon);
+export const Trash = createIcon(Delete01Icon);
 export const Umbrella = createIcon(UmbrellaIcon);
 export const UploadSimple = createIcon(Upload01Icon);
 export const User = createIcon(UserIcon);

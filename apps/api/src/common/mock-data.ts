@@ -31,6 +31,574 @@ export const employees = [
   }
 ];
 
+export const accountLicenses = [
+  {
+    id: "standard",
+    name: "STANDARD",
+    description: "Gói cơ bản cho nhân sự sử dụng các nghiệp vụ thiết yếu.",
+    modules: ["Hồ sơ", "Đơn từ", "Chấm công cá nhân", "Thông báo"]
+  },
+  {
+    id: "professional",
+    name: "PROFESSIONAL",
+    description: "Gói chuyên nghiệp cho quản lý phòng ban và HR vận hành.",
+    modules: ["Duyệt đơn", "Báo cáo phòng ban", "Quy trình", "Tài sản"]
+  },
+  {
+    id: "enterprise",
+    name: "ENTERPRISE",
+    description: "Gói cao nhất cho quản trị hệ thống, API và tùy biến sâu.",
+    modules: ["Open API", "Sơ đồ tổ chức", "Báo cáo tổng thể", "Cấu hình hệ thống"]
+  }
+];
+
+export const accountPermissionCatalog = [
+  {
+    key: "system.organization.manage",
+    category: "Quản trị hệ thống",
+    label: "Cài đặt sơ đồ tổ chức",
+    minimumLicense: "enterprise",
+    adminOnly: true
+  },
+  {
+    key: "system.accounts.manage",
+    category: "Quản trị hệ thống",
+    label: "Kích hoạt, đóng tài khoản nhân viên",
+    minimumLicense: "enterprise",
+    adminOnly: true
+  },
+  {
+    key: "system.approval_flow.manage",
+    category: "Quản trị hệ thống",
+    label: "Thiết lập quy trình duyệt",
+    minimumLicense: "professional",
+    adminOnly: true
+  },
+  {
+    key: "system.open_api.manage",
+    category: "Quản trị hệ thống",
+    label: "Cấu hình Open API",
+    minimumLicense: "enterprise",
+    adminOnly: true
+  },
+  {
+    key: "system.branding.manage",
+    category: "Quản trị hệ thống",
+    label: "Thay đổi giao diện và logo công ty",
+    minimumLicense: "enterprise",
+    adminOnly: true
+  },
+  {
+    key: "reports.company.view",
+    category: "Báo cáo",
+    label: "Xem báo cáo tổng thể",
+    minimumLicense: "professional",
+    adminOnly: false
+  },
+  {
+    key: "approvals.critical.approve",
+    category: "Phê duyệt",
+    label: "Phê duyệt đơn từ quan trọng",
+    minimumLicense: "professional",
+    adminOnly: false
+  },
+  {
+    key: "employees.department.manage",
+    category: "Nhân sự",
+    label: "Quản lý nhân sự trong bộ phận",
+    minimumLicense: "professional",
+    adminOnly: false
+  },
+  {
+    key: "requests.personal.create",
+    category: "Cá nhân",
+    label: "Tạo đơn từ cá nhân",
+    minimumLicense: "standard",
+    adminOnly: false
+  },
+  {
+    key: "tasks.assigned.update",
+    category: "Cá nhân",
+    label: "Cập nhật công việc được giao",
+    minimumLicense: "standard",
+    adminOnly: false
+  }
+];
+
+export const permissionGroups = [
+  {
+    id: "grp-system-admin",
+    name: "Admin hệ thống",
+    description: "Chủ doanh nghiệp, IT hoặc HCNS có quyền cao nhất.",
+    roleScope: "system_admin",
+    licensePlan: "enterprise",
+    memberCount: 2,
+    permissionKeys: [
+      "system.organization.manage",
+      "system.accounts.manage",
+      "system.approval_flow.manage",
+      "system.open_api.manage",
+      "system.branding.manage",
+      "reports.company.view",
+      "approvals.critical.approve"
+    ]
+  },
+  {
+    id: "grp-directors",
+    name: "Ban giám đốc",
+    description: "Xem báo cáo tổng thể và duyệt các đơn từ quan trọng.",
+    roleScope: "user",
+    licensePlan: "enterprise",
+    memberCount: 4,
+    permissionKeys: ["reports.company.view", "approvals.critical.approve"]
+  },
+  {
+    id: "grp-managers",
+    name: "Trưởng phòng",
+    description: "Quản lý nhân sự, công việc và phê duyệt trong bộ phận.",
+    roleScope: "user",
+    licensePlan: "professional",
+    memberCount: 18,
+    permissionKeys: ["employees.department.manage", "approvals.critical.approve", "tasks.assigned.update"]
+  },
+  {
+    id: "grp-employees",
+    name: "Nhân viên",
+    description: "Tạo đơn cá nhân, xem công việc được giao và cập nhật báo cáo.",
+    roleScope: "user",
+    licensePlan: "standard",
+    memberCount: 176,
+    permissionKeys: ["requests.personal.create", "tasks.assigned.update"]
+  }
+];
+
+export const userAccounts = [
+  {
+    id: "acc-001",
+    employeeId: "emp-001",
+    displayName: "Đặng Đình Dũng",
+    email: "dungdd@helios.vn",
+    role: "system_admin",
+    licensePlan: "enterprise",
+    permissionGroupId: "grp-system-admin",
+    status: "active",
+    customPermissionsEnabled: true,
+    customPermissionKeys: ["system.open_api.manage"],
+    customPermissionNote: "Được cấp riêng quyền Open API cho tích hợp web.",
+    activatedAt: "2024-02-26T02:00:00.000Z",
+    closedAt: null
+  },
+  {
+    id: "acc-002",
+    employeeId: "emp-002",
+    displayName: "Nguyễn Hải Anh",
+    email: "haianh@helios.vn",
+    role: "user",
+    licensePlan: "professional",
+    permissionGroupId: "grp-managers",
+    status: "active",
+    customPermissionsEnabled: false,
+    customPermissionKeys: [],
+    customPermissionNote: null,
+    activatedAt: "2023-09-01T02:00:00.000Z",
+    closedAt: null
+  },
+  {
+    id: "acc-003",
+    employeeId: "emp-003",
+    displayName: "Lê Minh Khang",
+    email: "khanglm@helios.vn",
+    role: "user",
+    licensePlan: "standard",
+    permissionGroupId: "grp-employees",
+    status: "active",
+    customPermissionsEnabled: false,
+    customPermissionKeys: [],
+    customPermissionNote: null,
+    activatedAt: "2025-01-06T02:00:00.000Z",
+    closedAt: null
+  },
+  {
+    id: "acc-004",
+    employeeId: null,
+    displayName: "Trần Bảo Minh",
+    email: "baominh@helios.vn",
+    role: "user",
+    licensePlan: "standard",
+    permissionGroupId: "grp-employees",
+    status: "pending_activation",
+    customPermissionsEnabled: false,
+    customPermissionKeys: [],
+    customPermissionNote: null,
+    activatedAt: null,
+    closedAt: null
+  },
+  {
+    id: "acc-005",
+    employeeId: null,
+    displayName: "Phạm Thanh Trúc",
+    email: "tructp@helios.vn",
+    role: "user",
+    licensePlan: "standard",
+    permissionGroupId: "grp-employees",
+    status: "closed",
+    customPermissionsEnabled: false,
+    customPermissionKeys: [],
+    customPermissionNote: null,
+    activatedAt: "2024-06-10T02:00:00.000Z",
+    closedAt: "2026-06-30T10:00:00.000Z"
+  }
+];
+
+export const systemSettingItems = [
+  {
+    id: "org-chart",
+    tier: "system",
+    category: "Quản trị Tổ chức & Nhân sự",
+    title: "Sơ đồ tổ chức",
+    summary: "Khai báo chi nhánh, phòng ban và sơ đồ phân cấp cha/con.",
+    owner: "HR Admin",
+    status: "configured",
+    href: "/admin/settings/org-chart",
+    controls: ["Chi nhánh", "Phòng ban", "Cấp cha/con", "Sơ đồ"]
+  },
+  {
+    id: "positions",
+    tier: "system",
+    category: "Quản trị Tổ chức & Nhân sự",
+    title: "Vị trí & chức vụ",
+    summary: "Định nghĩa danh mục vị trí công việc và chức vụ để gán vào hồ sơ nhân sự.",
+    owner: "HR Admin",
+    status: "configured",
+    href: "/admin/settings/positions-titles",
+    controls: ["Vị trí", "Chức vụ", "Cấp bậc", "Hồ sơ"]
+  },
+  {
+    id: "user-accounts",
+    tier: "system",
+    category: "Quản trị Tổ chức & Nhân sự",
+    title: "Tài khoản người dùng",
+    summary: "Quản lý danh sách người dùng, kích hoạt, khóa tài khoản và đặt lại mật khẩu.",
+    owner: "IT Admin",
+    status: "configured",
+    href: "/admin/settings/accounts",
+    controls: ["Danh sách", "Kích hoạt", "Khóa", "Reset mật khẩu"]
+  },
+  {
+    id: "device-auth",
+    tier: "system",
+    category: "Quản trị Tổ chức & Nhân sự",
+    title: "Xác thực thiết bị",
+    summary: "Phê duyệt thiết bị di động được phép chấm công GPS.",
+    owner: "HR Ops",
+    status: "needs_review",
+    href: "/admin/settings/accounts/device-auth",
+    controls: ["Thiết bị", "GPS", "Phê duyệt", "Thu hồi"]
+  },
+  {
+    id: "permission-groups",
+    tier: "system",
+    category: "Phân quyền",
+    title: "Nhóm người dùng",
+    summary: "Tạo nhóm Ban giám đốc, Kế toán, Nhân viên và các nhóm vận hành khác.",
+    owner: "System Admin",
+    status: "configured",
+    href: "/admin/settings/accounts/groups",
+    controls: ["Nhóm", "Vai trò", "License", "Thành viên"]
+  },
+  {
+    id: "detailed-permissions",
+    tier: "system",
+    category: "Phân quyền",
+    title: "Quyền chi tiết",
+    summary: "Gán quyền xem, thêm, sửa, xóa, quản lý cho từng nhóm hoặc cá nhân trên từng đối tượng.",
+    owner: "System Admin",
+    status: "configured",
+    href: "/admin/settings/accounts/permissions",
+    controls: ["Xem", "Thêm", "Sửa", "Xóa", "Quản lý"]
+  },
+  {
+    id: "intranet-branding",
+    tier: "system",
+    category: "Cấu hình Hệ thống chung",
+    title: "Mạng nội bộ",
+    summary: "Thay đổi logo, màu giao diện, bảng tin và ẩn/hiện thông tin cá nhân như ngày sinh.",
+    owner: "Internal Comms",
+    status: "configured",
+    href: "/admin/settings/intranet",
+    controls: ["Logo", "Màu sắc", "Bảng tin", "Ngày sinh"]
+  },
+  {
+    id: "security-policy",
+    tier: "system",
+    category: "Cấu hình Hệ thống chung",
+    title: "Bảo mật",
+    summary: "Cài đặt độ khó mật khẩu, OTP/2FA, SSO và chính sách phiên đăng nhập.",
+    owner: "Security",
+    status: "needs_review",
+    controls: ["Mật khẩu", "OTP", "2FA", "SSO"]
+  },
+  {
+    id: "company-info",
+    tier: "system",
+    category: "Cấu hình Hệ thống chung",
+    title: "Thông tin doanh nghiệp",
+    summary: "Cập nhật tên công ty, địa chỉ, mã số thuế và thông tin pháp lý.",
+    owner: "Finance",
+    status: "needs_review",
+    href: "/admin/settings/company-info",
+    controls: ["Tên công ty", "Địa chỉ", "Mã số thuế", "Pháp lý"]
+  },
+  {
+    id: "currency-region",
+    tier: "system",
+    category: "Cấu hình Hệ thống chung",
+    title: "Tiền tệ & khu vực",
+    summary: "Thiết lập tiền tệ chính, định dạng ngày tháng và múi giờ làm việc.",
+    owner: "IT Admin",
+    status: "configured",
+    controls: ["Tiền tệ", "Ngày tháng", "Múi giờ", "Khu vực"]
+  },
+  {
+    id: "smtp",
+    tier: "system",
+    category: "Kết nối & Giao tiếp",
+    title: "Cấu hình Email SMTP",
+    summary: "Cài đặt server email gửi thông báo, phiếu lương, hợp đồng cho nhân viên và khách hàng.",
+    owner: "IT Admin",
+    status: "needs_review",
+    href: "/admin/settings/smtp",
+    controls: ["SMTP", "Email gửi đi", "Phiếu lương", "Hợp đồng"]
+  },
+  {
+    id: "message-templates",
+    tier: "system",
+    category: "Kết nối & Giao tiếp",
+    title: "Mẫu Email/SMS/Zalo",
+    summary: "Thiết lập mẫu tự động cho sinh nhật, duyệt đơn và xác nhận đơn hàng.",
+    owner: "Internal Comms",
+    status: "configured",
+    controls: ["Email", "SMS", "Zalo", "Mẫu tự động"]
+  },
+  {
+    id: "system-open-api",
+    tier: "system",
+    category: "Kết nối & Giao tiếp",
+    title: "Open API",
+    summary: "Khởi tạo Access Key để kết nối với website, kế toán và phần mềm bên thứ ba.",
+    owner: "IT Admin",
+    status: "configured",
+    controls: ["Access Key", "Website", "Kế toán", "Tích hợp"]
+  },
+  {
+    id: "system-audit-log",
+    tier: "system",
+    category: "Giám sát & Đối soát",
+    title: "Lịch sử hệ thống",
+    summary: "Truy vết ai đã sửa gì, vào lúc nào để đảm bảo minh bạch dữ liệu.",
+    owner: "Security",
+    status: "configured",
+    controls: ["Người thao tác", "Dữ liệu", "Thời gian", "IP"]
+  },
+  {
+    id: "system-reconciliation",
+    tier: "system",
+    category: "Giám sát & Đối soát",
+    title: "Thông tin đối soát",
+    summary: "Theo dõi dung lượng, tài khoản hoạt động và hóa đơn thanh toán dịch vụ.",
+    owner: "Finance",
+    status: "needs_review",
+    controls: ["Dung lượng", "Tài khoản", "Hóa đơn", "Gia hạn"]
+  }
+];
+
+export const moduleSettingGroups = [
+  {
+    id: "hrm",
+    module: "HRM",
+    summary: "Thiết lập luật nhân sự, chấm công, lương và đánh giá.",
+    status: "configured",
+    settings: [
+      {
+        id: "hrm-requests",
+        tier: "module",
+        category: "Đơn từ",
+        title: "Loại đơn và quy trình duyệt",
+        summary: "Định nghĩa nghỉ phép, tăng ca, công tác và duyệt nhiều cấp.",
+        owner: "HR Ops",
+        status: "configured",
+        controls: ["Loại đơn", "Duyệt nhiều cấp", "Người thay thế", "SLA"]
+      },
+      {
+        id: "hrm-attendance",
+        tier: "module",
+        category: "Chấm công",
+        title: "Ca làm, công chuẩn và thiết bị",
+        summary: "Cài đặt ca làm, bảng phân ca, công chuẩn tháng, máy chấm công và GPS.",
+        owner: "HR Ops",
+        status: "needs_review",
+        controls: ["Ca làm", "Phân ca", "Công chuẩn", "GPS"]
+      },
+      {
+        id: "hrm-payroll",
+        tier: "module",
+        category: "Tiền lương",
+        title: "Thành phần và công thức lương",
+        summary: "Thiết lập thành phần lương, công thức Excel-like, bảo hiểm và thuế TNCN.",
+        owner: "Payroll",
+        status: "needs_review",
+        controls: ["Thành phần", "Công thức", "BHXH", "Thuế TNCN"]
+      },
+      {
+        id: "hrm-performance",
+        tier: "module",
+        category: "KPI/OKR",
+        title: "Bộ chỉ số và kỳ đánh giá",
+        summary: "Quản lý chỉ số đánh giá, trọng số, chu kỳ và kết quả review.",
+        owner: "HRBP",
+        status: "planned",
+        controls: ["Chỉ số", "Trọng số", "Kỳ đánh giá", "Review"]
+      }
+    ]
+  },
+  {
+    id: "work",
+    module: "WORK",
+    summary: "Thiết lập công việc, dự án, quy trình tự động và kho tài liệu.",
+    status: "planned",
+    settings: [
+      {
+        id: "work-statuses",
+        tier: "module",
+        category: "Công việc",
+        title: "Trạng thái và loại dự án",
+        summary: "Cấu hình To do, Doing, Done, loại dự án và mẫu workflow tự động.",
+        owner: "PMO",
+        status: "planned",
+        controls: ["Trạng thái", "Loại dự án", "Workflow", "Automation"]
+      },
+      {
+        id: "work-documents",
+        tier: "module",
+        category: "Tài liệu",
+        title: "Kho tài liệu và thư mục",
+        summary: "Quản lý thư mục, phân quyền truy cập và chính sách chia sẻ tài liệu.",
+        owner: "Admin",
+        status: "planned",
+        controls: ["Thư mục", "Phân quyền", "Chia sẻ", "Lưu trữ"]
+      }
+    ]
+  },
+  {
+    id: "crm",
+    module: "CRM",
+    summary: "Thiết lập khách hàng, pipeline bán hàng, phê duyệt và kho.",
+    status: "planned",
+    settings: [
+      {
+        id: "crm-customer",
+        tier: "module",
+        category: "Khách hàng",
+        title: "Nhóm, nguồn và sales pipeline",
+        summary: "Cấu hình nhóm khách hàng, nguồn khách hàng và quy trình bán hàng.",
+        owner: "Sales Ops",
+        status: "planned",
+        controls: ["Nhóm", "Nguồn", "Pipeline", "Stage"]
+      },
+      {
+        id: "crm-approvals",
+        tier: "module",
+        category: "Bán hàng",
+        title: "Duyệt báo giá, đơn hàng, hợp đồng",
+        summary: "Thiết lập quy trình duyệt chứng từ bán hàng và điều kiện phê duyệt.",
+        owner: "Sales Ops",
+        status: "planned",
+        controls: ["Báo giá", "Đơn hàng", "Hợp đồng", "Điều kiện"]
+      },
+      {
+        id: "crm-inventory",
+        tier: "module",
+        category: "Kho",
+        title: "Kho hàng và tồn kho",
+        summary: "Cấu hình kho, định mức tồn và quy trình nhập/xuất kho.",
+        owner: "Operations",
+        status: "planned",
+        controls: ["Kho", "Tồn tối thiểu", "Nhập kho", "Xuất kho"]
+      }
+    ]
+  }
+];
+
+export const operationSettingItems = [
+  {
+    id: "reconciliation",
+    tier: "operations",
+    category: "Đối soát",
+    title: "Thông tin đối soát",
+    summary: "Theo dõi số người dùng thực tế, hóa đơn và lịch sử gia hạn dịch vụ.",
+    owner: "Finance",
+    status: "configured",
+    controls: ["Người dùng", "Hóa đơn", "Gia hạn", "License"]
+  },
+  {
+    id: "audit-log",
+    tier: "operations",
+    category: "Log",
+    title: "Lịch sử hệ thống",
+    summary: "Truy vết thao tác của người dùng trên dữ liệu quan trọng.",
+    owner: "Security",
+    status: "configured",
+    controls: ["Người thao tác", "Đối tượng", "Trước/Sau", "IP"]
+  },
+  {
+    id: "import-export",
+    tier: "operations",
+    category: "Dữ liệu",
+    title: "Import/Export Excel",
+    summary: "Cấp quyền hoặc thực hiện đổ dữ liệu lớn cho nhân sự và khách hàng.",
+    owner: "Data Ops",
+    status: "needs_review",
+    controls: ["Import", "Export", "Template", "Kiểm tra lỗi"]
+  },
+  {
+    id: "open-api",
+    tier: "operations",
+    category: "Tích hợp",
+    title: "Open API",
+    summary: "Khởi tạo mã bảo mật và quản lý kết nối với kế toán, website và phần mềm khác.",
+    owner: "IT Admin",
+    status: "configured",
+    controls: ["API key", "Webhook", "Kế toán", "Website"]
+  }
+];
+
+export const adminOperationEvents = [
+  {
+    id: "evt-001",
+    time: "10:15 10/07/2026",
+    actor: "Đặng Đình Dũng",
+    action: "Cập nhật quyền Open API",
+    target: "Tài khoản acc-001",
+    severity: "info"
+  },
+  {
+    id: "evt-002",
+    time: "09:20 10/07/2026",
+    actor: "Nguyễn Hải Anh",
+    action: "Import danh sách nhân sự",
+    target: "People Operations",
+    severity: "warning"
+  },
+  {
+    id: "evt-003",
+    time: "17:45 09/07/2026",
+    actor: "System",
+    action: "Khóa phiên đăng nhập nghi ngờ",
+    target: "Thiết bị chưa duyệt",
+    severity: "critical"
+  }
+];
+
 export const departments = [
   { id: "dep-001", name: "Technology", headId: "emp-001", parentId: null, headcount: 24 },
   { id: "dep-002", name: "People Operations", headId: "emp-002", parentId: null, headcount: 8 },

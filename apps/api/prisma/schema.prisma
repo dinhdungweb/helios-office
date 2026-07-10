@@ -44,15 +44,82 @@ enum PayrollStatus {
   locked
 }
 
+enum AccountAdminRole {
+  system_admin
+  user
+}
+
+enum LicensePlan {
+  standard
+  professional
+  enterprise
+}
+
+enum AccountLifecycleStatus {
+  pending_activation
+  active
+  closed
+}
+
+enum AdminSettingTier {
+  system
+  module
+  operations
+}
+
+enum AdminSettingStatus {
+  configured
+  needs_review
+  planned
+}
+
 model UserAccount {
-  id             String    @id @default(uuid())
-  keycloakUserId String    @unique
-  email          String    @unique
-  displayName    String
-  employee       Employee?
-  roles          String[]
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                       String                 @id @default(uuid())
+  keycloakUserId           String                 @unique
+  email                    String                 @unique
+  displayName              String
+  employee                 Employee?
+  roles                    String[]
+  adminRole                AccountAdminRole       @default(user)
+  licensePlan              LicensePlan            @default(standard)
+  accountStatus            AccountLifecycleStatus @default(pending_activation)
+  permissionGroupId        String?
+  permissionGroup          PermissionGroup?       @relation(fields: [permissionGroupId], references: [id])
+  customPermissionsEnabled Boolean                @default(false)
+  customPermissions        Json?
+  customPermissionNote     String?
+  activatedAt              DateTime?
+  closedAt                 DateTime?
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+}
+
+model PermissionGroup {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String
+  roleScope   AccountAdminRole @default(user)
+  licensePlan LicensePlan      @default(standard)
+  permissions String[]
+  accounts    UserAccount[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model AdminSetting {
+  id        String             @id @default(uuid())
+  key       String             @unique
+  tier      AdminSettingTier
+  module    String?
+  category  String
+  title     String
+  summary   String
+  owner     String
+  status    AdminSettingStatus @default(planned)
+  controls  String[]
+  payload   Json?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
 }
 
 model Employee {

@@ -2,9 +2,11 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import {
+  Bank,
   BookOpenText,
   Briefcase,
   CaretRight,
+  GearSix,
   IdentificationBadge,
   Key,
   Language,
@@ -83,6 +85,14 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
             <a href="/user?customMenu=user-board-profile" role="menuitem">
               <IdentificationBadge size={18} weight="duotone" aria-hidden="true" />
               <span>Tài khoản</span>
+            </a>
+            <a href="/admin/settings#system-settings" role="menuitem">
+              <GearSix size={18} weight="duotone" aria-hidden="true" />
+              <span>Cài đặt hệ thống</span>
+            </a>
+            <a href="/admin/settings#reconciliation" role="menuitem">
+              <Bank size={18} weight="duotone" aria-hidden="true" />
+              <span>Thông tin đối soát</span>
             </a>
             <button type="button" role="menuitem">
               <BookOpenText size={18} weight="duotone" aria-hidden="true" />

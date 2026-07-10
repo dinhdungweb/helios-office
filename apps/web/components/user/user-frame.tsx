@@ -12,6 +12,7 @@ import {
   MagnifyingGlass,
   Megaphone,
   MoneyWavy,
+  ShieldCheck,
   SlidersHorizontal
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
@@ -21,7 +22,7 @@ import { ProfileMenu } from "@/components/user/profile-menu";
 import { UserQuickCreateMenu } from "@/components/user/user-quick-create-menu";
 import { currentUser } from "@/lib/mock-data";
 
-export type UserModuleKey = "home" | "attendance" | "payroll" | "requests" | "profile" | "loans" | "settings";
+export type UserModuleKey = "home" | "attendance" | "payroll" | "requests" | "profile" | "loans" | "settings" | "admin";
 
 type UserRailItem = {
   key: UserModuleKey;
@@ -43,6 +44,7 @@ const userRailItems: UserRailItem[] = [
   { key: "payroll", label: "Lương", href: "/user?customMenu=user-board-payroll", icon: Bank },
   { key: "requests", label: "Đơn từ", href: "/user?customMenu=user-board-requests", icon: ClipboardText },
   { key: "profile", label: "Hồ sơ", href: "/user?customMenu=user-board-profile", icon: IdentificationBadge },
+  { key: "admin", label: "Quản trị", href: "/admin/settings", icon: ShieldCheck },
   { key: "loans", label: "Vay", href: "#", icon: MoneyWavy },
   { key: "settings", label: "Tùy chỉnh", href: "#", icon: MagicWand }
 ];
@@ -152,9 +154,9 @@ function UserTopbar({
         <button className="icon-button" type="button" aria-label="Thông báo">
           <Bell size={18} weight="duotone" aria-hidden="true" />
         </button>
-        <button className="icon-button" type="button" aria-label="Cài đặt">
+        <a className="icon-button" href="/admin/settings#module-settings" aria-label="Cài đặt phân hệ">
           <GearSix size={18} weight="duotone" aria-hidden="true" />
-        </button>
+        </a>
         <ProfileMenu user={currentUser} />
       </nav>
     </header>

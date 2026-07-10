@@ -11,12 +11,14 @@ import {
   ClipboardText,
   CurrencyDollar,
   FileText,
+  GearSix,
   GlobeHemisphereWest,
   GraduationCap,
   MagnifyingGlass,
   MoneyWavy,
   Package,
   SealCheck,
+  ShieldCheck,
   SquaresFour,
   Target,
   Umbrella,
@@ -67,6 +69,13 @@ const launcherSections: LauncherSection[] = [
       { label: "Ứng lương", icon: MoneyWavy, tone: "green" },
       { label: "KPI", icon: Target, tone: "green" },
       { label: "OKR", icon: Target, tone: "orange" }
+    ]
+  },
+  {
+    title: "Quản trị",
+    items: [
+      { label: "Cài đặt hệ thống", icon: GearSix, tone: "blue", href: "/admin/settings" as Route },
+      { label: "Quản trị tài khoản", icon: ShieldCheck, tone: "purple", href: "/admin/settings/accounts" as Route }
     ]
   },
   {

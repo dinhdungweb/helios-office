@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { AccountAccessModule } from "./modules/account-access/account-access.module";
+import { AdminSettingsModule } from "./modules/admin-settings/admin-settings.module";
 import { AnnouncementsModule } from "./modules/announcements/announcements.module";
 import { ApprovalsModule } from "./modules/approvals/approvals.module";
 import { AttendanceModule } from "./modules/attendance/attendance.module";
@@ -13,6 +15,8 @@ import { ReportsModule } from "./modules/reports/reports.module";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    AccountAccessModule,
+    AdminSettingsModule,
     EmployeesModule,
     PostsModule,
     AnnouncementsModule,
