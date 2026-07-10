@@ -8,7 +8,9 @@
     "build": "nest build",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",
@@ -19,11 +21,14 @@
     "@nestjs/platform-socket.io": "^11.1.28",
     "@nestjs/swagger": "^11.2.3",
     "@nestjs/websockets": "^11.1.28",
+    "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "bullmq": "^5.66.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
+    "dotenv": "^17.4.2",
     "ioredis": "^5.8.2",
+    "pg": "^8.22.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
@@ -40,13 +45,19 @@
     "typescript": "^5.9.3"
   },
   "jest": {
-    "moduleFileExtensions": ["js", "json", "ts"],
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
-    "collectCoverageFrom": ["**/*.(t|j)s"],
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
     "testEnvironment": "node"
   }
 }

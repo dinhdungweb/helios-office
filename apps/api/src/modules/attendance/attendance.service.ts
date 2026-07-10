@@ -1,18 +1,45 @@
 import { Injectable } from "@nestjs/common";
-import { attendanceRecords } from "../../common/mock-data";
+import { PrismaService } from "../../common/prisma/prisma.service";
 
 @Injectable()
 export class AttendanceService {
+  constructor(private readonly prisma: PrismaService) {}
+
   findRecords() {
-    return attendanceRecords;
+    return this.prisma.attendanceRecord.findMany({
+      include: {
+        employee: {
+          select: {
+            id: true,
+            code: true,
+            fullName: true,
+            department: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: [{ workDate: "desc" }, { createdAt: "desc" }]
+    });
   }
 
-  getSummary() {
-    const missing = attendanceRecords.filter((record) => record.status !== "valid").length;
+  async getSummary() {
+    const totalRecords = await this.prisma.attendanceRecord.count();
+    const recordsNeedReview = await this.prisma.attendanceRecord.count({
+      where: {
+        status: {
+          not: "valid"
+        }
+      }
+    });
+
     return {
-      totalRecords: attendanceRecords.length,
-      validRecords: attendanceRecords.length - missing,
-      recordsNeedReview: missing
+      totalRecords,
+      validRecords: totalRecords - recordsNeedReview,
+      recordsNeedReview
     };
   }
 }

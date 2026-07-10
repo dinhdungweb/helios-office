@@ -1,10 +1,32 @@
 import { Injectable } from "@nestjs/common";
-import { payrollCycles } from "../../common/mock-data";
+import { PrismaService } from "../../common/prisma/prisma.service";
 
 @Injectable()
 export class PayrollService {
+  constructor(private readonly prisma: PrismaService) {}
+
   findCycles() {
-    return payrollCycles;
+    return this.prisma.payrollCycle.findMany({
+      include: {
+        items: {
+          include: {
+            employee: {
+              select: {
+                id: true,
+                code: true,
+                fullName: true
+              }
+            }
+          }
+        },
+        _count: {
+          select: {
+            items: true
+          }
+        }
+      },
+      orderBy: { periodStart: "desc" }
+    });
   }
 
   getWorkflow() {
