@@ -116,10 +116,10 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
               <Key size={18} weight="duotone" aria-hidden="true" />
               <span>Đổi mật khẩu</span>
             </button>
-            <button className="is-danger" type="button" role="menuitem">
+            <a className="is-danger" href="/api/auth/logout" role="menuitem">
               <Logout size={18} weight="duotone" aria-hidden="true" />
               <span>Đăng xuất</span>
-            </button>
+            </a>
           </div>
         </div>
       ) : null}

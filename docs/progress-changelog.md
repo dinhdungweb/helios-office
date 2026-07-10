@@ -90,8 +90,235 @@ Trạng thái: Chưa xong
 
 Tiếp theo:
 
-1. Nối frontend trang Account với API DB thật.
+1. Thêm AuthModule, JWT/Keycloak guard và current user context.
+2. Map user đăng nhập về `UserAccount`.
+3. Bảo vệ route admin theo `adminRole`.
+4. Làm CRUD hồ sơ nhân sự, phòng ban, vị trí/chức vụ.
+
+### Account Settings API Wiring
+
+Trạng thái: Đã triển khai và kiểm tra
+
+- Nối trang `/admin/settings/accounts` với API DB thật qua `NEXT_PUBLIC_API_BASE_URL`.
+- Thêm adapter frontend tại `apps/web/lib/account-access-api.ts` để lấy:
+  - `GET /api/v1/account-access/summary`
+  - `GET /api/v1/account-access/accounts`
+  - `GET /api/v1/account-access/groups`
+  - `GET /api/v1/account-access/licenses`
+  - `GET /api/v1/account-access/permissions`
+- Chuyển `AccountAccessBoard` khỏi dữ liệu mock trực tiếp, nhận dữ liệu account/group/license/permission từ API.
+- Thêm server actions frontend để gọi:
+  - `POST /api/v1/account-access/accounts/:id/activate`
+  - `POST /api/v1/account-access/accounts/:id/close`
+- Thêm trạng thái cảnh báo khi Account API chưa chạy, tránh nhầm dữ liệu mock là dữ liệu thật.
+- Route `/admin/settings/accounts` hiện là dynamic server-rendered route để đọc dữ liệu mới theo request.
+- API runtime đã load thêm `.env` ở root repo để đồng bộ với seed/database scripts.
+
+Kiểm tra:
+
+- `npm run typecheck`: Pass
+- `npm run test`: Pass
+- `npm run build`: Pass
+- Dev server:
+  - Web `http://localhost:3000/admin/settings/accounts`: HTTP 200
+  - Tạo database local `helios_office` từ `DATABASE_URL` trong `.env`.
+  - `npm run db:migrate`: Pass
+  - `npm run db:seed`: Pass
+  - API `GET /api/v1/account-access/summary`: Pass, trả 5 tài khoản, 3 active, 1 pending, 1 closed.
+  - Trang account không còn hiển thị cảnh báo mất kết nối API.
+
+Tiếp theo:
+
+1. Hoàn thiện mutation cấp/sửa tài khoản bằng form/modal.
 2. Thêm AuthModule, JWT/Keycloak guard và current user context.
-3. Map user đăng nhập về `UserAccount`.
-4. Bảo vệ route admin theo `adminRole`.
-5. Làm CRUD hồ sơ nhân sự, phòng ban, vị trí/chức vụ.
+3. Bảo vệ route admin theo `adminRole`.
+
+### Auth Foundation
+
+Trạng thái: Đã triển khai nền tảng, chưa bật chặn admin routes
+
+- Thêm dependency `jose` cho API để verify JWT/JWKS từ Keycloak.
+- Thêm `AuthModule` với:
+  - `AuthService`
+  - `JwtAuthGuard`
+  - `AdminRoleGuard`
+  - `CurrentUser` decorator
+  - `GET /api/v1/auth/me`
+- `AuthService` verify bearer token theo `KEYCLOAK_ISSUER`, hỗ trợ `JWT_AUDIENCE` nếu cấu hình.
+- Resolve user đăng nhập về `UserAccount` bằng `keycloakUserId` hoặc `email`.
+- Chưa gắn guard vào các route admin/account để tránh khóa UI hiện tại trước khi frontend login có token thật.
+
+Kiểm tra:
+
+- `npm run typecheck`: Pass
+- `npm run test`: Pass
+- `npm run build`: Pass
+- Runtime:
+  - `GET /api/v1/auth/me` không token: 401 Unauthorized
+  - `GET /api/v1/account-access/summary`: Pass
+  - `/admin/settings/accounts`: HTTP 200, không còn cảnh báo API
+
+Tiếp theo:
+
+1. Nối login frontend với Keycloak để lấy access token.
+2. Gửi bearer token từ web server actions/API client.
+3. Gắn `JwtAuthGuard` + `AdminRoleGuard` vào các mutation và admin route nhạy cảm.
+
+### Account Responsive Fix
+
+Trạng thái: Đã sửa và kiểm tra
+
+- Sửa bottom nav mobile của `UserFrame` để bám theo viewport, không bị kéo rộng theo nội dung trang có bảng ngang.
+- Giữ bảng tài khoản `/admin/settings/accounts` là bảng thật trên mobile, cuộn ngang trong `.account-table-shell`, đồng bộ cách responsive với các bảng admin khác.
+- Bỏ layout card mobile cho account table vì gây lệch cấu trúc và khó đối chiếu cột.
+- Đặt `min-width` cho bảng tài khoản và khóa overflow ở panel cha để nội dung rộng không đẩy toàn bộ page/nav.
+
+Kiểm tra:
+
+- Mobile viewport 360px: bottom nav nằm trong màn hình, không tràn ngang.
+- Mobile viewport 360px: bảng tài khoản cuộn ngang trong vùng bảng, không vỡ thành card.
+- `npm run typecheck -w apps/web`: Pass
+
+### Web Auth Flow
+
+Trạng thái: Đã triển khai luồng login/logout/session, đã guard mutation account-admin
+
+- Thêm helper web đọc `.env` root repo khi chạy trong workspace.
+- Thêm OIDC Authorization Code + PKCE cho web:
+  - `POST /api/auth/login`
+  - `GET /api/auth/login`
+  - `GET /api/auth/callback`
+  - `GET|POST /api/auth/logout`
+  - `GET /api/auth/session`
+- Trang `/login` submit vào `/api/auth/login`, redirect sang Keycloak theo `KEYCLOAK_ISSUER` và `KEYCLOAK_CLIENT_ID`.
+- Callback exchange `code` lấy token từ Keycloak, lưu access/refresh/id token vào cookie `httpOnly`.
+- Logout clear cookie local và redirect sang Keycloak logout endpoint.
+- Web account API client tự gắn `Authorization: Bearer <access_token>` khi session cookie tồn tại.
+- Profile menu đã trỏ "Đăng xuất" vào route logout thật.
+- Gắn `JwtAuthGuard` + `AdminRoleGuard` cho các mutation nhạy cảm trong `account-access`:
+  - `POST /api/v1/account-access/accounts`
+  - `PATCH /api/v1/account-access/accounts/:id`
+  - `POST /api/v1/account-access/accounts/:id/activate`
+  - `POST /api/v1/account-access/accounts/:id/close`
+  - `POST /api/v1/account-access/groups`
+  - `PATCH /api/v1/account-access/groups/:id`
+- Tạm thời chưa khóa các GET `account-access` và page admin để tránh làm mất dữ liệu đọc trước khi test xong mapping Keycloak user -> `UserAccount`.
+
+Kiểm tra:
+
+- `POST /api/auth/login`: 303 sang Keycloak auth URL, có cookie `state`, `pkce_verifier`, `redirect`.
+- `GET /api/auth/session` khi chưa login: `{ authenticated: false, user: null }`.
+- `GET /api/auth/logout`: 303 sang Keycloak logout URL và clear cookie session.
+- `GET /api/v1/auth/me` không token: 401 Unauthorized.
+- `GET /api/v1/account-access/summary` không token: 200 OK.
+- `POST /api/v1/account-access/accounts/:id/activate` không token: 401 Unauthorized.
+- `npm run typecheck`: Pass
+- `npm run test`: Pass
+- `npm run build`: Pass
+
+Tiếp theo:
+
+1. Test end-to-end login với Keycloak thật và đảm bảo user admin seed map đúng theo `keycloakUserId` hoặc email.
+2. Sau khi E2E login ổn, cân nhắc khóa tiếp các GET admin bằng `JwtAuthGuard` + `AdminRoleGuard` hoặc middleware web.
+3. Kiểm thử mutation tạo/sửa tài khoản bằng admin token thật sau khi Keycloak local chạy.
+
+### Account Create/Edit Dialog
+
+Trạng thái: Đã triển khai, mutation yêu cầu admin token
+
+- Thêm client dialog cho `/admin/settings/accounts`:
+  - Nút `Cấp tài khoản` mở form tạo tài khoản.
+  - Icon bút chì từng dòng mở form sửa tài khoản.
+- Form hỗ trợ các trường chính:
+  - Họ tên
+  - Email
+  - Quyền admin/user
+  - License
+  - Nhóm quyền
+  - Trạng thái
+  - Quyền cá nhân
+  - Ghi chú quyền riêng
+- Thêm server actions:
+  - `createAccountAction`
+  - `updateAccountAction`
+- Thêm web API client mutation:
+  - `POST /api/v1/account-access/accounts`
+  - `PATCH /api/v1/account-access/accounts/:id`
+- Dialog dùng server action và `revalidatePath("/admin/settings/accounts")` sau khi lưu.
+- Lỗi 401/403 từ account API được hiển thị bằng thông báo tiếng Việt thay vì message kỹ thuật.
+- Sửa HTML row actions từ `span` sang `div` vì bên trong có `dialog`.
+
+Kiểm tra:
+
+- Keycloak local `http://localhost:8080/realms/helios-office/.well-known/openid-configuration`: chưa truy cập được trong môi trường hiện tại.
+- API dev server đã bật lại ở `http://localhost:4000`.
+- `GET /api/v1/account-access/summary`: 200 OK.
+- `/admin/settings/accounts`: 200 OK.
+- Mobile screenshot 390px: bottom nav nằm trong viewport, bảng cuộn ngang trong table shell.
+- `npm run typecheck`: Pass
+- `npm run test`: Pass
+- `npm run build`: Pass
+
+Tiếp theo:
+
+1. Bật Keycloak local, đăng nhập thử admin và xác nhận mutation tạo/sửa chạy với bearer token thật.
+2. Sau khi E2E auth ổn, khóa tiếp các GET admin hoặc thêm middleware web bảo vệ `/admin`.
+3. Làm create/edit dialog tương tự cho `PermissionGroup`.
+
+### 1Office Account Provisioning Flow
+
+Trạng thái: Đã điều chỉnh theo luồng trang riêng HSNS + modal thao tác nhanh
+
+- Điều chỉnh theo hành vi 1Office:
+  - Tạo mới người dùng/tài khoản đi qua trang riêng tạo Hồ sơ nhân sự.
+  - Modal chỉ dùng cho chỉnh nhanh tài khoản/quyền/trạng thái tài khoản đã có.
+- Đổi nút `Cấp tài khoản` trong bảng tài khoản sang link `/admin/hr/employees/new`.
+- Thêm trang `/admin/hr/employees/new` với form nhiều nhóm thông tin:
+  - Thông tin định danh & vị trí
+  - Thông tin tài khoản
+  - Cấu hình tài khoản & quyền hạn
+  - Cấu hình chấm công & lương
+- Thêm API frontend lấy dữ liệu tạo HSNS:
+  - Phòng ban
+  - Nhân sự quản lý trực tiếp
+  - Nhóm quyền
+  - License
+- Thêm server action `createEmployeeProfileAction`.
+- Thêm backend `POST /api/v1/employees`:
+  - Tạo `Employee`.
+  - Nếu bật `createAccount`, tạo `UserAccount` và liên kết với `Employee`.
+  - Guard bằng `JwtAuthGuard` + `AdminRoleGuard`.
+  - Ghi audit `employee.create`.
+  - Trả 409 nếu trùng mã nhân sự, username hoặc email tài khoản.
+- Dọn modal account editor để chỉ còn vai trò sửa nhanh.
+- Sửa CSS trang tạo HSNS và account dialog dùng nền trắng đúng token admin panel.
+- Đồng bộ design system cho form cấp tài khoản:
+  - Dropdown dùng lại pattern `LeaveFormSelect` của luồng làm đơn, có hidden value để server action vẫn nhận đúng dữ liệu.
+  - Date picker ngày vào làm/ngày chính thức dùng popover lịch cùng tinh thần bộ chọn tháng ở trang công.
+  - Dropdown/date picker tự đổi hướng mở lên khi gần đáy viewport mobile để không bị cắt hoặc tràn màn hình.
+- Chuẩn hóa bộ form controls dùng chung:
+  - Thêm `apps/web/components/ui/form-controls.tsx` gồm `FormSelect`, `FormDatePicker`, `FormCheckbox`, `FormSwitch`.
+  - `LeaveFormSelect` cũ chuyển thành alias để các trang đơn từ dùng chung một lõi component.
+  - Trang tạo HSNS, modal sửa tài khoản và checkbox ghi nhớ đăng nhập đều dùng component chung thay vì native/default control riêng lẻ.
+  - CSS checkbox/switch được gom về `.form-checkbox` và `.form-switch`, các màn chỉ giữ selector layout theo ngữ cảnh.
+
+Kiểm tra:
+
+- `/admin/hr/employees/new`: 200 OK.
+- `/admin/settings/accounts`: 200 OK.
+- `GET /api/v1/account-access/summary`: 200 OK.
+- `POST /api/v1/employees` không token: 401 Unauthorized.
+- Mobile screenshot 390px: trang tạo HSNS không tràn ngang, bottom nav nằm trong viewport.
+- Chrome CDP mobile 390px:
+  - Dropdown thấp trong form mở `is-above`, nằm trong viewport.
+  - Date picker mở `is-above`, nằm trong viewport.
+  - Switch/checkbox shared controls hiển thị đúng kích thước, action bar mobile vẫn nằm một hàng.
+- `npm run typecheck`: Pass
+- `npm run test`: Pass
+- `npm run build`: Pass
+
+Tiếp theo:
+
+1. Bật Keycloak local để test submit tạo HSNS + tài khoản bằng admin token thật.
+2. Tích hợp tạo user thật trên Keycloak thay cho `local-<username>` khi provisioning account.
+3. Bổ sung lưu trữ các trường bổ trợ chưa có schema riêng như phone, attendance mode, payroll template nếu cần vận hành thật.

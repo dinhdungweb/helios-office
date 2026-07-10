@@ -1,5 +1,8 @@
-import { Controller, Get, Param } from "@nestjs/common";
-import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { AdminRoleGuard } from "../auth/admin-role.guard";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { CreateEmployeeDto } from "./employees.dto";
 import { EmployeesService } from "./employees.service";
 
 @ApiTags("employees")
@@ -11,6 +14,14 @@ export class EmployeesController {
   @ApiOkResponse({ description: "Employee directory with current employment status." })
   findAll() {
     return this.employeesService.findAll();
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Create an employee profile and optionally provision a linked user account." })
+  create(@Body() body: CreateEmployeeDto) {
+    return this.employeesService.create(body);
   }
 
   @Get("org-chart")

@@ -1,4 +1,10 @@
 import { defineConfig } from "prisma/config";
+import { config as loadEnv } from "dotenv";
+import { resolve } from "node:path";
+
+for (const envPath of [resolve(process.cwd(), ".env"), resolve(process.cwd(), "../../.env")]) {
+  loadEnv({ path: envPath, quiet: true });
+}
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

@@ -1,4 +1,5 @@
-import { Apple, CaretDown, Check, Eye, Lock, PlayStore, User } from "@/lib/icons";
+import { FormCheckbox } from "@/components/ui/form-controls";
+import { Apple, CaretDown, Eye, Lock, PlayStore, User } from "@/lib/icons";
 
 export default function LoginPage() {
   return (
@@ -47,7 +48,8 @@ export default function LoginPage() {
       </section>
 
       <section className="login-form-panel" aria-label="Biểu mẫu đăng nhập">
-        <form className="login-card">
+        <form className="login-card" action="/api/auth/login" method="post">
+          <input type="hidden" name="redirectTo" value="/user" />
           <div className="login-card-header">
             <h2>Đăng nhập</h2>
             <button className="login-language" type="button" aria-label="Chọn ngôn ngữ">
@@ -71,13 +73,7 @@ export default function LoginPage() {
           </label>
 
           <div className="login-options">
-            <label>
-              <input type="checkbox" defaultChecked />
-              <span>
-                <Check size={15} weight="duotone" aria-hidden="true" />
-              </span>
-              Ghi nhớ đăng nhập
-            </label>
+            <FormCheckbox className="login-remember" defaultChecked label="Ghi nhớ đăng nhập" />
             <a href="#forgot-password">Quên mật khẩu đăng nhập?</a>
           </div>
 

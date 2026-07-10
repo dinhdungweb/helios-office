@@ -1,0 +1,127 @@
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import type { AuthenticatedUser } from "./auth.types";
+
+@Injectable()
+export class AuthService {
+  private jwks?: ReturnType<typeof createRemoteJWKSet>;
+
+  constructor(
+    private readonly config: ConfigService,
+    private readonly prisma: PrismaService
+  ) {}
+
+  async verifyAuthorizationHeader(header: string | string[] | undefined): Promise<AuthenticatedUser> {
+    const token = this.extractBearerToken(header);
+    const issuer = this.getIssuer();
+    const audience = this.config.get<string>("JWT_AUDIENCE") || undefined;
+
+    const { payload } = await jwtVerify(token, this.getJwks(), {
+      issuer,
+      audience
+    });
+
+    const sub = this.asString(payload.sub);
+    if (!sub) {
+      throw new UnauthorizedException("Token subject is missing");
+    }
+
+    const email = this.asString(payload.email);
+    const name = this.asString(payload.name) ?? this.asString(payload.preferred_username);
+    const account = await this.resolveAccount(sub, email);
+
+    return {
+      sub,
+      email,
+      name,
+      roles: this.resolveRoles(payload),
+      account,
+      claims: payload
+    };
+  }
+
+  private extractBearerToken(header: string | string[] | undefined) {
+    const value = Array.isArray(header) ? header[0] : header;
+    const match = value?.match(/^Bearer\s+(.+)$/i);
+
+    if (!match) {
+      throw new UnauthorizedException("Bearer token is required");
+    }
+
+    return match[1];
+  }
+
+  private getIssuer() {
+    const issuer = this.config.get<string>("KEYCLOAK_ISSUER");
+
+    if (!issuer) {
+      throw new UnauthorizedException("KEYCLOAK_ISSUER is not configured");
+    }
+
+    return issuer.replace(/\/$/, "");
+  }
+
+  private getJwks() {
+    if (!this.jwks) {
+      this.jwks = createRemoteJWKSet(new URL(`${this.getIssuer()}/protocol/openid-connect/certs`));
+    }
+
+    return this.jwks;
+  }
+
+  private async resolveAccount(keycloakUserId: string, email: string | undefined) {
+    return this.prisma.userAccount.findFirst({
+      where: {
+        OR: [
+          { keycloakUserId },
+          ...(email ? [{ email }] : [])
+        ]
+      },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        adminRole: true,
+        licensePlan: true,
+        accountStatus: true
+      }
+    });
+  }
+
+  private resolveRoles(payload: JWTPayload) {
+    const roles = new Set<string>();
+    const realmRoles = this.readRoleArray(payload.realm_access, "roles");
+    const clientId = this.config.get<string>("KEYCLOAK_CLIENT_ID");
+    const resourceAccess = payload.resource_access;
+    const clientRoles =
+      clientId && resourceAccess && typeof resourceAccess === "object"
+        ? this.readRoleArray((resourceAccess as Record<string, unknown>)[clientId], "roles")
+        : [];
+    const directRoles = this.readRoleArray(payload, "roles");
+
+    for (const role of [...realmRoles, ...clientRoles, ...directRoles]) {
+      roles.add(role);
+    }
+
+    return Array.from(roles);
+  }
+
+  private readRoleArray(value: unknown, key: string) {
+    if (!value || typeof value !== "object") {
+      return [];
+    }
+
+    const roles = (value as Record<string, unknown>)[key];
+    if (!Array.isArray(roles)) {
+      return [];
+    }
+
+    return roles.filter((role): role is string => typeof role === "string");
+  }
+
+  private asString(value: unknown) {
+    return typeof value === "string" && value.length > 0 ? value : undefined;
+  }
+}
