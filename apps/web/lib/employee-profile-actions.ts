@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
 
@@ -125,5 +124,6 @@ export async function createEmployeeProfileAction(
 
   revalidatePath("/admin/settings/accounts");
   revalidatePath("/admin/hr/employees/new");
-  redirect("/admin/settings/accounts");
+
+  return { ok: true };
 }

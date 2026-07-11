@@ -1897,6 +1897,16 @@
   font-size: var(--font-size-sm);
 }
 
+.employee-create-success {
+  margin: 0;
+  padding: var(--space-6) var(--space-7);
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border: 1px solid var(--color-module-green-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
 .employee-create-actions {
   position: sticky;
   bottom: var(--space-7);

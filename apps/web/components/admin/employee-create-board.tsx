@@ -366,7 +366,12 @@ export function EmployeeCreateBoard({ data }: EmployeeCreateBoardProps) {
           </div>
         </section>
 
-        {state.error ? <p className="employee-create-error">{state.error}</p> : null}
+        {state.ok ? (
+          <p className="employee-create-success" role="status">
+            Đã tạo hồ sơ nhân sự và cập nhật tài khoản.
+          </p>
+        ) : null}
+        {state.error ? <p className="employee-create-error" role="alert">{state.error}</p> : null}
 
         <div className="employee-create-actions">
           <a className="secondary-button" href="/admin/settings/accounts">
