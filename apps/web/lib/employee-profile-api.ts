@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api-base";
+import { getSessionAccessToken } from "@/lib/auth-session";
 import type {
   AccountLicense,
   AccountLicensePlan,
@@ -67,7 +68,15 @@ const licenseSeatLimits: Record<AccountLicensePlan, number> = {
 };
 
 async function requestJson<T>(path: string) {
+  const headers = new Headers();
+  const accessToken = await getSessionAccessToken();
+
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+  }
+
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
+    headers,
     cache: "no-store"
   });
 

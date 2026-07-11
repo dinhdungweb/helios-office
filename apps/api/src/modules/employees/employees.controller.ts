@@ -6,6 +6,8 @@ import { CreateEmployeeDto } from "./employees.dto";
 import { EmployeesService } from "./employees.service";
 
 @ApiTags("employees")
+@UseGuards(JwtAuthGuard, AdminRoleGuard)
+@ApiBearerAuth()
 @Controller("employees")
 export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) {}
@@ -17,8 +19,6 @@ export class EmployeesController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard, AdminRoleGuard)
-  @ApiBearerAuth()
   @ApiOkResponse({ description: "Create an employee profile and optionally provision a linked user account." })
   create(@Body() body: CreateEmployeeDto) {
     return this.employeesService.create(body);

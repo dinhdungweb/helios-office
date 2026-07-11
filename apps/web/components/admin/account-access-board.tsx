@@ -12,12 +12,14 @@ import {
   X
 } from "@/lib/icons";
 import { AccountEditDialog } from "@/components/admin/account-editor-dialog";
+import { AccountProvisionDialog } from "@/components/admin/account-provision-dialog";
 import type {
   AccountAccessData,
   AccountLifecycleStatus,
   AccountLicense,
   AccountLicensePlan,
   AccountPermission,
+  AccountProvisionEmployee,
   AccountRole,
   ManagedUserAccount,
   PermissionGroup
@@ -151,12 +153,14 @@ function SummaryStrip({ summary }: { summary: AccountAccessData["summary"] }) {
 
 function AccountTable({
   accounts,
+  availableEmployees,
   groups,
   licenses,
   permissions,
   maps
 }: {
   accounts: ManagedUserAccount[];
+  availableEmployees: AccountProvisionEmployee[];
   groups: PermissionGroup[];
   licenses: AccountLicense[];
   permissions: AccountPermission[];
@@ -182,10 +186,7 @@ function AccountTable({
             <SlidersHorizontal size={16} weight="duotone" aria-hidden="true" />
             Cột
           </button>
-          <a className="primary-button" href="/admin/hr/employees/new">
-            <Plus size={16} weight="duotone" aria-hidden="true" />
-            Cấp tài khoản
-          </a>
+          <AccountProvisionDialog employees={availableEmployees} groups={groups} licenses={licenses} />
         </div>
       </header>
 
@@ -492,6 +493,7 @@ export function AccountAccessBoard({ data }: { data: AccountAccessData }) {
         <div className="account-access-main">
           <AccountTable
             accounts={data.accounts}
+            availableEmployees={data.availableEmployees}
             groups={data.groups}
             licenses={data.licenses}
             permissions={data.permissions}

@@ -1427,6 +1427,12 @@
   max-height: 320px;
 }
 
+.account-provision-note {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-base);
+}
+
 .account-dialog-field textarea {
   resize: vertical;
   padding: var(--space-6);
@@ -1472,6 +1478,33 @@
   border: 1px solid var(--color-module-red-border);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
+}
+
+.account-dialog-empty {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-muted);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.account-dialog-empty strong {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-lg);
+}
+
+.account-dialog-empty p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.account-dialog-empty .primary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-5);
 }
 
 .account-dialog-actions {
@@ -3400,13 +3433,15 @@
   }
 
   .account-dialog-actions {
-    flex-direction: column-reverse;
+    flex-direction: row;
   }
 
   .account-dialog-actions .primary-button,
   .account-dialog-actions .secondary-button {
     justify-content: center;
-    width: 100%;
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
   }
 
   .employee-create-page {

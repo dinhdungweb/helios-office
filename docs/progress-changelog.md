@@ -413,3 +413,37 @@ Tiếp theo:
 1. Kiểm thử server action sau khi access token hết hạn tự nhiên.
 2. Chuẩn hóa quick action “Cấp tài khoản” cho nhân sự đã có hồ sơ nhưng chưa có account.
 3. Chốt thông báo/invite email khi admin cấp tài khoản mới.
+
+### Quick Account Provisioning
+
+Trạng thái: Đã triển khai modal cấp tài khoản nhanh cho nhân sự đã có hồ sơ nhưng chưa có account.
+
+- Siết quyền đọc dữ liệu quản trị:
+  - `GET /api/v1/account-access/*` yêu cầu JWT admin.
+  - `GET /api/v1/employees`, `/employees/:id`, `/employees/org-chart`, `/departments` yêu cầu JWT admin.
+- Web server components gọi API admin bằng access token từ session, có tự refresh nếu cần.
+- Trang `/admin/settings/accounts`:
+  - Nút “Cấp tài khoản” mở modal thay vì chuyển thẳng sang trang tạo HSNS.
+  - Modal chỉ liệt kê nhân sự chưa có `accountEmail`.
+  - Form gửi `employeeId`, `username`, `initialPassword`, email, role, license, group, status lên `POST /account-access/accounts`.
+  - Nếu không còn nhân sự chờ cấp account, modal hiển thị empty state và link sang trang tạo HSNS.
+- Chuẩn hóa form control:
+  - `FormSelect` có `onValueChange` để form dùng dropdown chung mà vẫn sync state.
+  - Action buttons trong dialog giữ cùng một hàng trên mobile.
+
+Kiểm tra:
+
+- `npm run typecheck`: Pass.
+- `npm run test`: Pass.
+- `npm run build`: Pass.
+- `GET /api/v1/account-access/accounts` không token: 401 Unauthorized.
+- `GET /api/v1/account-access/accounts` với token admin `dungdd`: 200 OK.
+- Login app `dungdd / Welcome@123` rồi mở `/admin/settings/accounts`: 200 OK.
+- Seed hiện tại: `employees=3`, `availableWithoutAccount=0`, modal render empty state đúng.
+- Trang `/admin/hr/employees/new` bằng phiên admin: 200 OK.
+
+Tiếp theo:
+
+1. Tạo dữ liệu test có nhân sự chưa có account để bấm thử full modal bằng trình duyệt.
+2. Chốt luồng gửi email/invite và chính sách mật khẩu mặc định.
+3. Bắt đầu CRUD nhóm quyền/ma trận quyền thật thay vì chỉ xem dữ liệu.

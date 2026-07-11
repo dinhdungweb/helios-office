@@ -1,8 +1,12 @@
-import { Controller, Get } from "@nestjs/common";
-import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { Controller, Get, UseGuards } from "@nestjs/common";
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { AdminRoleGuard } from "../auth/admin-role.guard";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { EmployeesService } from "./employees.service";
 
 @ApiTags("departments")
+@UseGuards(JwtAuthGuard, AdminRoleGuard)
+@ApiBearerAuth()
 @Controller("departments")
 export class DepartmentsController {
   constructor(private readonly employeesService: EmployeesService) {}

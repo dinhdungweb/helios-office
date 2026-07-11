@@ -11,6 +11,8 @@ import {
 import { AccountAccessService } from "./account-access.service";
 
 @ApiTags("account-access")
+@UseGuards(JwtAuthGuard, AdminRoleGuard)
+@ApiBearerAuth()
 @Controller("account-access")
 export class AccountAccessController {
   constructor(private readonly accountAccessService: AccountAccessService) {}
@@ -28,8 +30,6 @@ export class AccountAccessController {
   }
 
   @Post("accounts")
-  @UseGuards(JwtAuthGuard, AdminRoleGuard)
-  @ApiBearerAuth()
   @ApiOkResponse({ description: "Create a user account and optionally bind it to an employee." })
   createAccount(@Body() body: CreateUserAccountDto) {
     return this.accountAccessService.createAccount(body);
@@ -42,24 +42,18 @@ export class AccountAccessController {
   }
 
   @Patch("accounts/:id")
-  @UseGuards(JwtAuthGuard, AdminRoleGuard)
-  @ApiBearerAuth()
   @ApiOkResponse({ description: "Update user account role, license, group, status, and custom permissions." })
   updateAccount(@Param("id") id: string, @Body() body: UpdateUserAccountDto) {
     return this.accountAccessService.updateAccount(id, body);
   }
 
   @Post("accounts/:id/activate")
-  @UseGuards(JwtAuthGuard, AdminRoleGuard)
-  @ApiBearerAuth()
   @ApiOkResponse({ description: "Activate a pending user account." })
   activateAccount(@Param("id") id: string) {
     return this.accountAccessService.activateAccount(id);
   }
 
   @Post("accounts/:id/close")
-  @UseGuards(JwtAuthGuard, AdminRoleGuard)
-  @ApiBearerAuth()
   @ApiOkResponse({ description: "Close a user account so it can no longer sign in or consume license." })
   closeAccount(@Param("id") id: string) {
     return this.accountAccessService.closeAccount(id);
@@ -72,16 +66,12 @@ export class AccountAccessController {
   }
 
   @Post("groups")
-  @UseGuards(JwtAuthGuard, AdminRoleGuard)
-  @ApiBearerAuth()
   @ApiOkResponse({ description: "Create a permission group." })
   createGroup(@Body() body: CreatePermissionGroupDto) {
     return this.accountAccessService.createGroup(body);
   }
 
   @Patch("groups/:id")
-  @UseGuards(JwtAuthGuard, AdminRoleGuard)
-  @ApiBearerAuth()
   @ApiOkResponse({ description: "Update a permission group and its permission keys." })
   updateGroup(@Param("id") id: string, @Body() body: UpdatePermissionGroupDto) {
     return this.accountAccessService.updateGroup(id, body);

@@ -24,6 +24,7 @@ type FormSelectProps = {
   disabled?: boolean;
   menuLabel: string;
   name?: string;
+  onValueChange?: (value: string) => void;
   options: FormSelectOption[];
   placeholder: string;
   required?: boolean;
@@ -107,6 +108,7 @@ export function FormSelect({
   disabled = false,
   menuLabel,
   name,
+  onValueChange,
   options,
   placeholder,
   required = false
@@ -190,7 +192,9 @@ export function FormSelect({
               aria-selected={selectedValue === getOptionValue(option)}
               key={getOptionValue(option)}
               onClick={() => {
-                setSelectedValue(getOptionValue(option));
+                const nextValue = getOptionValue(option);
+                setSelectedValue(nextValue);
+                onValueChange?.(nextValue);
                 setIsOpen(false);
               }}
             >

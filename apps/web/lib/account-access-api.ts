@@ -41,6 +41,15 @@ export type PermissionGroup = {
   permissionKeys: string[];
 };
 
+export type AccountProvisionEmployee = {
+  id: string;
+  code: string;
+  name: string;
+  title: string;
+  department: string;
+  accountEmail?: string | null;
+};
+
 export type ManagedUserAccount = {
   id: string;
   employeeCode?: string;
@@ -65,17 +74,21 @@ export type AccountAccessData = {
   licenses: AccountLicense[];
   permissions: AccountPermission[];
   groups: PermissionGroup[];
+  availableEmployees: AccountProvisionEmployee[];
   source: "api" | "unavailable";
   error?: string;
 };
 
 export type AccountMutationPayload = {
+  username?: string;
+  initialPassword?: string;
   email?: string;
   displayName?: string;
   adminRole?: AccountRole;
   licensePlan?: AccountLicensePlan;
   accountStatus?: AccountLifecycleStatus;
   permissionGroupId?: string | null;
+  employeeId?: string | null;
   customPermissionKeys?: string[];
   customPermissionNote?: string | null;
 };
@@ -125,6 +138,16 @@ type ApiAccount = {
     title?: string;
     department?: string;
   } | null;
+};
+
+type ApiEmployee = {
+  id: string;
+  code: string;
+  name?: string;
+  fullName?: string;
+  title: string;
+  department: string;
+  accountEmail?: string | null;
 };
 
 const emptySummary: AccountAccessSummary = {
@@ -268,14 +291,26 @@ function normalizeAccount(account: ApiAccount): ManagedUserAccount {
   };
 }
 
+function normalizeProvisionEmployee(employee: ApiEmployee): AccountProvisionEmployee {
+  return {
+    id: employee.id,
+    code: employee.code,
+    name: employee.name ?? employee.fullName ?? employee.code,
+    title: employee.title,
+    department: employee.department,
+    accountEmail: employee.accountEmail
+  };
+}
+
 export async function getAccountAccessData(): Promise<AccountAccessData> {
   try {
-    const [summary, accounts, groups, licenses, permissions] = await Promise.all([
+    const [summary, accounts, groups, licenses, permissions, employees] = await Promise.all([
       fetchJson<AccountAccessSummary>("/account-access/summary"),
       fetchJson<ApiAccount[]>("/account-access/accounts"),
       fetchJson<ApiPermissionGroup[]>("/account-access/groups"),
       fetchJson<ApiLicense[]>("/account-access/licenses"),
-      fetchJson<ApiPermission[]>("/account-access/permissions")
+      fetchJson<ApiPermission[]>("/account-access/permissions"),
+      fetchJson<ApiEmployee[]>("/employees")
     ]);
 
     return {
@@ -284,6 +319,7 @@ export async function getAccountAccessData(): Promise<AccountAccessData> {
       groups: groups.map(normalizeGroup),
       licenses: licenses.map(normalizeLicense),
       permissions,
+      availableEmployees: employees.map(normalizeProvisionEmployee).filter((employee) => !employee.accountEmail),
       source: "api"
     };
   } catch (error) {
@@ -293,6 +329,7 @@ export async function getAccountAccessData(): Promise<AccountAccessData> {
       groups: [],
       licenses: [],
       permissions: [],
+      availableEmployees: [],
       source: "unavailable",
       error: error instanceof Error ? error.message : "Cannot reach account access API"
     };

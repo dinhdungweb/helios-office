@@ -64,12 +64,15 @@ function readAccountPayload(formData: FormData): Required<Pick<AccountMutationPa
   const customPermissionKeys = readCustomPermissionKeys(formData);
 
   return {
+    username: readOptionalString(formData, "username"),
+    initialPassword: readOptionalString(formData, "initialPassword"),
     email: readRequiredString(formData, "email"),
     displayName: readRequiredString(formData, "displayName"),
     adminRole: readRequiredString(formData, "adminRole") as AccountRole,
     licensePlan: readRequiredString(formData, "licensePlan") as AccountLicensePlan,
     accountStatus: readRequiredString(formData, "accountStatus") as AccountLifecycleStatus,
     permissionGroupId: readOptionalString(formData, "permissionGroupId"),
+    employeeId: readOptionalString(formData, "employeeId"),
     customPermissionKeys,
     customPermissionNote: readNullableString(formData, "customPermissionNote")
   };
