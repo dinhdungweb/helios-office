@@ -2294,6 +2294,55 @@
   display: grid;
 }
 
+.device-policy-dialog {
+  max-width: 640px;
+}
+
+.device-policy-dialog-toggle-list {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.device-policy-dialog-toggle-list article {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: var(--space-7);
+  min-width: 0;
+  padding: var(--space-6);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.device-policy-message {
+  margin: 0;
+  padding: var(--space-6) var(--space-8);
+  border-top: 1px solid var(--color-border-subtle);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-strong);
+}
+
+.device-policy-message--success {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.device-policy-message--error {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+@media (max-width: 720px) {
+  .device-policy-dialog-toggle-list article {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .device-policy-dialog-toggle-list .form-switch {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
 .device-policy-list article,
 .device-note-list article {
   display: grid;
@@ -2310,6 +2359,7 @@
 }
 
 .device-policy-list article > span,
+.device-policy-dialog-toggle-list article > span,
 .device-note-list article > span,
 .device-scope-list article > span {
   display: grid;
@@ -2328,7 +2378,14 @@
   line-height: var(--line-height-base);
 }
 
+.device-policy-dialog-toggle-list h3 {
+  margin: 0;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+}
+
 .device-policy-list p,
+.device-policy-dialog-toggle-list p,
 .device-note-list p,
 .device-scope-list p {
   margin: var(--space-3) 0 0;

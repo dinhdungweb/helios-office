@@ -8,6 +8,7 @@ import { AnnouncementsModule } from "./modules/announcements/announcements.modul
 import { ApprovalsModule } from "./modules/approvals/approvals.module";
 import { AttendanceModule } from "./modules/attendance/attendance.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { DeviceAuthModule } from "./modules/device-auth/device-auth.module";
 import { EmployeesModule } from "./modules/employees/employees.module";
 import { LeaveRequestsModule } from "./modules/leave-requests/leave-requests.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
@@ -31,6 +32,7 @@ import { ReportsModule } from "./modules/reports/reports.module";
     ApprovalsModule,
     LeaveRequestsModule,
     AttendanceModule,
+    DeviceAuthModule,
     PayrollModule,
     ReportsModule,
     NotificationsModule

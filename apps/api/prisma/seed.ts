@@ -5,6 +5,7 @@ import {
   AccountLifecycleStatus,
   ApprovalStatus,
   AttendanceStatus,
+  DeviceAuthStatus,
   EmployeeStatus,
   LicensePlan,
   PayrollStatus,
@@ -32,6 +33,83 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: databaseUrl })
 });
 
+const deviceAuthPolicySeed = {
+  id: "default",
+  maxDevicesPerUser: 1,
+  requireNotificationEnabled: true,
+  requireGpsForAttendance: true,
+  requireWifiForOffice: true,
+  approvalRefreshHint: "Sau khi được xác thực, nhân viên nên đăng xuất và đăng nhập lại App hoặc tải lại trang GPS."
+};
+
+const deviceAuthRequestsSeed = [
+  {
+    id: "dev-001",
+    employeeCode: "HL-002",
+    employeeName: "Nguyễn Hải Anh",
+    avatar: "HA",
+    department: "People Operations",
+    branch: "Hà Nội",
+    deviceName: "iPhone 15 Pro Max",
+    deviceId: "ios-A7F9-42B1-9C03-HA",
+    submittedAt: "10:15 10/07/2026",
+    status: "pending",
+    note: "Thiết bị mới sau khi đổi máy."
+  },
+  {
+    id: "dev-002",
+    employeeCode: "HL-024",
+    employeeName: "Hoàng Đức",
+    avatar: "HD",
+    department: "Sales",
+    branch: "Hà Nội",
+    deviceName: "Samsung Galaxy S24",
+    deviceId: "and-8821-BC77-41AA-HD",
+    submittedAt: "09:42 10/07/2026",
+    status: "pending"
+  },
+  {
+    id: "dev-003",
+    employeeCode: "HL-003",
+    employeeName: "Lê Minh Khang",
+    avatar: "LK",
+    department: "Sales",
+    branch: "Hồ Chí Minh",
+    deviceName: "OPPO Reno11",
+    deviceId: "and-19EF-7742-93AC-LK",
+    submittedAt: "17:30 09/07/2026",
+    status: "approved",
+    lastUsedAt: "08:02 10/07/2026"
+  },
+  {
+    id: "dev-004",
+    employeeCode: "HL-019",
+    employeeName: "Mai Linh",
+    avatar: "ML",
+    department: "Operations",
+    branch: "Kho trung tâm",
+    deviceName: "Xiaomi 14T",
+    deviceId: "and-A901-73DD-20FF-ML",
+    submittedAt: "14:20 08/07/2026",
+    status: "rejected",
+    note: "Device ID trùng yêu cầu đã bị từ chối trước đó."
+  },
+  {
+    id: "dev-005",
+    employeeCode: "HL-001",
+    employeeName: "Đặng Đình Dũng",
+    avatar: "DD",
+    department: "Helios",
+    branch: "Hà Nội",
+    deviceName: "iPhone 14 Pro",
+    deviceId: "ios-F301-112A-770C-DD",
+    submittedAt: "08:45 02/07/2026",
+    status: "locked",
+    lastUsedAt: "18:05 08/07/2026",
+    note: "Khóa tạm thời theo yêu cầu bảo mật."
+  }
+];
+
 function toDate(value: string | null | undefined) {
   return value ? new Date(value) : null;
 }
@@ -42,6 +120,22 @@ function toWorkDate(value: string) {
 
 function toDateTime(dateValue: string, timeValue: string | null | undefined) {
   return timeValue ? new Date(`${dateValue}T${timeValue}:00.000Z`) : null;
+}
+
+function toDeviceDateTime(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const match = value.match(/^(\d{2}):(\d{2}) (\d{2})\/(\d{2})\/(\d{4})$/);
+
+  if (!match) {
+    return new Date(value);
+  }
+
+  const [, hour, minute, day, month, year] = match;
+
+  return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour) - 7, Number(minute)));
 }
 
 function normalizeApprovalStatus(status: string) {
@@ -146,6 +240,22 @@ function normalizePayrollStatus(value: string) {
   }
 
   return PayrollStatus.draft;
+}
+
+function normalizeDeviceAuthStatus(value: string) {
+  if (value === "approved") {
+    return DeviceAuthStatus.approved;
+  }
+
+  if (value === "rejected") {
+    return DeviceAuthStatus.rejected;
+  }
+
+  if (value === "locked") {
+    return DeviceAuthStatus.locked;
+  }
+
+  return DeviceAuthStatus.pending;
 }
 
 function payrollPeriodFromId(id: string) {
@@ -413,6 +523,64 @@ async function seedPayroll() {
   });
 }
 
+async function seedDeviceAuth() {
+  const employeesByCode = new Map(
+    (await prisma.employee.findMany({
+      select: {
+        id: true,
+        code: true
+      }
+    })).map((employee) => [employee.code, employee.id])
+  );
+
+  await prisma.deviceAuthPolicy.upsert({
+    where: { id: deviceAuthPolicySeed.id },
+    update: {
+      maxDevicesPerUser: deviceAuthPolicySeed.maxDevicesPerUser,
+      requireNotificationEnabled: deviceAuthPolicySeed.requireNotificationEnabled,
+      requireGpsForAttendance: deviceAuthPolicySeed.requireGpsForAttendance,
+      requireWifiForOffice: deviceAuthPolicySeed.requireWifiForOffice,
+      approvalRefreshHint: deviceAuthPolicySeed.approvalRefreshHint
+    },
+    create: deviceAuthPolicySeed
+  });
+
+  for (const request of deviceAuthRequestsSeed) {
+    await prisma.deviceAuthRequest.upsert({
+      where: { id: request.id },
+      update: {
+        employeeId: employeesByCode.get(request.employeeCode) ?? null,
+        employeeCode: request.employeeCode,
+        employeeName: request.employeeName,
+        avatar: request.avatar,
+        department: request.department,
+        branch: request.branch,
+        deviceName: request.deviceName,
+        deviceId: request.deviceId,
+        submittedAt: toDeviceDateTime(request.submittedAt) ?? new Date(),
+        status: normalizeDeviceAuthStatus(request.status),
+        lastUsedAt: toDeviceDateTime(request.lastUsedAt),
+        note: request.note
+      },
+      create: {
+        id: request.id,
+        employeeId: employeesByCode.get(request.employeeCode) ?? null,
+        employeeCode: request.employeeCode,
+        employeeName: request.employeeName,
+        avatar: request.avatar,
+        department: request.department,
+        branch: request.branch,
+        deviceName: request.deviceName,
+        deviceId: request.deviceId,
+        submittedAt: toDeviceDateTime(request.submittedAt) ?? new Date(),
+        status: normalizeDeviceAuthStatus(request.status),
+        lastUsedAt: toDeviceDateTime(request.lastUsedAt),
+        note: request.note
+      }
+    });
+  }
+}
+
 async function main() {
   await seedPermissionGroups();
   await seedDepartments();
@@ -422,6 +590,7 @@ async function main() {
   await seedLeaveRequests();
   await seedAttendance();
   await seedPayroll();
+  await seedDeviceAuth();
 }
 
 main()
