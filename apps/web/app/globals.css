@@ -1336,7 +1336,7 @@
   width: 100%;
 }
 
-.account-table .account-row-actions form {
+.account-table .account-row-actions > form {
   display: inline-flex;
   margin: 0;
 }
@@ -1390,10 +1390,12 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  width: 100%;
   gap: var(--space-8);
   max-height: calc(min(760px, calc(100vh - 32px)) - 74px);
   overflow-y: auto;
   padding: var(--space-8);
+  box-sizing: border-box;
 }
 
 .account-dialog-grid {
