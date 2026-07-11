@@ -166,13 +166,6 @@ function AccountTable({
   permissions: AccountPermission[];
   maps: AccountAccessMaps;
 }) {
-  const accountRows = accounts.map((account) => {
-    const group = account.groupId ? maps.groupById.get(account.groupId) : null;
-    const effectivePermissions = getEffectivePermissions(account, maps);
-
-    return { account, group, effectivePermissions };
-  });
-
   return (
     <section className="account-panel account-table-panel" aria-labelledby="account-table-title">
       <header className="account-panel-header">
@@ -226,7 +219,10 @@ function AccountTable({
             </tr>
           </thead>
           <tbody>
-            {accountRows.map(({ account, group, effectivePermissions }) => {
+            {accounts.map((account) => {
+              const group = account.groupId ? maps.groupById.get(account.groupId) : null;
+              const effectivePermissions = getEffectivePermissions(account, maps);
+
               return (
                 <tr key={account.id}>
                   <th scope="row">
@@ -276,56 +272,6 @@ function AccountTable({
             ) : null}
           </tbody>
         </table>
-      </div>
-
-      <div className="account-mobile-list" aria-label="Danh sách tài khoản">
-        {accountRows.map(({ account, group, effectivePermissions }) => (
-          <article className="account-mobile-card" key={account.id}>
-            <header>
-              <span className="account-person-cell">
-                <AccountAvatar account={account} />
-                <span>
-                  <strong>{account.name}</strong>
-                  <small>{account.employeeCode ?? "Chưa có mã"} · {account.email}</small>
-                </span>
-              </span>
-              <AccountRowActions account={account} groups={groups} licenses={licenses} permissions={permissions} />
-            </header>
-
-            <div className="account-mobile-badges">
-              <span className={`account-role account-role--${account.role}`}>
-                {roleLabels[account.role]}
-              </span>
-              <span className={`account-license account-license--${account.licensePlan}`}>
-                {licenseLabels[account.licensePlan]}
-              </span>
-              <AccountStatusBadge status={account.status} />
-            </div>
-
-            <dl>
-              <div>
-                <dt>Vị trí</dt>
-                <dd>{account.title}</dd>
-              </div>
-              <div>
-                <dt>Nhóm quyền</dt>
-                <dd>{group?.name ?? "Chưa gán"}</dd>
-              </div>
-              <div>
-                <dt>Quyền hiệu lực</dt>
-                <dd>{effectivePermissions.length} quyền</dd>
-              </div>
-              <div>
-                <dt>Hiệu lực</dt>
-                <dd>{account.activatedAt ?? "Chờ cấp"}</dd>
-              </div>
-            </dl>
-
-            {account.status === "closed" ? <p>Không tính phí license</p> : null}
-            {account.closedAt ? <p>Đóng: {account.closedAt}</p> : null}
-          </article>
-        ))}
-        {accounts.length === 0 ? <p className="account-empty-state">Chưa có dữ liệu tài khoản từ API.</p> : null}
       </div>
     </section>
   );
@@ -485,36 +431,6 @@ function PermissionMatrixPanel({
             ) : null}
           </tbody>
         </table>
-      </div>
-
-      <div className="permission-matrix-mobile-list" aria-label="Ma trận quyền theo nhóm">
-        {groups.map((group) => (
-          <article className="permission-matrix-mobile-card" key={group.id}>
-            <header>
-              <div>
-                <strong>{group.name}</strong>
-                <small>{licenseLabels[group.licensePlan]}</small>
-              </div>
-              <span>{group.memberCount} người</span>
-            </header>
-            <dl>
-              {maps.permissionCategories.map((category) => {
-                const count = group.permissionKeys.filter((permissionKey) => {
-                  const permission = maps.permissionByKey.get(permissionKey);
-                  return permission?.category === category;
-                }).length;
-
-                return (
-                  <div key={`${group.id}-${category}`}>
-                    <dt>{category}</dt>
-                    <dd>{count > 0 ? `${count} quyền` : "Không có quyền"}</dd>
-                  </div>
-                );
-              })}
-            </dl>
-          </article>
-        ))}
-        {groups.length === 0 ? <p className="account-empty-state">Chưa có ma trận quyền từ API.</p> : null}
       </div>
     </section>
   );
