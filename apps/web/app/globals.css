@@ -2163,6 +2163,10 @@
   min-width: 1120px;
 }
 
+.device-table-panel {
+  overflow: visible;
+}
+
 .device-auth-table code {
   display: inline-block;
   max-width: 260px;
