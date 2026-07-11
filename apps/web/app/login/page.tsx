@@ -29,6 +29,8 @@ function getLoginErrorMessage(value: string | string[] | undefined) {
       return "Thiếu cấu hình đăng nhập. Kiểm tra biến môi trường Keycloak.";
     case "token":
       return "Không nhận được phiên đăng nhập hợp lệ.";
+    case "session_expired":
+      return "Phiên đăng nhập đã hết hạn. Đăng nhập lại để tiếp tục.";
     default:
       return null;
   }

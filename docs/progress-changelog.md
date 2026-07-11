@@ -381,3 +381,35 @@ Tiếp theo:
 1. Bổ sung refresh-token flow để phiên app không hết hạn đột ngột.
 2. Kiểm thử UI form tạo HSNS + tài khoản bằng trình duyệt và chốt thông báo mật khẩu/invite email.
 3. Chuẩn hóa quick action “Cấp tài khoản” cho nhân sự đã có hồ sơ nhưng chưa có account.
+
+### Refresh Token Session Flow
+
+Trạng thái: Đã triển khai refresh-token flow cho web session.
+
+- Thêm `GET /api/auth/refresh`:
+  - Dùng `helios_refresh_token` để lấy token set mới từ Keycloak.
+  - Set lại `helios_access_token`, `helios_refresh_token`, `helios_id_token`.
+  - Redirect người dùng về trang đang truy cập.
+  - Nếu refresh token thiếu/hết hạn, clear session và đưa về `/login?error=session_expired`.
+- Cập nhật `apps/web/proxy.ts`:
+  - Kiểm tra hạn JWT access token trước khi cho vào `/admin/*`.
+  - GET/HEAD có refresh token nhưng access token thiếu/sắp hết hạn sẽ đi qua `/api/auth/refresh`.
+  - POST/server action có refresh token được cho đi tiếp để server action tự refresh token trong helper.
+- Cập nhật `getSessionAccessToken()`:
+  - Tự refresh access token bằng refresh token khi access token thiếu hoặc sắp hết hạn.
+  - Ghi cookie mới khi đang chạy trong Route Handler/Server Action.
+  - Server Component vẫn nhận access token mới cho request hiện tại.
+- Login form bổ sung thông báo `session_expired`.
+
+Kiểm tra:
+
+- `npm run typecheck -w apps/web`: Pass.
+- Login app trả refresh cookie.
+- `GET /api/auth/refresh?redirectTo=/admin/settings/accounts` với refresh cookie: `303` về `/admin/settings/accounts` và set access cookie mới.
+- Truy cập `/admin/settings/accounts` chỉ với refresh cookie: `307 -> 303 -> 200 OK`.
+
+Tiếp theo:
+
+1. Kiểm thử server action sau khi access token hết hạn tự nhiên.
+2. Chuẩn hóa quick action “Cấp tài khoản” cho nhân sự đã có hồ sơ nhưng chưa có account.
+3. Chốt thông báo/invite email khi admin cấp tài khoản mới.
