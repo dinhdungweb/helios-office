@@ -32,6 +32,14 @@ export class AuthService {
     const name = this.asString(payload.name) ?? this.asString(payload.preferred_username);
     const account = await this.resolveAccount(sub, email);
 
+    if (!account) {
+      throw new UnauthorizedException("No active Helios account is linked to this Keycloak user");
+    }
+
+    if (account.accountStatus !== "active") {
+      throw new UnauthorizedException("Helios account is not active");
+    }
+
     return {
       sub,
       email,

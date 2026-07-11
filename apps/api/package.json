@@ -10,7 +10,8 @@
     "test": "jest --passWithNoTests",
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "ts-node prisma/seed.ts"
+    "db:seed": "ts-node prisma/seed.ts",
+    "keycloak:bootstrap": "ts-node scripts/bootstrap-keycloak.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",

@@ -8,6 +8,8 @@ Helios Office is a modular intranet and HRM platform for a 200-person company. T
 npm install
 copy .env.example .env
 docker compose up -d postgres redis keycloak minio
+npm run db:seed
+npm run keycloak:bootstrap
 npm run dev
 ```
 
@@ -16,6 +18,8 @@ npm run dev
 - API docs: http://localhost:4000/docs
 - Keycloak admin: http://localhost:8080
 - MinIO console: http://localhost:9001
+
+Seeded app users use the password from `KEYCLOAK_SEED_PASSWORD` in `.env` (`Welcome@123` by default). The default app admin is `dungdd / Welcome@123`; the Keycloak admin console uses `admin / admin`. The bootstrap script creates the `helios-office` realm, the `helios-office-web` OIDC client, realm roles, seed users, and syncs each local `UserAccount.keycloakUserId` to the real Keycloak user id.
 
 ## What Is Implemented
 

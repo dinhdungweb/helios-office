@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { AccountLifecycleStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { KeycloakAdminService } from "../auth/keycloak-admin.service";
 import type { CreateEmployeeDto } from "./employees.dto";
 
 type EmployeeWithDepartment = Prisma.EmployeeGetPayload<{
@@ -13,7 +14,10 @@ type EmployeeWithDepartment = Prisma.EmployeeGetPayload<{
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly keycloakAdmin: KeycloakAdminService
+  ) {}
 
   async findAll() {
     const employees = await this.prisma.employee.findMany({
@@ -47,6 +51,10 @@ export class EmployeesService {
 
   async create(dto: CreateEmployeeDto) {
     try {
+      const provisionedAccount = dto.createAccount
+        ? await this.provisionAccountIdentity(dto)
+        : null;
+
       const created = await this.prisma.$transaction(async (tx) => {
         let userAccountId: string | undefined;
 
@@ -59,7 +67,7 @@ export class EmployeesService {
           const keycloakIdentity = dto.account.username?.trim() || dto.account.email;
           const account = await tx.userAccount.create({
             data: {
-              keycloakUserId: `local-${keycloakIdentity}`,
+              keycloakUserId: provisionedAccount?.id ?? `local-${keycloakIdentity}`,
               email: dto.account.email,
               displayName: dto.fullName,
               roles: [dto.account.adminRole ?? "user"],
@@ -204,5 +212,23 @@ export class EmployeesService {
 
   private toAuditJson(value: unknown) {
     return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+  }
+
+  private async provisionAccountIdentity(dto: CreateEmployeeDto) {
+    if (!dto.account?.email) {
+      throw new BadRequestException("Account email is required when createAccount is enabled");
+    }
+
+    const accountStatus = dto.account.accountStatus ?? AccountLifecycleStatus.pending_activation;
+    const adminRole = dto.account.adminRole ?? "user";
+
+    return this.keycloakAdmin.provisionUser({
+      email: dto.account.email,
+      displayName: dto.fullName,
+      enabled: accountStatus === AccountLifecycleStatus.active,
+      initialPassword: dto.account.initialPassword,
+      roles: [adminRole],
+      username: dto.account.username ?? dto.account.email
+    });
   }
 }

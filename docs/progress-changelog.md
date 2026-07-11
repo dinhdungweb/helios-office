@@ -322,3 +322,62 @@ Tiếp theo:
 1. Bật Keycloak local để test submit tạo HSNS + tài khoản bằng admin token thật.
 2. Tích hợp tạo user thật trên Keycloak thay cho `local-<username>` khi provisioning account.
 3. Bổ sung lưu trữ các trường bổ trợ chưa có schema riêng như phone, attendance mode, payroll template nếu cần vận hành thật.
+
+### Auth E2E + Keycloak Provisioning
+
+Trạng thái: Đã bật Keycloak runtime, bootstrap realm/client/user seed, đăng nhập app và kiểm thử provisioning E2E thành công.
+
+- Thêm `KeycloakAdminService` trong API:
+  - Lấy admin token qua realm `master` / client `admin-cli`.
+  - Tạo hoặc đồng bộ user Keycloak khi tạo tài khoản.
+  - Set mật khẩu tạm nếu form gửi `initialPassword`.
+  - Gán realm role `system_admin` hoặc `user`.
+  - Đồng bộ enabled theo trạng thái tài khoản: chỉ `active` mới login được.
+- Đổi `POST /api/v1/employees`:
+  - Khi bật `createAccount`, API tạo user Keycloak trước.
+  - DB lưu `UserAccount.keycloakUserId` bằng ID thật từ Keycloak thay vì `local-*`.
+- Đổi account mutation:
+  - `POST /account-access/accounts` tạo user Keycloak và lưu ID thật.
+  - `PATCH /account-access/accounts/:id`, activate, close đồng bộ email/tên/role/enabled sang Keycloak.
+  - Nếu account seed cũ còn `local-*`, lần update sẽ provision user Keycloak và thay lại ID thật.
+- Siết `GET /api/v1/auth/me`:
+  - Token Keycloak phải map được vào `UserAccount`.
+  - Account phải đang `active`.
+- Thêm script `npm run keycloak:bootstrap`:
+  - Tạo realm/client/roles seed users.
+  - Đồng bộ DB `keycloakUserId` theo user ID thật.
+  - Ưu tiên trạng thái/role/displayName hiện có trong DB khi bootstrap lại để Keycloak không lệch dữ liệu đang test.
+- Bảo vệ web `/admin/*`:
+  - `apps/web/proxy.ts` redirect người chưa có session về `/login?redirectTo=...`.
+  - `apps/web/app/admin/layout.tsx` yêu cầu account `system_admin` đang active.
+  - Login form nhận `redirectTo` động.
+- Đổi login form:
+  - `POST /api/auth/login` dùng password grant nội bộ với Keycloak rồi set session cookie trong app.
+  - Người dùng không còn bị chuyển sang màn login mặc định của Keycloak.
+
+Kiểm tra:
+
+- `npm run db:seed`: Pass.
+- API dev server chạy lại ở `http://localhost:4000`.
+- Web dev server chạy lại ở `http://localhost:3000`.
+- `GET /api/v1/account-access/summary`: 200 OK.
+- `GET /api/v1/auth/me` không token: 401 Unauthorized.
+- `GET /admin/settings/accounts` không cookie: 307 -> `/login?redirectTo=%2Fadmin%2Fsettings%2Faccounts`.
+- `/login?redirectTo=/admin/settings/accounts`: 200 OK và form giữ redirect target.
+- `npm run typecheck`: Pass.
+- `npm run test`: Pass.
+- `npm run build`: Pass.
+- `npm run keycloak:bootstrap`: Pass với Keycloak local `http://localhost:8080`.
+- Account provisioning E2E: Pass.
+  - Tạo user QA active qua `POST /api/v1/account-access/accounts`.
+  - Đăng nhập user QA bằng Keycloak token endpoint.
+  - `GET /api/v1/auth/me` map đúng `UserAccount`.
+  - Close account qua API làm Keycloak disable user.
+  - User đã close không lấy được token mới.
+  - Dữ liệu QA đã cleanup khỏi Keycloak và DB.
+
+Tiếp theo:
+
+1. Bổ sung refresh-token flow để phiên app không hết hạn đột ngột.
+2. Kiểm thử UI form tạo HSNS + tài khoản bằng trình duyệt và chốt thông báo mật khẩu/invite email.
+3. Chuẩn hóa quick action “Cấp tài khoản” cho nhân sự đã có hồ sơ nhưng chưa có account.

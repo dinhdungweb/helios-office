@@ -1,7 +1,44 @@
 import { FormCheckbox } from "@/components/ui/form-controls";
 import { Apple, CaretDown, Eye, Lock, PlayStore, User } from "@/lib/icons";
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function sanitizeRedirectTo(value: string | string[] | undefined) {
+  const redirectTo = Array.isArray(value) ? value[0] : value;
+
+  if (!redirectTo || !redirectTo.startsWith("/") || redirectTo.startsWith("//")) {
+    return "/user";
+  }
+
+  return redirectTo;
+}
+
+function getLoginErrorMessage(value: string | string[] | undefined) {
+  const error = Array.isArray(value) ? value[0] : value;
+
+  switch (error) {
+    case "credentials":
+      return "Sai tên đăng nhập hoặc mật khẩu.";
+    case "missing_credentials":
+      return "Nhập tên đăng nhập và mật khẩu để tiếp tục.";
+    case "provider":
+      return "Chưa kết nối được Keycloak. Kiểm tra lại Docker/Keycloak rồi thử lại.";
+    case "auth_config":
+      return "Thiếu cấu hình đăng nhập. Kiểm tra biến môi trường Keycloak.";
+    case "token":
+      return "Không nhận được phiên đăng nhập hợp lệ.";
+    default:
+      return null;
+  }
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const redirectTo = sanitizeRedirectTo(params?.redirectTo);
+  const errorMessage = getLoginErrorMessage(params?.error);
+
   return (
     <main className="login-page" aria-label="Login">
       <section className="login-brand-panel" aria-label="H Office">
@@ -49,7 +86,7 @@ export default function LoginPage() {
 
       <section className="login-form-panel" aria-label="Biểu mẫu đăng nhập">
         <form className="login-card" action="/api/auth/login" method="post">
-          <input type="hidden" name="redirectTo" value="/user" />
+          <input type="hidden" name="redirectTo" value={redirectTo} />
           <div className="login-card-header">
             <h2>Đăng nhập</h2>
             <button className="login-language" type="button" aria-label="Chọn ngôn ngữ">
@@ -59,16 +96,22 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {errorMessage ? (
+            <p className="login-error" role="alert" aria-live="polite">
+              {errorMessage}
+            </p>
+          ) : null}
+
           <label className="login-field">
             <User size={18} weight="duotone" aria-hidden="true" />
             <span className="login-field-label">Tên đăng nhập*</span>
-            <input name="username" type="text" placeholder=" " autoComplete="username" />
+            <input name="username" type="text" placeholder=" " autoComplete="username" required />
           </label>
 
           <label className="login-field">
             <Lock size={18} weight="duotone" aria-hidden="true" />
             <span className="login-field-label">Mật khẩu*</span>
-            <input name="password" type="password" placeholder=" " autoComplete="current-password" />
+            <input name="password" type="password" placeholder=" " autoComplete="current-password" required />
             <Eye size={18} weight="duotone" aria-hidden="true" />
           </label>
 

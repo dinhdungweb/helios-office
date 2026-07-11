@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { AccountLifecycleStatus, type Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { KeycloakAdminService } from "../auth/keycloak-admin.service";
 import {
   accountLicenses,
   accountPermissionCatalog,
@@ -25,7 +26,10 @@ type AccountWithRelations = Prisma.UserAccountGetPayload<{
 
 @Injectable()
 export class AccountAccessService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly keycloakAdmin: KeycloakAdminService
+  ) {}
 
   async findSummary() {
     const accounts = await this.prisma.userAccount.findMany();
@@ -114,21 +118,39 @@ export class AccountAccessService {
 
   async createAccount(dto: CreateUserAccountDto) {
     const customPermissionKeys = dto.customPermissionKeys ?? [];
+    const adminRole = dto.adminRole ?? "user";
+    const accountStatus = dto.accountStatus ?? AccountLifecycleStatus.pending_activation;
+    const existingAccount = await this.prisma.userAccount.findUnique({
+      where: { email: dto.email }
+    });
+
+    if (existingAccount) {
+      throw new ConflictException("Account email already exists");
+    }
+
+    const provisionedUser = await this.keycloakAdmin.provisionUser({
+      email: dto.email,
+      displayName: dto.displayName,
+      enabled: this.isKeycloakUserEnabled(accountStatus),
+      initialPassword: dto.initialPassword,
+      roles: [adminRole],
+      username: dto.username ?? dto.email
+    });
     const created = await this.prisma.$transaction(async (tx) => {
       const account = await tx.userAccount.create({
         data: {
-          keycloakUserId: `local-${dto.email}`,
+          keycloakUserId: provisionedUser.id,
           email: dto.email,
           displayName: dto.displayName,
-          roles: [dto.adminRole ?? "user"],
-          adminRole: dto.adminRole ?? "user",
+          roles: [adminRole],
+          adminRole,
           licensePlan: dto.licensePlan ?? "standard",
-          accountStatus: dto.accountStatus ?? "pending_activation",
+          accountStatus,
           permissionGroupId: dto.permissionGroupId,
           customPermissionsEnabled: customPermissionKeys.length > 0,
           customPermissions: customPermissionKeys,
           customPermissionNote: dto.customPermissionNote,
-          activatedAt: dto.accountStatus === AccountLifecycleStatus.active ? new Date() : null
+          activatedAt: accountStatus === AccountLifecycleStatus.active ? new Date() : null
         }
       });
 
@@ -159,8 +181,14 @@ export class AccountAccessService {
       throw new NotFoundException(`Account ${id} was not found`);
     }
 
+    const keycloakSync = await this.syncKeycloakBeforeUpdate(before, dto);
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const data: Prisma.UserAccountUncheckedUpdateInput = {};
+
+      if (keycloakSync?.userId) {
+        data.keycloakUserId = keycloakSync.userId;
+      }
 
       if (dto.email !== undefined) {
         data.email = dto.email;
@@ -382,5 +410,50 @@ export class AccountAccessService {
 
   private toAuditJson(value: unknown) {
     return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+  }
+
+  private isKeycloakUserEnabled(status: AccountLifecycleStatus) {
+    return status === AccountLifecycleStatus.active;
+  }
+
+  private async syncKeycloakBeforeUpdate(
+    before: Prisma.UserAccountGetPayload<{ include: { employee: true } }>,
+    dto: UpdateUserAccountDto
+  ) {
+    const shouldSync =
+      dto.email !== undefined ||
+      dto.displayName !== undefined ||
+      dto.adminRole !== undefined ||
+      dto.accountStatus !== undefined;
+
+    if (!shouldSync) {
+      return null;
+    }
+
+    const email = dto.email ?? before.email;
+    const displayName = dto.displayName ?? before.displayName;
+    const adminRole = dto.adminRole ?? before.adminRole;
+    const accountStatus = dto.accountStatus ?? before.accountStatus;
+
+    if (before.keycloakUserId.startsWith("local-")) {
+      const provisioned = await this.keycloakAdmin.provisionUser({
+        email,
+        displayName,
+        enabled: this.isKeycloakUserEnabled(accountStatus),
+        roles: [adminRole],
+        username: email
+      });
+
+      return { userId: provisioned.id };
+    }
+
+    await this.keycloakAdmin.updateUser(before.keycloakUserId, {
+      email,
+      displayName,
+      enabled: this.isKeycloakUserEnabled(accountStatus),
+      roles: [adminRole]
+    });
+
+    return null;
   }
 }

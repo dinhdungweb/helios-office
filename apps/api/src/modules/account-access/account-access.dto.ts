@@ -12,6 +12,16 @@ import {
 } from "class-validator";
 
 export class CreateUserAccountDto {
+  @ApiPropertyOptional({ example: "linhmn" })
+  @IsOptional()
+  @IsString()
+  username?: string;
+
+  @ApiPropertyOptional({ example: "Welcome@123" })
+  @IsOptional()
+  @IsString()
+  initialPassword?: string;
+
   @ApiProperty({ example: "linhmn@helios.vn" })
   @IsEmail()
   email!: string;

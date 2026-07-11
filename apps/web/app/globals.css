@@ -9398,6 +9398,20 @@ small {
   line-height: 32px;
 }
 
+.login-error {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  margin: 0;
+  padding: 10px 12px;
+  color: #b42318;
+  background: #fff1f0;
+  border: 1px solid #ffd1cc;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  line-height: 18px;
+}
+
 .login-language {
   display: inline-flex;
   align-items: center;
