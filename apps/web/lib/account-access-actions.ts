@@ -5,11 +5,14 @@ import {
   activateAccount,
   closeAccount,
   createAccount,
+  createPermissionGroup,
   updateAccount,
+  updatePermissionGroup,
   type AccountLifecycleStatus,
   type AccountLicensePlan,
   type AccountMutationPayload,
-  type AccountRole
+  type AccountRole,
+  type PermissionGroupMutationPayload
 } from "@/lib/account-access-api";
 
 export type AccountFormState = {
@@ -17,7 +20,13 @@ export type AccountFormState = {
   error?: string;
 };
 
+export type GroupFormState = {
+  ok: boolean;
+  error?: string;
+};
+
 const accountFormInitialError = "Không lưu được tài khoản. Hãy kiểm tra đăng nhập admin rồi thử lại.";
+const groupFormInitialError = "Không lưu được nhóm quyền. Hãy kiểm tra đăng nhập admin rồi thử lại.";
 
 function readAccountId(formData: FormData) {
   const accountId = formData.get("accountId");
@@ -60,6 +69,12 @@ function readCustomPermissionKeys(formData: FormData) {
     .filter((value): value is string => typeof value === "string" && value.length > 0);
 }
 
+function readPermissionKeys(formData: FormData) {
+  return formData
+    .getAll("permissionKeys")
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+}
+
 function readAccountPayload(formData: FormData): Required<Pick<AccountMutationPayload, "email" | "displayName">> & AccountMutationPayload {
   const customPermissionKeys = readCustomPermissionKeys(formData);
 
@@ -75,6 +90,16 @@ function readAccountPayload(formData: FormData): Required<Pick<AccountMutationPa
     employeeId: readOptionalString(formData, "employeeId"),
     customPermissionKeys,
     customPermissionNote: readNullableString(formData, "customPermissionNote")
+  };
+}
+
+function readGroupPayload(formData: FormData): PermissionGroupMutationPayload {
+  return {
+    name: readRequiredString(formData, "name"),
+    description: readRequiredString(formData, "description"),
+    roleScope: readRequiredString(formData, "roleScope") as AccountRole,
+    licensePlan: readRequiredString(formData, "licensePlan") as AccountLicensePlan,
+    permissionKeys: readPermissionKeys(formData)
   };
 }
 
@@ -118,6 +143,38 @@ export async function updateAccountAction(_state: AccountFormState, formData: Fo
     return {
       ok: false,
       error: error instanceof Error ? error.message : accountFormInitialError
+    };
+  }
+}
+
+export async function createPermissionGroupAction(_state: GroupFormState, formData: FormData): Promise<GroupFormState> {
+  try {
+    await createPermissionGroup(readGroupPayload(formData));
+    revalidatePath("/admin/settings/accounts");
+    revalidatePath("/admin/settings/accounts/groups");
+
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : groupFormInitialError
+    };
+  }
+}
+
+export async function updatePermissionGroupAction(_state: GroupFormState, formData: FormData): Promise<GroupFormState> {
+  try {
+    const groupId = readRequiredString(formData, "groupId");
+
+    await updatePermissionGroup(groupId, readGroupPayload(formData));
+    revalidatePath("/admin/settings/accounts");
+    revalidatePath("/admin/settings/accounts/groups");
+
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : groupFormInitialError
     };
   }
 }

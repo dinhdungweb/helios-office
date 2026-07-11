@@ -93,6 +93,14 @@ export type AccountMutationPayload = {
   customPermissionNote?: string | null;
 };
 
+export type PermissionGroupMutationPayload = {
+  name: string;
+  description: string;
+  roleScope?: AccountRole;
+  licensePlan?: AccountLicensePlan;
+  permissionKeys?: string[];
+};
+
 type ApiLicense = {
   id: string;
   name: string;
@@ -362,6 +370,26 @@ export async function createAccount(
 
 export async function updateAccount(accountId: string, payload: AccountMutationPayload) {
   return requestJson<unknown>(`/account-access/accounts/${accountId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function createPermissionGroup(payload: PermissionGroupMutationPayload) {
+  return requestJson<unknown>("/account-access/groups", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updatePermissionGroup(groupId: string, payload: PermissionGroupMutationPayload) {
+  return requestJson<unknown>(`/account-access/groups/${groupId}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json"
