@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { FormSelect } from "@/components/ui/form-controls";
 import { CheckCircle, Plus, X } from "@/lib/icons";
@@ -247,6 +248,11 @@ function DialogForm({
 
 export function AccountProvisionDialog({ employees, groups, licenses }: AccountProvisionDialogProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   return (
     <>
@@ -258,20 +264,25 @@ export function AccountProvisionDialog({ employees, groups, licenses }: AccountP
         <Plus size={16} weight="duotone" aria-hidden="true" />
         Cấp tài khoản
       </button>
-      <dialog className="account-dialog" ref={dialogRef}>
-        <header className="account-dialog-header">
-          <h2>Cấp tài khoản</h2>
-          <button className="icon-button" type="button" aria-label="Đóng" onClick={() => dialogRef.current?.close()}>
-            <X size={16} weight="duotone" aria-hidden="true" />
-          </button>
-        </header>
-        <DialogForm
-          employees={employees}
-          groups={groups}
-          licenses={licenses}
-          onClose={() => dialogRef.current?.close()}
-        />
-      </dialog>
+      {isMounted
+        ? createPortal(
+            <dialog className="account-dialog" ref={dialogRef}>
+              <header className="account-dialog-header">
+                <h2>Cấp tài khoản</h2>
+                <button className="icon-button" type="button" aria-label="Đóng" onClick={() => dialogRef.current?.close()}>
+                  <X size={16} weight="duotone" aria-hidden="true" />
+                </button>
+              </header>
+              <DialogForm
+                employees={employees}
+                groups={groups}
+                licenses={licenses}
+                onClose={() => dialogRef.current?.close()}
+              />
+            </dialog>,
+            document.body
+          )
+        : null}
     </>
   );
 }

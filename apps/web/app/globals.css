@@ -1353,6 +1353,16 @@
   box-shadow: var(--shadow-card);
 }
 
+.account-dialog:not([open]) {
+  display: none;
+}
+
+.account-dialog[open] {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+}
+
 .account-dialog::backdrop {
   background: rgb(15 23 42 / 48%);
 }
