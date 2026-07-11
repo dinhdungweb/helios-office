@@ -185,7 +185,7 @@ export function AccountEditDialog({ account, groups, licenses, permissions }: Ac
       >
         <PencilSimple size={16} weight="duotone" aria-hidden="true" />
       </button>
-      <dialog className="account-dialog" ref={dialogRef}>
+      <dialog className="account-dialog account-edit-dialog" ref={dialogRef}>
         <header className="account-dialog-header">
           <h2>Sửa tài khoản</h2>
           <button className="icon-button" type="button" aria-label="Đóng" onClick={() => dialogRef.current?.close()}>
