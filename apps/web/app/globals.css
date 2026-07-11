@@ -1813,6 +1813,8 @@
 }
 
 .form-checkbox-box::after {
+  display: block;
+  box-sizing: border-box;
   width: 9px;
   height: 5px;
   content: "";
