@@ -1815,7 +1815,7 @@
 .form-checkbox-box::after {
   display: block;
   position: absolute;
-  top: 2px;
+  top: 3px;
   left: 6px;
   box-sizing: border-box;
   width: 5px;
