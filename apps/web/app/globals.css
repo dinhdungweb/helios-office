@@ -1262,6 +1262,11 @@
   overflow-x: auto;
 }
 
+.account-mobile-list,
+.permission-matrix-mobile-list {
+  display: none;
+}
+
 .account-table,
 .permission-matrix-table {
   width: 100%;
@@ -1339,6 +1344,121 @@
 
 .account-table .account-row-actions .icon-button {
   flex: 0 0 auto;
+}
+
+.account-mobile-card,
+.permission-matrix-mobile-card {
+  display: grid;
+  gap: var(--space-7);
+  min-width: 0;
+  padding: var(--space-7);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.account-mobile-card:last-child,
+.permission-matrix-mobile-card:last-child {
+  border-bottom: 0;
+}
+
+.account-mobile-card header,
+.permission-matrix-mobile-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-7);
+  min-width: 0;
+}
+
+.account-mobile-card .account-person-cell {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-7);
+  min-width: 0;
+}
+
+.account-mobile-card strong,
+.account-mobile-card small,
+.permission-matrix-mobile-card strong,
+.permission-matrix-mobile-card small {
+  display: block;
+}
+
+.account-mobile-card small,
+.permission-matrix-mobile-card small {
+  margin-top: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 16px;
+}
+
+.account-mobile-card .account-row-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+
+.account-mobile-card .account-row-actions form {
+  display: inline-flex;
+  margin: 0;
+}
+
+.account-mobile-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+
+.account-mobile-card dl,
+.permission-matrix-mobile-card dl {
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+}
+
+.account-mobile-card dl div,
+.permission-matrix-mobile-card dl div {
+  display: grid;
+  grid-template-columns: minmax(94px, 0.8fr) minmax(0, 1.2fr);
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.account-mobile-card dt,
+.permission-matrix-mobile-card dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.account-mobile-card dd,
+.permission-matrix-mobile-card dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-strong);
+  overflow-wrap: anywhere;
+}
+
+.account-mobile-card p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.permission-matrix-mobile-card header > span {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 var(--space-6);
+  color: var(--color-text-tertiary);
+  background: var(--color-surface-strong);
+  border-radius: var(--radius-xl);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
 }
 
 .account-dialog {
@@ -1957,9 +2077,9 @@
   border-radius: var(--radius-xl);
 }
 
-.account-table .account-role,
-.account-table .account-license,
-.account-table .account-status,
+.account-role,
+.account-license,
+.account-status,
 .permission-count {
   display: inline-flex;
   align-items: center;
@@ -1976,9 +2096,9 @@
   white-space: nowrap;
 }
 
-.account-table .account-status svg,
-.account-table .account-role svg,
-.account-table .account-license svg {
+.account-status svg,
+.account-role svg,
+.account-license svg {
   display: block;
   flex: 0 0 auto;
 }
@@ -3371,7 +3491,6 @@
     box-sizing: border-box;
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
     padding: var(--space-7) var(--space-7) 142px;
   }
 
@@ -3395,7 +3514,16 @@
   }
 
   .account-panel-actions {
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .account-panel-actions .primary-button,
+  .account-panel-actions .secondary-button {
+    justify-content: center;
+    min-width: 0;
     width: 100%;
   }
 
@@ -3415,12 +3543,14 @@
     overscroll-behavior-inline: contain;
   }
 
-  .account-table {
-    min-width: 980px;
+  .account-table-panel > .account-table-shell,
+  .account-matrix-panel > .permission-matrix-shell {
+    display: none;
   }
 
-  .permission-matrix-table {
-    min-width: 680px;
+  .account-mobile-list,
+  .permission-matrix-mobile-list {
+    display: grid;
   }
 
   .account-dialog {
@@ -3514,6 +3644,57 @@
     grid-column: 2;
     justify-self: start;
     text-align: left;
+  }
+}
+
+@media (max-width: 520px) {
+  .account-access-page {
+    padding-right: var(--space-6);
+    padding-left: var(--space-6);
+  }
+
+  .account-summary-card,
+  .account-panel-header,
+  .account-mobile-card,
+  .permission-matrix-mobile-card,
+  .permission-group-row,
+  .license-usage-row,
+  .custom-permission-row {
+    padding-right: var(--space-7);
+    padding-left: var(--space-7);
+  }
+
+  .account-panel-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-filter-row {
+    padding-right: var(--space-7);
+    padding-left: var(--space-7);
+  }
+
+  .account-mobile-card header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-mobile-card .account-row-actions {
+    justify-content: flex-start;
+  }
+
+  .account-mobile-card dl div,
+  .permission-matrix-mobile-card dl div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .permission-matrix-mobile-card header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .permission-matrix-mobile-card header > span {
+    justify-self: start;
   }
 }
 
