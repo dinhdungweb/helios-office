@@ -1803,10 +1803,10 @@
 }
 
 .form-checkbox-box {
-  display: grid;
+  position: relative;
+  display: block;
   width: 18px;
   height: 18px;
-  place-items: center;
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-xs);
@@ -1814,13 +1814,16 @@
 
 .form-checkbox-box::after {
   display: block;
+  position: absolute;
+  top: 4px;
+  left: 6px;
   box-sizing: border-box;
-  width: 9px;
-  height: 5px;
+  width: 5px;
+  height: 8px;
   content: "";
-  border-bottom: 2px solid var(--color-surface-muted);
-  border-left: 2px solid var(--color-surface-muted);
-  transform: rotate(-45deg) scale(0);
+  border: solid var(--color-surface-muted);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
   transform-origin: center;
 }
 
@@ -1830,7 +1833,7 @@
 }
 
 .form-checkbox input:checked + .form-checkbox-box::after {
-  transform: rotate(-45deg) scale(1);
+  transform: rotate(45deg) scale(1);
 }
 
 .form-switch-track {
