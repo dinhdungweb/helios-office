@@ -13,6 +13,7 @@ import {
 } from "@/lib/icons";
 import { AccountEditDialog } from "@/components/admin/account-editor-dialog";
 import { AccountProvisionDialog } from "@/components/admin/account-provision-dialog";
+import { AccountManagedTable } from "@/components/admin/account-table-client";
 import type {
   AccountAccessData,
   AccountLifecycleStatus,
@@ -491,13 +492,12 @@ export function AccountAccessBoard({ data }: { data: AccountAccessData }) {
 
       <section className="account-access-layout" aria-label="Thiết lập tài khoản">
         <div className="account-access-main">
-          <AccountTable
+          <AccountManagedTable
             accounts={data.accounts}
             availableEmployees={data.availableEmployees}
             groups={data.groups}
             licenses={data.licenses}
             permissions={data.permissions}
-            maps={maps}
           />
           <PermissionMatrixPanel groups={data.groups} maps={maps} />
         </div>

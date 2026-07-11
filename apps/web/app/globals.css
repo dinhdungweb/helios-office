@@ -1180,6 +1180,10 @@
   border-radius: var(--radius-md);
 }
 
+.account-table-panel {
+  overflow: visible;
+}
+
 .account-panel-header {
   display: flex;
   align-items: center;
@@ -1221,6 +1225,101 @@
   gap: var(--space-5);
 }
 
+.account-toolbar-item {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.account-panel-actions .secondary-button.is-active {
+  color: var(--color-info);
+  background: var(--color-info-soft);
+  border-color: var(--color-module-blue-border);
+}
+
+.account-toolbar-count {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 0 var(--space-3);
+  color: var(--color-text-inverse);
+  background: var(--color-info);
+  border-radius: var(--radius-xl);
+  font-size: var(--font-size-xs);
+  line-height: 18px;
+}
+
+.account-toolbar-menu {
+  position: absolute;
+  top: calc(100% + var(--space-4));
+  right: 0;
+  z-index: 70;
+  display: grid;
+  gap: var(--space-7);
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(620px, calc(100vh - 140px));
+  overflow-y: auto;
+  padding: var(--space-7);
+  color: var(--color-text-primary);
+  text-align: left;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.account-toolbar-menu h3 {
+  margin: 0 0 var(--space-5);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-strong);
+}
+
+.account-filter-menu {
+  width: min(390px, calc(100vw - 32px));
+}
+
+.account-option-list,
+.account-column-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.account-option-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-6);
+  min-height: 34px;
+  padding: 0 var(--space-6);
+  color: var(--color-text-tertiary);
+  text-align: left;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.account-option-list button:hover,
+.account-option-list button:focus-visible,
+.account-option-list button.is-selected {
+  color: var(--color-info);
+  background: var(--color-info-soft);
+  border-color: var(--color-module-blue-border);
+}
+
+.account-option-list small {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.account-toolbar-menu footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
 .account-panel-header .primary-button,
 .account-panel-header .secondary-button {
   display: inline-flex;
@@ -1239,6 +1338,9 @@
 }
 
 .account-filter-row button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-5);
   flex: 0 0 auto;
   min-height: 30px;
   padding: 0 var(--space-7);
@@ -1915,6 +2017,13 @@
   border: 1px solid var(--color-module-red-border);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
+}
+
+.account-filter-row button strong {
+  min-width: 18px;
+  color: inherit;
+  font-size: var(--font-size-xs);
+  text-align: center;
 }
 
 .employee-create-success {
@@ -3435,11 +3544,25 @@
     width: 100%;
   }
 
+  .account-toolbar-item {
+    display: flex;
+    width: 100%;
+  }
+
   .account-panel-actions .primary-button,
   .account-panel-actions .secondary-button {
     justify-content: center;
     min-width: 0;
     width: 100%;
+  }
+
+  .account-toolbar-menu {
+    position: fixed;
+    top: 112px;
+    right: var(--space-7);
+    left: var(--space-7);
+    width: auto;
+    max-height: calc(100vh - 148px);
   }
 
   .account-access-main,
