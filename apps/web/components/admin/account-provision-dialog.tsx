@@ -3,7 +3,8 @@
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { FormSelect } from "@/components/ui/form-controls";
+import { FormCheckbox, FormSelect } from "@/components/ui/form-controls";
+import { Button, EmptyState, FormField, FormInput, ModalDialog } from "@/components/ui/primitives";
 import { CheckCircle, Plus, X } from "@/lib/icons";
 import {
   createAccountAction,
@@ -11,7 +12,6 @@ import {
 } from "@/lib/account-access-actions";
 import type {
   AccountLifecycleStatus,
-  AccountLicense,
   AccountProvisionEmployee,
   AccountRole,
   PermissionGroup
@@ -35,7 +35,6 @@ const initialState: AccountFormState = {
 type AccountProvisionDialogProps = {
   employees: AccountProvisionEmployee[];
   groups: PermissionGroup[];
-  licenses: AccountLicense[];
 };
 
 function suggestUsername(employee?: AccountProvisionEmployee) {
@@ -60,7 +59,6 @@ function getDefaultGroupId(groups: PermissionGroup[]) {
 function DialogForm({
   employees,
   groups,
-  licenses,
   onClose
 }: AccountProvisionDialogProps & {
   onClose: () => void;
@@ -70,8 +68,8 @@ function DialogForm({
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(employees[0]?.id ?? "");
   const selectedEmployee = employees.find((employee) => employee.id === selectedEmployeeId);
   const suggestedUsername = suggestUsername(selectedEmployee);
-  const defaultLicense = licenses[0]?.key ?? "standard";
-  const defaultGroupId = useMemo(() => getDefaultGroupId(groups), [groups]);
+  const assignableGroups = useMemo(() => groups.filter((group) => group.status !== "archived"), [groups]);
+  const defaultGroupId = useMemo(() => getDefaultGroupId(assignableGroups), [assignableGroups]);
 
   useEffect(() => {
     if (state.ok) {
@@ -83,14 +81,18 @@ function DialogForm({
   if (employees.length === 0) {
     return (
       <div className="account-dialog-form">
-        <div className="account-dialog-empty">
-          <strong>Không còn hồ sơ nhân sự chờ cấp tài khoản</strong>
-          <p>Tạo hồ sơ nhân sự mới nếu cần cấp tài khoản cho người chưa có trong hệ thống.</p>
-          <a className="primary-button" href="/admin/hr/employees/new">
-            <Plus size={16} weight="duotone" aria-hidden="true" />
-            Tạo hồ sơ nhân sự
-          </a>
-        </div>
+        <EmptyState
+          className="account-dialog-empty"
+          title="Không còn hồ sơ nhân sự chờ cấp tài khoản"
+          action={
+            <a className="primary-button" href="/admin/hr/employees/new">
+              <Plus size={16} weight="duotone" aria-hidden="true" />
+              Tạo hồ sơ nhân sự
+            </a>
+          }
+        >
+          Tạo hồ sơ nhân sự mới nếu cần cấp tài khoản cho người chưa có trong hệ thống.
+        </EmptyState>
       </div>
     );
   }
@@ -98,8 +100,11 @@ function DialogForm({
   return (
     <form className="account-dialog-form" action={formAction}>
       <div className="account-dialog-grid">
-        <label className="account-dialog-field account-dialog-field--wide">
-          <span>Nhân sự</span>
+        <FormField
+          label="Nhân sự"
+          helpText={selectedEmployee ? `${selectedEmployee.title} · ${selectedEmployee.department}` : undefined}
+          wide
+        >
           <FormSelect
             ariaLabel="Chọn nhân sự"
             defaultValue={selectedEmployeeId}
@@ -114,16 +119,10 @@ function DialogForm({
             placeholder="Chọn nhân sự"
             required
           />
-          {selectedEmployee ? (
-            <small className="account-provision-note">
-              {selectedEmployee.title} · {selectedEmployee.department}
-            </small>
-          ) : null}
-        </label>
+        </FormField>
 
-        <label className="account-dialog-field">
-          <span>Họ tên hiển thị</span>
-          <input
+        <FormField label="Họ tên hiển thị">
+          <FormInput
             name="displayName"
             type="text"
             required
@@ -131,11 +130,10 @@ function DialogForm({
             defaultValue={selectedEmployee?.name ?? ""}
             key={`name-${selectedEmployeeId}`}
           />
-        </label>
+        </FormField>
 
-        <label className="account-dialog-field">
-          <span>Email đăng ký</span>
-          <input
+        <FormField label="Email đăng ký">
+          <FormInput
             name="email"
             type="email"
             required
@@ -143,11 +141,10 @@ function DialogForm({
             defaultValue={suggestedUsername ? `${suggestedUsername}@helios.vn` : ""}
             key={`email-${selectedEmployeeId}`}
           />
-        </label>
+        </FormField>
 
-        <label className="account-dialog-field">
-          <span>Tên đăng nhập</span>
-          <input
+        <FormField label="Tên đăng nhập">
+          <FormInput
             name="username"
             type="text"
             required
@@ -156,11 +153,13 @@ function DialogForm({
             defaultValue={suggestedUsername}
             key={`username-${selectedEmployeeId}`}
           />
-        </label>
+        </FormField>
 
-        <label className="account-dialog-field">
-          <span>Mật khẩu mặc định</span>
-          <input
+        <FormField
+          label="Mật khẩu tạm thời"
+          helpText="Bật yêu cầu đổi mật khẩu để Keycloak bắt người dùng đổi ở lần đăng nhập đầu."
+        >
+          <FormInput
             name="initialPassword"
             type="password"
             required
@@ -168,10 +167,23 @@ function DialogForm({
             autoComplete="new-password"
             defaultValue="Welcome@123"
           />
-        </label>
+        </FormField>
 
-        <label className="account-dialog-field">
-          <span>Trạng thái</span>
+        <FormCheckbox
+          className="account-dialog-check"
+          name="requirePasswordChange"
+          defaultChecked
+          label="Yêu cầu đổi mật khẩu lần đầu"
+        />
+
+        <FormCheckbox
+          className="account-dialog-check"
+          name="sendInviteEmail"
+          defaultChecked
+          label="Gửi email mời khi SMTP đã bật"
+        />
+
+        <FormField label="Trạng thái">
           <FormSelect
             ariaLabel="Chọn trạng thái"
             defaultValue="active"
@@ -180,10 +192,9 @@ function DialogForm({
             options={statusOptions}
             placeholder="Chọn trạng thái"
           />
-        </label>
+        </FormField>
 
-        <label className="account-dialog-field">
-          <span>Quyền</span>
+        <FormField label="Quyền">
           <FormSelect
             ariaLabel="Chọn quyền"
             defaultValue="user"
@@ -192,26 +203,9 @@ function DialogForm({
             options={roleOptions}
             placeholder="Chọn quyền"
           />
-        </label>
+        </FormField>
 
-        <label className="account-dialog-field">
-          <span>License</span>
-          <FormSelect
-            ariaLabel="Chọn license"
-            defaultValue={defaultLicense}
-            menuLabel="Danh sách license"
-            name="licensePlan"
-            options={licenses.map((license) => ({
-              value: license.key,
-              label: license.name,
-              description: license.summary
-            }))}
-            placeholder="Chọn license"
-          />
-        </label>
-
-        <label className="account-dialog-field">
-          <span>Nhóm quyền</span>
+        <FormField label="Nhóm quyền">
           <FormSelect
             ariaLabel="Chọn nhóm quyền"
             defaultValue={defaultGroupId}
@@ -219,7 +213,7 @@ function DialogForm({
             name="permissionGroupId"
             options={[
               { value: "none", label: "Chưa gán" },
-              ...groups.map((group) => ({
+              ...assignableGroups.map((group) => ({
                 value: group.id,
                 label: group.name,
                 description: group.summary
@@ -227,26 +221,24 @@ function DialogForm({
             ]}
             placeholder="Chưa gán"
           />
-        </label>
+        </FormField>
       </div>
 
       {state.error ? <p className="account-dialog-error">{state.error}</p> : null}
 
       <div className="account-dialog-actions">
-        <button className="secondary-button" type="button" onClick={onClose}>
-          <X size={16} weight="duotone" aria-hidden="true" />
+        <Button variant="secondary" icon={<X size={16} weight="duotone" aria-hidden="true" />} onClick={onClose}>
           Hủy
-        </button>
-        <button className="primary-button" type="submit" disabled={isPending}>
-          <CheckCircle size={16} weight="duotone" aria-hidden="true" />
-          {isPending ? "Đang kích hoạt" : "Kích hoạt"}
-        </button>
+        </Button>
+        <Button variant="primary" type="submit" disabled={isPending} icon={<CheckCircle size={16} weight="duotone" aria-hidden="true" />}>
+          {isPending ? "Đang cấp" : "Cấp tài khoản"}
+        </Button>
       </div>
     </form>
   );
 }
 
-export function AccountProvisionDialog({ employees, groups, licenses }: AccountProvisionDialogProps) {
+export function AccountProvisionDialog({ employees, groups }: AccountProvisionDialogProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -256,30 +248,18 @@ export function AccountProvisionDialog({ employees, groups, licenses }: AccountP
 
   return (
     <>
-      <button
-        className="primary-button"
-        type="button"
-        onClick={() => dialogRef.current?.showModal()}
-      >
-        <Plus size={16} weight="duotone" aria-hidden="true" />
+      <Button variant="primary" icon={<Plus size={16} weight="duotone" aria-hidden="true" />} onClick={() => dialogRef.current?.showModal()}>
         Cấp tài khoản
-      </button>
+      </Button>
       {isMounted
         ? createPortal(
-            <dialog className="account-dialog" ref={dialogRef}>
-              <header className="account-dialog-header">
-                <h2>Cấp tài khoản</h2>
-                <button className="icon-button" type="button" aria-label="Đóng" onClick={() => dialogRef.current?.close()}>
-                  <X size={16} weight="duotone" aria-hidden="true" />
-                </button>
-              </header>
+            <ModalDialog ref={dialogRef} title="Cấp tài khoản" onCloseRequest={() => dialogRef.current?.close()}>
               <DialogForm
                 employees={employees}
                 groups={groups}
-                licenses={licenses}
                 onClose={() => dialogRef.current?.close()}
               />
-            </dialog>,
+            </ModalDialog>,
             document.body
           )
         : null}

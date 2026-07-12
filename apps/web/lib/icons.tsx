@@ -10,6 +10,8 @@ import {
   ArrowUp01Icon,
   ArrowUpRight01Icon,
   AppleIcon,
+  Archive02Icon,
+  ArchiveRestoreIcon,
   Attachment01Icon,
   BankIcon,
   BellIcon,
@@ -54,7 +56,7 @@ import {
   Key01Icon,
   LanguageCircleIcon,
   Link02Icon,
-  LockPasswordIcon,
+  LockIcon,
   Logout01Icon,
   MagicWand02Icon,
   Mail01Icon,
@@ -120,6 +122,8 @@ function createIcon(icon: IconSvgElement) {
 export const ArrowRight = createIcon(ArrowRight02Icon);
 export const ArrowSquareOut = createIcon(ArrowUpRight01Icon);
 export const Apple = createIcon(AppleIcon);
+export const Archive = createIcon(Archive02Icon);
+export const ArchiveRestore = createIcon(ArchiveRestoreIcon);
 export const Bank = createIcon(BankIcon);
 export const Bell = createIcon(BellIcon);
 export const BookOpenText = createIcon(BookOpen02Icon);
@@ -164,7 +168,7 @@ export const ImageBroken = createIcon(ImageNotFound01Icon);
 export const Key = createIcon(Key01Icon);
 export const Language = createIcon(LanguageCircleIcon);
 export const LinkSimple = createIcon(Link02Icon);
-export const Lock = createIcon(LockPasswordIcon);
+export const Lock = createIcon(LockIcon);
 export const Logout = createIcon(Logout01Icon);
 export const List = createIcon(Menu01Icon);
 export const ListBullets = createIcon(LeftToRightListBulletIcon);

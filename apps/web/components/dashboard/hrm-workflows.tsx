@@ -4,6 +4,7 @@ import {
   Circle,
   FlowArrow
 } from "@/lib/icons";
+import { StatusPill } from "@/components/ui/status-pill";
 import type { Workflow as WorkflowItem } from "@/lib/mock-data";
 
 type HrmWorkflowsProps = {
@@ -40,9 +41,9 @@ export function HrmWorkflows({ workflows }: HrmWorkflowsProps) {
                 <h3>{workflow.name}</h3>
                 <p>{workflow.owner}</p>
               </div>
-              <span className={`status-pill status-pill--${healthTone[workflow.health]}`}>
+              <StatusPill tone={healthTone[workflow.health]}>
                 {workflow.health}
-              </span>
+              </StatusPill>
             </header>
             <p>{workflow.summary}</p>
             <ol className="step-list">

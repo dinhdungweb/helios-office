@@ -61,6 +61,11 @@ enum AccountLifecycleStatus {
   closed
 }
 
+enum PermissionGroupStatus {
+  active
+  archived
+}
+
 enum AdminSettingTier {
   system
   module
@@ -80,6 +85,16 @@ enum DeviceAuthStatus {
   locked
 }
 
+enum DepartmentStatus {
+  active
+  archived
+}
+
+enum JobCatalogStatus {
+  active
+  archived
+}
+
 model UserAccount {
   id                       String                 @id @default(uuid())
   keycloakUserId           String                 @unique
@@ -95,6 +110,10 @@ model UserAccount {
   customPermissionsEnabled Boolean                @default(false)
   customPermissions        Json?
   customPermissionNote     String?
+  passwordResetRequired    Boolean                @default(false)
+  temporaryPasswordIssuedAt DateTime?
+  inviteEmailRequested     Boolean                @default(false)
+  inviteSentAt             DateTime?
   activatedAt              DateTime?
   closedAt                 DateTime?
   createdAt                DateTime               @default(now())
@@ -102,15 +121,28 @@ model UserAccount {
 }
 
 model PermissionGroup {
-  id          String           @id @default(uuid())
-  name        String           @unique
+  id          String                @id @default(uuid())
+  name        String                @unique
   description String
-  roleScope   AccountAdminRole @default(user)
-  licensePlan LicensePlan      @default(standard)
+  roleScope   AccountAdminRole      @default(user)
+  licensePlan LicensePlan           @default(standard)
   permissions String[]
+  status      PermissionGroupStatus @default(active)
+  archivedAt  DateTime?
   accounts    UserAccount[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+}
+
+model PermissionDefinition {
+  key         String   @id
+  category    String
+  label       String
+  description String?
+  adminOnly   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model AdminSetting {
@@ -167,14 +199,25 @@ model Employee {
   code              String             @unique
   fullName          String
   title             String
+  positionId        String?
+  jobTitleId        String?
   status            EmployeeStatus     @default(active)
   startDate         DateTime
+  officialStartDate DateTime?
   endDate           DateTime?
+  employeeType      String?
+  avatarUrl         String?
+  attendanceCode    String?            @unique
+  attendanceMode    String?
+  payrollTemplate   String?
+  standardWorkdays  Int?
   userAccountId     String?            @unique
   departmentId      String
   managerId         String?
   userAccount       UserAccount?       @relation(fields: [userAccountId], references: [id])
   department        Department         @relation(fields: [departmentId], references: [id])
+  position          JobPosition?       @relation(fields: [positionId], references: [id])
+  jobTitle          JobTitle?          @relation(fields: [jobTitleId], references: [id])
   manager           Employee?          @relation("EmployeeManager", fields: [managerId], references: [id])
   directReports     Employee[]         @relation("EmployeeManager")
   contracts         Contract[]
@@ -186,18 +229,50 @@ model Employee {
   auditLogs         AuditLog[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+
+  @@index([positionId])
+  @@index([jobTitleId])
 }
 
 model Department {
   id        String       @id @default(uuid())
+  code      String       @unique
   name      String       @unique
   parentId  String?
   headId    String?
+  status    DepartmentStatus @default(active)
+  archivedAt DateTime?
   parent    Department?  @relation("DepartmentTree", fields: [parentId], references: [id])
   children  Department[] @relation("DepartmentTree")
   employees Employee[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
+}
+
+model JobPosition {
+  id          String           @id @default(uuid())
+  code        String           @unique
+  name        String           @unique
+  family      String?
+  description String?
+  status      JobCatalogStatus @default(active)
+  archivedAt  DateTime?
+  employees   Employee[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model JobTitle {
+  id          String           @id @default(uuid())
+  code        String           @unique
+  name        String           @unique
+  rank        Int              @default(0)
+  description String?
+  status      JobCatalogStatus @default(active)
+  archivedAt  DateTime?
+  employees   Employee[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 }
 
 model Contract {

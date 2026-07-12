@@ -27,6 +27,7 @@ import {
 import type { Icon } from "@/lib/icons";
 import type { ReactNode } from "react";
 import { CollapseButton } from "@/components/user/collapse-button";
+import { Badge } from "@/components/ui/badge";
 
 type ProfileInfoRow = {
   label: string;
@@ -38,6 +39,14 @@ type ProfileInfoRow = {
 type ChecklistItem = {
   label: string;
 };
+
+function ProfileStatusBadge({ children }: { children: ReactNode }) {
+  return (
+    <Badge className="profile-status-pill" tone="success">
+      {children}
+    </Badge>
+  );
+}
 
 type AwarenessRow = {
   label: string;
@@ -468,7 +477,7 @@ function InfoCard() {
 
         <div className="employee-profile-meta">
           <span>SRG-035/VP.23</span>
-          <span className="profile-status-pill">Đang làm việc</span>
+          <ProfileStatusBadge>Đang làm việc</ProfileStatusBadge>
         </div>
 
         <dl className="employee-profile-detail-list">
@@ -511,7 +520,7 @@ function WorkHistoryPanel() {
           <div className="profile-work-content">
             <header>
               <h3>Web</h3>
-              <span className="profile-status-pill">Đang làm việc</span>
+              <ProfileStatusBadge>Đang làm việc</ProfileStatusBadge>
             </header>
 
             <article className="profile-work-card">
@@ -734,7 +743,7 @@ function DisciplinePanel() {
                 <p>{item.meta}</p>
                 {item.note ? <p>{item.note}</p> : null}
               </div>
-              {item.status === "approved" ? <span className="profile-status-pill">Đã duyệt</span> : null}
+              {item.status === "approved" ? <ProfileStatusBadge>Đã duyệt</ProfileStatusBadge> : null}
             </article>
           ))}
         </div>
@@ -910,7 +919,7 @@ function WorkInfoPanel() {
           <div key={field.label}>
             <dt>{field.label}</dt>
             <dd>
-              {field.variant === "status" ? <span className="profile-status-pill">{field.value}</span> : field.value}
+              {field.variant === "status" ? <ProfileStatusBadge>{field.value}</ProfileStatusBadge> : field.value}
             </dd>
           </div>
         ))}
@@ -963,7 +972,7 @@ function ContractListPanel() {
                 <td>{row.name}</td>
                 <td>{row.department}</td>
                 <td>
-                  <span className="profile-status-pill">{row.status}</span>
+                  <ProfileStatusBadge>{row.status}</ProfileStatusBadge>
                 </td>
                 <td>{row.signedAt}</td>
                 <td>{row.effectiveFrom}</td>
@@ -1007,7 +1016,7 @@ function WorkTimelineTabsPanel() {
           <div className="profile-work-content">
             <header>
               <h3>Web</h3>
-              <span className="profile-status-pill">Đang làm việc</span>
+              <ProfileStatusBadge>Đang làm việc</ProfileStatusBadge>
             </header>
 
             <article className="profile-work-card">
@@ -1122,7 +1131,7 @@ function InsuranceDeclarationHistoryPanel() {
               </h3>
               <p>{item.period}</p>
               <p>{item.unit}</p>
-              <span className="profile-status-pill">Đã duyệt</span>
+              <ProfileStatusBadge>Đã duyệt</ProfileStatusBadge>
             </div>
           </article>
         ))}

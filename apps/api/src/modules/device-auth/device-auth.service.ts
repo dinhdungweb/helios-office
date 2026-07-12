@@ -32,19 +32,19 @@ export class DeviceAuthService {
     });
   }
 
-  async updatePolicy(dto: UpdateDeviceAuthPolicyDto) {
+  async updatePolicy(dto: UpdateDeviceAuthPolicyDto, actorId?: string) {
     const before = await this.findPolicy();
     const updated = await this.prisma.deviceAuthPolicy.update({
       where: { id: defaultPolicy.id },
       data: dto
     });
 
-    await this.writeAudit("device_auth.policy_update", "DeviceAuthPolicy", updated.id, before, updated);
+    await this.writeAudit("device_auth.policy_update", "DeviceAuthPolicy", updated.id, before, updated, actorId);
 
     return updated;
   }
 
-  async updateStatus(id: string, dto: UpdateDeviceAuthStatusDto) {
+  async updateStatus(id: string, dto: UpdateDeviceAuthStatusDto, actorId?: string) {
     const before = await this.prisma.deviceAuthRequest.findUnique({
       where: { id }
     });
@@ -62,12 +62,12 @@ export class DeviceAuthService {
       }
     });
 
-    await this.writeAudit("device_auth.status_update", "DeviceAuthRequest", updated.id, before, updated);
+    await this.writeAudit("device_auth.status_update", "DeviceAuthRequest", updated.id, before, updated, actorId);
 
     return this.resolveRequest(updated);
   }
 
-  async deleteRequest(id: string) {
+  async deleteRequest(id: string, actorId?: string) {
     const before = await this.prisma.deviceAuthRequest.findUnique({
       where: { id }
     });
@@ -80,7 +80,7 @@ export class DeviceAuthService {
       where: { id }
     });
 
-    await this.writeAudit("device_auth.delete", "DeviceAuthRequest", id, before, null);
+    await this.writeAudit("device_auth.delete", "DeviceAuthRequest", id, before, null, actorId);
 
     return { ok: true };
   }
@@ -130,10 +130,12 @@ export class DeviceAuthService {
     entityType: string,
     entityId: string,
     beforeValue: unknown,
-    afterValue: unknown
+    afterValue: unknown,
+    actorId?: string
   ) {
     await this.prisma.auditLog.create({
       data: {
+        actorId,
         action,
         entityType,
         entityId,

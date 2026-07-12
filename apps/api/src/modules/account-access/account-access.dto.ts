@@ -1,13 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { AccountAdminRole, AccountLifecycleStatus, LicensePlan } from "@prisma/client";
+import { AccountAdminRole, AccountLifecycleStatus } from "@prisma/client";
 import {
   ArrayUnique,
   IsArray,
   IsBoolean,
   IsEmail,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
+  Matches,
+  Min,
   MinLength
 } from "class-validator";
 
@@ -22,6 +25,16 @@ export class CreateUserAccountDto {
   @IsString()
   initialPassword?: string;
 
+  @ApiPropertyOptional({ default: true })
+  @IsOptional()
+  @IsBoolean()
+  requirePasswordChange?: boolean;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  sendInviteEmail?: boolean;
+
   @ApiProperty({ example: "linhmn@helios.vn" })
   @IsEmail()
   email!: string;
@@ -35,11 +48,6 @@ export class CreateUserAccountDto {
   @IsOptional()
   @IsEnum(AccountAdminRole)
   adminRole?: AccountAdminRole;
-
-  @ApiPropertyOptional({ enum: LicensePlan, default: LicensePlan.standard })
-  @IsOptional()
-  @IsEnum(LicensePlan)
-  licensePlan?: LicensePlan;
 
   @ApiPropertyOptional({ enum: AccountLifecycleStatus, default: AccountLifecycleStatus.pending_activation })
   @IsOptional()
@@ -85,11 +93,6 @@ export class UpdateUserAccountDto {
   @IsOptional()
   @IsEnum(AccountAdminRole)
   adminRole?: AccountAdminRole;
-
-  @ApiPropertyOptional({ enum: LicensePlan })
-  @IsOptional()
-  @IsEnum(LicensePlan)
-  licensePlan?: LicensePlan;
 
   @ApiPropertyOptional({ enum: AccountLifecycleStatus })
   @IsOptional()
@@ -140,11 +143,6 @@ export class CreatePermissionGroupDto {
   @IsEnum(AccountAdminRole)
   roleScope?: AccountAdminRole;
 
-  @ApiPropertyOptional({ enum: LicensePlan, default: LicensePlan.standard })
-  @IsOptional()
-  @IsEnum(LicensePlan)
-  licensePlan?: LicensePlan;
-
   @ApiPropertyOptional({ type: [String], example: ["employees.department.manage"] })
   @IsOptional()
   @IsArray()
@@ -171,15 +169,74 @@ export class UpdatePermissionGroupDto {
   @IsEnum(AccountAdminRole)
   roleScope?: AccountAdminRole;
 
-  @ApiPropertyOptional({ enum: LicensePlan })
-  @IsOptional()
-  @IsEnum(LicensePlan)
-  licensePlan?: LicensePlan;
-
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
   @ArrayUnique()
   @IsString({ each: true })
   permissionKeys?: string[];
+}
+
+export class CreatePermissionDefinitionDto {
+  @ApiProperty({ example: "reports.company.view" })
+  @IsString()
+  @MinLength(3)
+  @Matches(/^[a-z][a-z0-9]*(\.[a-z][a-z0-9_-]*)+$/)
+  key!: string;
+
+  @ApiProperty({ example: "Báo cáo" })
+  @IsString()
+  @MinLength(2)
+  category!: string;
+
+  @ApiProperty({ example: "Xem báo cáo tổng thể" })
+  @IsString()
+  @MinLength(2)
+  label!: string;
+
+  @ApiPropertyOptional({ example: "Cho phép xem dashboard báo cáo toàn công ty." })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  adminOnly?: boolean;
+
+  @ApiPropertyOptional({ default: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
+}
+
+export class UpdatePermissionDefinitionDto {
+  @ApiPropertyOptional({ example: "Báo cáo" })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  category?: string;
+
+  @ApiPropertyOptional({ example: "Xem báo cáo tổng thể" })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  label?: string;
+
+  @ApiPropertyOptional({ example: "Cho phép xem dashboard báo cáo toàn công ty.", nullable: true })
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  adminOnly?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
 }

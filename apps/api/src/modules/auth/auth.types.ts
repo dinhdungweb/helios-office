@@ -1,13 +1,14 @@
-import type { AccountAdminRole, AccountLifecycleStatus, LicensePlan } from "@prisma/client";
+import type { AccountAdminRole, AccountLifecycleStatus } from "@prisma/client";
 import type { JWTPayload } from "jose";
 
 export type AuthenticatedUserAccount = {
   id: string;
   email: string;
   displayName: string;
+  employeeId: string | null;
   adminRole: AccountAdminRole;
-  licensePlan: LicensePlan;
   accountStatus: AccountLifecycleStatus;
+  effectivePermissionKeys: string[];
 };
 
 export type AuthenticatedUser = {

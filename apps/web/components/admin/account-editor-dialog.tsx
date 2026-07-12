@@ -2,19 +2,19 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { FormCheckbox, FormSelect } from "@/components/ui/form-controls";
+import { Button, FormField, FormInput, FormTextarea, IconButton, ModalDialog } from "@/components/ui/primitives";
 import { CheckCircle, PencilSimple, X } from "@/lib/icons";
+import {
+  updateAccountAction,
+  type AccountFormState
+} from "@/lib/account-access-actions";
 import type {
   AccountLifecycleStatus,
-  AccountLicense,
   AccountPermission,
   AccountRole,
   ManagedUserAccount,
   PermissionGroup
 } from "@/lib/account-access-api";
-import {
-  updateAccountAction,
-  type AccountFormState
-} from "@/lib/account-access-actions";
 
 const roleOptions: Array<{ value: AccountRole; label: string }> = [
   { value: "user", label: "User" },
@@ -34,14 +34,12 @@ const initialState: AccountFormState = {
 type AccountEditorDialogProps = {
   account?: ManagedUserAccount;
   groups: PermissionGroup[];
-  licenses: AccountLicense[];
   permissions: AccountPermission[];
 };
 
 function DialogForm({
   account,
   groups,
-  licenses,
   permissions,
   onClose
 }: AccountEditorDialogProps & {
@@ -49,6 +47,7 @@ function DialogForm({
 }) {
   const [state, formAction, isPending] = useActionState(updateAccountAction, initialState);
   const selectedPermissions = new Set(account?.customPermissionKeys ?? []);
+  const assignableGroups = groups.filter((group) => group.status !== "archived" || group.id === account?.groupId);
 
   useEffect(() => {
     if (state.ok) {
@@ -61,18 +60,15 @@ function DialogForm({
       {account ? <input name="accountId" type="hidden" value={account.id} /> : null}
 
       <div className="account-dialog-grid">
-        <label className="account-dialog-field">
-          <span>Họ tên</span>
-          <input name="displayName" type="text" required minLength={2} defaultValue={account?.name ?? ""} />
-        </label>
+        <FormField label="Họ tên">
+          <FormInput name="displayName" type="text" required minLength={2} defaultValue={account?.name ?? ""} />
+        </FormField>
 
-        <label className="account-dialog-field">
-          <span>Email</span>
-          <input name="email" type="email" required defaultValue={account?.email ?? ""} />
-        </label>
+        <FormField label="Email">
+          <FormInput name="email" type="email" required defaultValue={account?.email ?? ""} />
+        </FormField>
 
-        <label className="account-dialog-field">
-          <span>Quyền</span>
+        <FormField label="Quyền">
           <FormSelect
             ariaLabel="Chọn quyền"
             defaultValue={account?.role ?? "user"}
@@ -81,26 +77,9 @@ function DialogForm({
             options={roleOptions}
             placeholder="Chọn quyền"
           />
-        </label>
+        </FormField>
 
-        <label className="account-dialog-field">
-          <span>License</span>
-          <FormSelect
-            ariaLabel="Chọn license"
-            defaultValue={account?.licensePlan ?? licenses[0]?.key ?? "standard"}
-            menuLabel="Danh sách license"
-            name="licensePlan"
-            options={licenses.map((license) => ({
-              value: license.key,
-              label: license.name,
-              description: license.summary
-            }))}
-            placeholder="Chọn license"
-          />
-        </label>
-
-        <label className="account-dialog-field">
-          <span>Nhóm quyền</span>
+        <FormField label="Nhóm quyền">
           <FormSelect
             ariaLabel="Chọn nhóm quyền"
             defaultValue={account?.groupId ?? "none"}
@@ -108,7 +87,7 @@ function DialogForm({
             name="permissionGroupId"
             options={[
               { value: "none", label: "Chưa gán" },
-              ...groups.map((group) => ({
+              ...assignableGroups.map((group) => ({
                 value: group.id,
                 label: group.name,
                 description: group.summary
@@ -116,10 +95,9 @@ function DialogForm({
             ]}
             placeholder="Chưa gán"
           />
-        </label>
+        </FormField>
 
-        <label className="account-dialog-field">
-          <span>Trạng thái</span>
+        <FormField label="Trạng thái">
           <FormSelect
             ariaLabel="Chọn trạng thái"
             defaultValue={account?.status ?? "pending_activation"}
@@ -128,7 +106,7 @@ function DialogForm({
             options={statusOptions}
             placeholder="Chọn trạng thái"
           />
-        </label>
+        </FormField>
       </div>
 
       <fieldset className="account-dialog-permissions">
@@ -146,28 +124,25 @@ function DialogForm({
         </div>
       </fieldset>
 
-      <label className="account-dialog-field account-dialog-field--wide">
-        <span>Ghi chú quyền riêng</span>
-        <textarea name="customPermissionNote" rows={3} defaultValue={account?.customPermissionNote ?? ""} />
-      </label>
+      <FormField label="Ghi chú quyền riêng" wide>
+        <FormTextarea name="customPermissionNote" rows={3} defaultValue={account?.customPermissionNote ?? ""} />
+      </FormField>
 
       {state.error ? <p className="account-dialog-error">{state.error}</p> : null}
 
       <div className="account-dialog-actions">
-        <button className="secondary-button" type="button" onClick={onClose}>
-          <X size={16} weight="duotone" aria-hidden="true" />
+        <Button variant="secondary" icon={<X size={16} weight="duotone" aria-hidden="true" />} onClick={onClose}>
           Hủy
-        </button>
-        <button className="primary-button" type="submit" disabled={isPending}>
-          <CheckCircle size={16} weight="duotone" aria-hidden="true" />
+        </Button>
+        <Button variant="primary" type="submit" disabled={isPending} icon={<CheckCircle size={16} weight="duotone" aria-hidden="true" />}>
           {isPending ? "Đang lưu" : "Lưu"}
-        </button>
+        </Button>
       </div>
     </form>
   );
 }
 
-export function AccountEditDialog({ account, groups, licenses, permissions }: AccountEditorDialogProps) {
+export function AccountEditDialog({ account, groups, permissions }: AccountEditorDialogProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   if (!account) {
@@ -176,30 +151,17 @@ export function AccountEditDialog({ account, groups, licenses, permissions }: Ac
 
   return (
     <>
-      <button
-        className="icon-button"
-        type="button"
-        aria-label={`Chỉnh quyền ${account.name}`}
-        title="Chỉnh quyền"
-        onClick={() => dialogRef.current?.showModal()}
-      >
+      <IconButton label={`Chỉnh quyền ${account.name}`} title="Chỉnh quyền" onClick={() => dialogRef.current?.showModal()}>
         <PencilSimple size={16} weight="duotone" aria-hidden="true" />
-      </button>
-      <dialog className="account-dialog account-edit-dialog" ref={dialogRef}>
-        <header className="account-dialog-header">
-          <h2>Sửa tài khoản</h2>
-          <button className="icon-button" type="button" aria-label="Đóng" onClick={() => dialogRef.current?.close()}>
-            <X size={16} weight="duotone" aria-hidden="true" />
-          </button>
-        </header>
+      </IconButton>
+      <ModalDialog className="account-edit-dialog" ref={dialogRef} title="Sửa tài khoản" onCloseRequest={() => dialogRef.current?.close()}>
         <DialogForm
           account={account}
           groups={groups}
-          licenses={licenses}
           permissions={permissions}
           onClose={() => dialogRef.current?.close()}
         />
-      </dialog>
+      </ModalDialog>
     </>
   );
 }

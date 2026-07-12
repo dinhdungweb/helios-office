@@ -20,6 +20,7 @@ import { ResignationRequestCreateBoard } from "@/components/user/resignation-req
 import { RequestsBoard } from "@/components/user/requests-board";
 import { SalaryBoard } from "@/components/user/salary-board";
 import { ShiftChangeRequestCreateBoard } from "@/components/user/shift-change-request-create-board";
+import { Badge } from "@/components/ui/badge";
 import { CollapseButton } from "@/components/user/collapse-button";
 import { UserFrame } from "@/components/user/user-frame";
 import { announcements } from "@/lib/mock-data";
@@ -168,7 +169,7 @@ function TrainingPanel() {
           <h3>{trainingEvent.title}</h3>
           <p>{trainingEvent.time}</p>
         </div>
-        <span className="training-status">{trainingEvent.status}</span>
+        <Badge className="training-status" tone="neutral">{trainingEvent.status}</Badge>
       </article>
     </section>
   );

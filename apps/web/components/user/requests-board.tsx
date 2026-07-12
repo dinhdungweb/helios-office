@@ -2,6 +2,7 @@
 
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 import {
   CalendarBlank,
   CaretDown,
@@ -46,18 +47,18 @@ const requestRows: RequestRow[] = [
 
 function StatusBadge({ status }: { status: RequestRow["status"] }) {
   if (status === "pending") {
-    return <span className="request-badge request-badge--pending">Chờ duyệt</span>;
+    return <Badge className="request-badge request-badge--pending" tone="warning">Chờ duyệt</Badge>;
   }
 
-  return <span className="request-badge request-badge--approved">Đã duyệt</span>;
+  return <Badge className="request-badge request-badge--approved" tone="success">Đã duyệt</Badge>;
 }
 
 function StepBadge({ step }: { step: RequestRow["step"] }) {
   if (step === "manager") {
-    return <span className="request-badge request-badge--pending">Quản lý ⏱</span>;
+    return <Badge className="request-badge request-badge--pending" tone="warning">Quản lý ⏱</Badge>;
   }
 
-  return <span className="request-badge request-badge--approved">BGĐ ✓</span>;
+  return <Badge className="request-badge request-badge--approved" tone="success">BGĐ ✓</Badge>;
 }
 
 export function RequestsBoard() {

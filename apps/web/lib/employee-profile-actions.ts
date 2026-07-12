@@ -75,13 +75,16 @@ export async function createEmployeeProfileAction(
     const payload = {
       code: readRequiredString(formData, "code"),
       fullName: readRequiredString(formData, "fullName"),
-      title: readRequiredString(formData, "title"),
+      title: readOptionalString(formData, "title"),
+      positionId: readRequiredString(formData, "positionId"),
+      jobTitleId: readRequiredString(formData, "jobTitleId"),
       departmentId: readRequiredString(formData, "departmentId"),
       managerId: readOptionalString(formData, "managerId"),
       startDate: readRequiredString(formData, "startDate"),
       status: readRequiredString(formData, "status"),
       employeeType: readOptionalString(formData, "employeeType"),
       officialStartDate: readOptionalString(formData, "officialStartDate"),
+      avatarUrl: readOptionalString(formData, "avatarUrl"),
       attendanceCode: readOptionalString(formData, "attendanceCode"),
       attendanceMode: readOptionalString(formData, "attendanceMode"),
       payrollTemplate: readOptionalString(formData, "payrollTemplate"),
@@ -91,10 +94,10 @@ export async function createEmployeeProfileAction(
         ? {
             username: readRequiredString(formData, "username"),
             initialPassword: readOptionalString(formData, "initialPassword"),
+            requirePasswordChange: readBoolean(formData, "requirePasswordChange"),
             email: readRequiredString(formData, "email"),
             phone: readOptionalString(formData, "phone"),
             adminRole: readRequiredString(formData, "adminRole"),
-            licensePlan: readRequiredString(formData, "licensePlan"),
             accountStatus: readRequiredString(formData, "accountStatus"),
             permissionGroupId: readOptionalString(formData, "permissionGroupId"),
             sendInviteEmail: readBoolean(formData, "sendInviteEmail")
@@ -123,7 +126,10 @@ export async function createEmployeeProfileAction(
   }
 
   revalidatePath("/admin/settings/accounts");
+  revalidatePath("/admin/hr/employees");
   revalidatePath("/admin/hr/employees/new");
+  revalidatePath("/hcns/employees");
+  revalidatePath("/hcns/employees/new");
 
   return { ok: true };
 }

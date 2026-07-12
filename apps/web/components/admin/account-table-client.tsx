@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { AccountEditDialog } from "@/components/admin/account-editor-dialog";
 import { AccountProvisionDialog } from "@/components/admin/account-provision-dialog";
 import { FormCheckbox } from "@/components/ui/form-controls";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import {
   activateAccountAction,
-  closeAccountAction
+  closeAccountAction,
+  resendAccountInviteAction
 } from "@/lib/account-access-actions";
 import type {
-  AccountLicense,
-  AccountLicensePlan,
   AccountLifecycleStatus,
   AccountPermission,
   AccountProvisionEmployee,
@@ -22,6 +22,7 @@ import {
   CheckCircle,
   Clock,
   FunnelSimple,
+  PaperPlaneTilt,
   ShieldCheck,
   SlidersHorizontal,
   Star,
@@ -31,12 +32,6 @@ import {
 const roleLabels: Record<AccountRole, string> = {
   system_admin: "Admin",
   user: "User"
-};
-
-const licenseLabels: Record<AccountLicensePlan, string> = {
-  standard: "STANDARD",
-  professional: "PROFESSIONAL",
-  enterprise: "ENTERPRISE"
 };
 
 const statusLabels: Record<AccountLifecycleStatus, string> = {
@@ -51,11 +46,17 @@ const statusIcons = {
   closed: X
 };
 
+const statusTones: Record<AccountLifecycleStatus, BadgeTone> = {
+  active: "success",
+  closed: "danger",
+  pending_activation: "warning"
+};
+
 const statusFilters: AccountLifecycleStatus[] = ["active", "pending_activation", "closed"];
 
-type QuickFilter = "all" | AccountLifecycleStatus | AccountLicensePlan;
+type QuickFilter = "all" | AccountLifecycleStatus;
 type CustomPermissionFilter = "all" | "custom" | "standard";
-type ColumnKey = "role" | "license" | "group" | "status" | "effective";
+type ColumnKey = "role" | "group" | "status" | "effective";
 
 type AccountAccessMaps = {
   groupById: Map<string, PermissionGroup>;
@@ -64,7 +65,6 @@ type AccountAccessMaps = {
 
 const columnOptions: Array<{ key: ColumnKey; label: string }> = [
   { key: "role", label: "Quyền" },
-  { key: "license", label: "License" },
   { key: "group", label: "Nhóm quyền" },
   { key: "status", label: "Trạng thái" },
   { key: "effective", label: "Hiệu lực" }
@@ -73,12 +73,7 @@ const columnOptions: Array<{ key: ColumnKey; label: string }> = [
 const defaultVisibleColumns = new Set<ColumnKey>(columnOptions.map((column) => column.key));
 
 function getEffectivePermissions(account: ManagedUserAccount, maps: AccountAccessMaps) {
-  const group = account.groupId ? maps.groupById.get(account.groupId) : null;
-  const permissionKeys = Array.from(
-    new Set([...(group?.permissionKeys ?? []), ...account.customPermissionKeys])
-  );
-
-  return permissionKeys
+  return account.effectivePermissionKeys
     .map((permissionKey) => maps.permissionByKey.get(permissionKey))
     .filter(Boolean);
 }
@@ -87,10 +82,13 @@ function AccountStatusBadge({ status }: { status: AccountLifecycleStatus }) {
   const StatusIcon = statusIcons[status];
 
   return (
-    <span className={`account-status account-status--${status}`}>
-      <StatusIcon size={14} weight="duotone" aria-hidden="true" />
+    <Badge
+      className={`account-status account-status--${status}`}
+      icon={<StatusIcon size={14} weight="duotone" aria-hidden="true" />}
+      tone={statusTones[status]}
+    >
       {statusLabels[status]}
-    </span>
+    </Badge>
   );
 }
 
@@ -112,14 +110,15 @@ function AccountAvatar({ account }: { account: ManagedUserAccount }) {
 function AccountRowActions({
   account,
   groups,
-  licenses,
   permissions
 }: {
   account: ManagedUserAccount;
   groups: PermissionGroup[];
-  licenses: AccountLicense[];
   permissions: AccountPermission[];
 }) {
+  const [inviteState, inviteAction, isInvitePending] = useActionState(resendAccountInviteAction, { ok: false });
+  const inviteFeedback = inviteState.error ?? inviteState.message;
+
   return (
     <div className="account-row-actions">
       {account.status !== "active" ? (
@@ -138,7 +137,26 @@ function AccountRowActions({
           </button>
         </form>
       ) : null}
-      <AccountEditDialog account={account} groups={groups} licenses={licenses} permissions={permissions} />
+      {account.status === "active" ? (
+        <form action={inviteAction}>
+          <input name="accountId" type="hidden" value={account.id} />
+          <button
+            className="icon-button"
+            disabled={isInvitePending}
+            type="submit"
+            aria-label={`Gửi lại invite/reset password cho ${account.name}`}
+            title={account.inviteSentAt ? `Gửi lại invite, lần gần nhất ${account.inviteSentAt}` : "Gửi invite/reset password"}
+          >
+            <PaperPlaneTilt size={16} weight="duotone" aria-hidden="true" />
+          </button>
+        </form>
+      ) : null}
+      {inviteFeedback ? (
+        <span className={`account-row-feedback ${inviteState.error ? "is-error" : "is-success"}`} role={inviteState.error ? "alert" : "status"}>
+          {inviteFeedback}
+        </span>
+      ) : null}
+      <AccountEditDialog account={account} groups={groups} permissions={permissions} />
     </div>
   );
 }
@@ -178,10 +196,6 @@ function useToolbarMenu() {
 
 function countByStatus(accounts: ManagedUserAccount[], status: AccountLifecycleStatus) {
   return accounts.filter((account) => account.status === status).length;
-}
-
-function countByLicense(accounts: ManagedUserAccount[], license: AccountLicensePlan) {
-  return accounts.filter((account) => account.licensePlan === license).length;
 }
 
 function FilterChip({
@@ -226,13 +240,11 @@ export function AccountManagedTable({
   accounts,
   availableEmployees,
   groups,
-  licenses,
   permissions
 }: {
   accounts: ManagedUserAccount[];
   availableEmployees: AccountProvisionEmployee[];
   groups: PermissionGroup[];
-  licenses: AccountLicense[];
   permissions: AccountPermission[];
 }) {
   const { openMenu, setOpenMenu, rootRef } = useToolbarMenu();
@@ -258,8 +270,6 @@ export function AccountManagedTable({
             if (account.status !== quickFilter) {
               return false;
             }
-          } else if (account.licensePlan !== quickFilter) {
-            return false;
           }
         }
 
@@ -358,7 +368,6 @@ export function AccountManagedTable({
                       <FilterOption
                         isSelected={groupFilter === group.id}
                         label={group.name}
-                        meta={licenseLabels[group.licensePlan]}
                         key={group.id}
                         onClick={() => setGroupFilter(group.id)}
                       />
@@ -414,7 +423,7 @@ export function AccountManagedTable({
             ) : null}
           </div>
 
-          <AccountProvisionDialog employees={availableEmployees} groups={groups} licenses={licenses} />
+          <AccountProvisionDialog employees={availableEmployees} groups={groups} />
         </div>
       </header>
 
@@ -429,15 +438,6 @@ export function AccountManagedTable({
             onClick={() => setQuickFilter(status)}
           />
         ))}
-        {licenses.map((license) => (
-          <FilterChip
-            isSelected={quickFilter === license.key}
-            label={license.name}
-            count={countByLicense(accounts, license.key)}
-            key={license.key}
-            onClick={() => setQuickFilter(license.key)}
-          />
-        ))}
       </div>
 
       <div className="account-table-shell" tabIndex={0} aria-label="Bảng tài khoản có thể cuộn ngang">
@@ -446,7 +446,6 @@ export function AccountManagedTable({
             <tr>
               <th scope="col">Nhân sự</th>
               {visibleColumns.has("role") ? <th scope="col">Quyền</th> : null}
-              {visibleColumns.has("license") ? <th scope="col">License</th> : null}
               {visibleColumns.has("group") ? <th scope="col">Nhóm quyền</th> : null}
               {visibleColumns.has("status") ? <th scope="col">Trạng thái</th> : null}
               {visibleColumns.has("effective") ? <th scope="col">Hiệu lực</th> : null}
@@ -473,17 +472,10 @@ export function AccountManagedTable({
                   </th>
                   {visibleColumns.has("role") ? (
                     <td>
-                      <span className={`account-role account-role--${account.role}`}>
+                      <Badge className={`account-role account-role--${account.role}`} tone={account.role === "system_admin" ? "accent" : "info"}>
                         {roleLabels[account.role]}
-                      </span>
+                      </Badge>
                       <small>{account.title}</small>
-                    </td>
-                  ) : null}
-                  {visibleColumns.has("license") ? (
-                    <td>
-                      <span className={`account-license account-license--${account.licensePlan}`}>
-                        {licenseLabels[account.licensePlan]}
-                      </span>
                     </td>
                   ) : null}
                   {visibleColumns.has("group") ? (
@@ -495,7 +487,7 @@ export function AccountManagedTable({
                   {visibleColumns.has("status") ? (
                     <td>
                       <AccountStatusBadge status={account.status} />
-                      {account.status === "closed" ? <small>Không tính phí license</small> : null}
+                      {account.status === "closed" ? <small>Tài khoản đã đóng</small> : null}
                     </td>
                   ) : null}
                   {visibleColumns.has("effective") ? (
@@ -505,7 +497,7 @@ export function AccountManagedTable({
                     </td>
                   ) : null}
                   <td>
-                    <AccountRowActions account={account} groups={groups} licenses={licenses} permissions={permissions} />
+                    <AccountRowActions account={account} groups={groups} permissions={permissions} />
                   </td>
                 </tr>
               );

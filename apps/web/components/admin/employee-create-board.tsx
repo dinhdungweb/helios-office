@@ -58,19 +58,30 @@ const payrollTemplateOptions: FormSelectOption[] = [
 
 type EmployeeCreateBoardProps = {
   data: EmployeeCreateData;
+  returnHref?: string;
 };
 
 function todayValue() {
   return formatDateInputValue(new Date());
 }
 
-export function EmployeeCreateBoard({ data }: EmployeeCreateBoardProps) {
+export function EmployeeCreateBoard({ data, returnHref = "/admin/hr/employees" }: EmployeeCreateBoardProps) {
   const [state, formAction, isPending] = useActionState(createEmployeeProfileAction, initialState);
   const [createAccount, setCreateAccount] = useState(true);
   const departmentOptions = data.departments.map((department) => ({
     value: department.id,
     label: department.name,
     description: department.headcount ? `${department.headcount} nhân sự` : undefined
+  }));
+  const positionOptions = data.positions.map((position) => ({
+    value: position.id,
+    label: position.name,
+    description: position.family ? `${position.code} · ${position.family}` : position.code
+  }));
+  const jobTitleOptions = data.jobTitles.map((title) => ({
+    value: title.id,
+    label: title.name,
+    description: `${title.code} · cấp ${title.rank}`
   }));
   const managerOptions = [
     { value: "none", label: "Chưa gán" },
@@ -82,18 +93,14 @@ export function EmployeeCreateBoard({ data }: EmployeeCreateBoardProps) {
   ];
   const groupOptions = [
     { value: "none", label: "Chưa gán" },
-    ...data.groups.map((group) => ({
-      value: group.id,
-      label: group.name,
-      description: group.summary
-    }))
+    ...data.groups
+      .filter((group) => group.status !== "archived")
+      .map((group) => ({
+        value: group.id,
+        label: group.name,
+        description: group.summary
+      }))
   ];
-  const licenseOptions = data.licenses.map((license) => ({
-    value: license.key,
-    label: license.name,
-    description: license.summary
-  }));
-
   return (
     <main className="employee-create-page" aria-label="Tạo mới hồ sơ nhân sự">
       {data.source === "unavailable" ? (
@@ -139,8 +146,27 @@ export function EmployeeCreateBoard({ data }: EmployeeCreateBoardProps) {
             </label>
 
             <label className="employee-create-field">
-              <span>Vị trí & chức vụ</span>
-              <input name="title" type="text" required minLength={2} placeholder="HR Executive" />
+              <span>Vị trí chuyên môn</span>
+              <FormSelect
+                ariaLabel="Chọn vị trí chuyên môn"
+                menuLabel="Danh sách vị trí chuyên môn"
+                name="positionId"
+                options={positionOptions}
+                placeholder="Chọn vị trí"
+                required
+              />
+            </label>
+
+            <label className="employee-create-field">
+              <span>Chức danh/cấp bậc</span>
+              <FormSelect
+                ariaLabel="Chọn chức danh"
+                menuLabel="Danh sách chức danh"
+                name="jobTitleId"
+                options={jobTitleOptions}
+                placeholder="Chọn chức danh"
+                required
+              />
             </label>
 
             <label className="employee-create-field">
@@ -221,7 +247,7 @@ export function EmployeeCreateBoard({ data }: EmployeeCreateBoardProps) {
             </label>
 
             <label className="employee-create-field">
-              <span>Mật khẩu mặc định</span>
+              <span>Mật khẩu tạm thời</span>
               <input name="initialPassword" type="password" disabled={!createAccount} autoComplete="new-password" />
             </label>
 
@@ -250,6 +276,14 @@ export function EmployeeCreateBoard({ data }: EmployeeCreateBoardProps) {
 
             <FormCheckbox
               className="employee-create-check"
+              name="requirePasswordChange"
+              defaultChecked
+              disabled={!createAccount}
+              label="Yêu cầu đổi mật khẩu lần đầu"
+            />
+
+            <FormCheckbox
+              className="employee-create-check"
               name="sendInviteEmail"
               defaultChecked
               disabled={!createAccount}
@@ -265,7 +299,7 @@ export function EmployeeCreateBoard({ data }: EmployeeCreateBoardProps) {
             </span>
             <div>
               <h2 id="permission-config-title">Cấu hình tài khoản & quyền hạn</h2>
-              <p>Nhóm người dùng, license và quyền quản trị hệ thống</p>
+              <p>Nhóm người dùng và quyền quản trị hệ thống</p>
             </div>
           </header>
 
@@ -280,19 +314,6 @@ export function EmployeeCreateBoard({ data }: EmployeeCreateBoardProps) {
                 name="permissionGroupId"
                 options={groupOptions}
                 placeholder="Chưa gán"
-              />
-            </label>
-
-            <label className="employee-create-field">
-              <span>License</span>
-              <FormSelect
-                ariaLabel="Chọn license"
-                defaultValue={data.licenses[0]?.key ?? "standard"}
-                disabled={!createAccount}
-                menuLabel="Danh sách license"
-                name="licensePlan"
-                options={licenseOptions}
-                placeholder="Chọn license"
               />
             </label>
 
@@ -374,7 +395,7 @@ export function EmployeeCreateBoard({ data }: EmployeeCreateBoardProps) {
         {state.error ? <p className="employee-create-error" role="alert">{state.error}</p> : null}
 
         <div className="employee-create-actions">
-          <a className="secondary-button" href="/admin/settings/accounts">
+          <a className="secondary-button" href={returnHref}>
             <X size={16} weight="duotone" aria-hidden="true" />
             Hủy
           </a>

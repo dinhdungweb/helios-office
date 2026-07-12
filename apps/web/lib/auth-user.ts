@@ -10,9 +10,10 @@ export type CurrentSessionUser = {
     id: string;
     email: string;
     displayName: string;
+    employeeId: string | null;
     adminRole: string;
-    licensePlan: string;
     accountStatus: string;
+    effectivePermissionKeys: string[];
   } | null;
 };
 
@@ -23,16 +24,20 @@ export async function getCurrentSessionUser() {
     return null;
   }
 
-  const response = await fetch(`${getApiBaseUrl()}/auth/me`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`
-    },
-    cache: "no-store"
-  });
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      },
+      cache: "no-store"
+    });
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return null;
+    }
+
+    return response.json() as Promise<CurrentSessionUser>;
+  } catch {
     return null;
   }
-
-  return response.json() as Promise<CurrentSessionUser>;
 }

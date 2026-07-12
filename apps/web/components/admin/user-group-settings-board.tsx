@@ -1,22 +1,27 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { FormCheckbox, FormSelect } from "@/components/ui/form-controls";
+import { Button, FormField, FormInput, FormTextarea, IconButton, ModalDialog } from "@/components/ui/primitives";
+import { Badge } from "@/components/ui/badge";
 import {
+  archivePermissionGroupAction,
   createPermissionGroupAction,
+  restorePermissionGroupAction,
   updatePermissionGroupAction,
   type GroupFormState
 } from "@/lib/account-access-actions";
 import type {
   AccountAccessData,
-  AccountLicense,
-  AccountLicensePlan,
   AccountPermission,
   AccountRole,
   ManagedUserAccount,
   PermissionGroup
 } from "@/lib/account-access-api";
 import {
+  Archive,
+  ArchiveRestore,
   Check,
   CheckCircle,
   ClipboardText,
@@ -30,7 +35,7 @@ import {
   X
 } from "@/lib/icons";
 
-type GroupFilter = "all" | AccountRole | AccountLicensePlan;
+type GroupFilter = "all" | AccountRole;
 
 const initialGroupState: GroupFormState = {
   ok: false
@@ -46,12 +51,31 @@ const roleOptions: Array<{ value: AccountRole; label: string }> = [
   { value: "system_admin", label: "Admin hệ thống" }
 ];
 
-function licenseLabel(licenses: AccountLicense[], licensePlan: AccountLicensePlan) {
-  return licenses.find((license) => license.key === licensePlan)?.name ?? licensePlan.toUpperCase();
+const protectedPermissionGroupIds = new Set([
+  "grp-system-admin",
+  "grp-directors",
+  "grp-employees",
+  "grp-managers"
+]);
+
+function isArchivedGroup(group: PermissionGroup) {
+  return group.status === "archived";
 }
 
-function minimumLicenseLabel(licensePlan: AccountLicensePlan) {
-  return licensePlan.toUpperCase();
+function archiveDisabledReason(group: PermissionGroup) {
+  if (isArchivedGroup(group)) {
+    return "Nhóm đã lưu trữ";
+  }
+
+  if (protectedPermissionGroupIds.has(group.id)) {
+    return "Nhóm mặc định không thể lưu trữ";
+  }
+
+  if (group.memberCount > 0) {
+    return "Chuyển hết tài khoản khỏi nhóm trước khi lưu trữ";
+  }
+
+  return null;
 }
 
 function permissionCategories(group: PermissionGroup, permissions: AccountPermission[]) {
@@ -69,13 +93,88 @@ function membersForGroup(groupId: string, accounts: ManagedUserAccount[]) {
 }
 
 function GroupStatusBadge({ group }: { group: PermissionGroup }) {
+  if (isArchivedGroup(group)) {
+    return (
+      <Badge
+        className="group-status group-status--archived"
+        icon={<Archive size={14} weight="duotone" aria-hidden="true" />}
+        tone="neutral"
+      >
+        Đã lưu trữ
+      </Badge>
+    );
+  }
+
   const isActive = group.memberCount > 0;
 
   return (
-    <span className={isActive ? "group-status group-status--active" : "group-status group-status--paused"}>
-      <CheckCircle size={14} weight="duotone" aria-hidden="true" />
+    <Badge
+      className={isActive ? "group-status group-status--active" : "group-status group-status--paused"}
+      icon={<CheckCircle size={14} weight="duotone" aria-hidden="true" />}
+      tone={isActive ? "success" : "warning"}
+    >
       {isActive ? "Đang áp dụng" : "Chưa có người"}
-    </span>
+    </Badge>
+  );
+}
+
+function GroupArchiveAction({ group, variant = "icon" }: { group: PermissionGroup; variant?: "icon" | "button" }) {
+  if (isArchivedGroup(group)) {
+    const label = `Kích hoạt lại nhóm ${group.name}`;
+
+    function confirmRestore(event: FormEvent<HTMLFormElement>) {
+      event.stopPropagation();
+
+      if (!window.confirm(`Kích hoạt lại nhóm "${group.name}"? Nhóm này sẽ xuất hiện lại trong dropdown gán tài khoản.`)) {
+        event.preventDefault();
+      }
+    }
+
+    return (
+      <form action={restorePermissionGroupAction} onClick={(event) => event.stopPropagation()} onSubmit={confirmRestore}>
+        <input name="groupId" type="hidden" value={group.id} />
+        {variant === "button" ? (
+          <Button variant="secondary" type="submit" icon={<ArchiveRestore size={16} weight="duotone" aria-hidden="true" />} title={label}>
+            Kích hoạt lại
+          </Button>
+        ) : (
+          <IconButton label={label} title={label} type="submit">
+            <ArchiveRestore size={16} weight="duotone" aria-hidden="true" />
+          </IconButton>
+        )}
+      </form>
+    );
+  }
+
+  const disabledReason = archiveDisabledReason(group);
+  const label = disabledReason ?? `Lưu trữ nhóm ${group.name}`;
+
+  function confirmArchive(event: FormEvent<HTMLFormElement>) {
+    event.stopPropagation();
+
+    if (disabledReason) {
+      event.preventDefault();
+      return;
+    }
+
+    if (!window.confirm(`Lưu trữ nhóm "${group.name}"? Nhóm này sẽ không còn xuất hiện trong dropdown gán tài khoản.`)) {
+      event.preventDefault();
+    }
+  }
+
+  return (
+    <form action={archivePermissionGroupAction} onClick={(event) => event.stopPropagation()} onSubmit={confirmArchive}>
+      <input name="groupId" type="hidden" value={group.id} />
+      {variant === "button" ? (
+        <Button variant="secondary" type="submit" disabled={Boolean(disabledReason)} icon={<Archive size={16} weight="duotone" aria-hidden="true" />} title={label}>
+          Lưu trữ
+        </Button>
+      ) : (
+        <IconButton label={label} title={label} type="submit" disabled={Boolean(disabledReason)}>
+          <Archive size={16} weight="duotone" aria-hidden="true" />
+        </IconButton>
+      )}
+    </form>
   );
 }
 
@@ -94,12 +193,10 @@ function ApiStatusBanner({ data }: { data: AccountAccessData }) {
 
 function GroupEditorDialog({
   group,
-  licenses,
   permissions,
   variant = "primary"
 }: {
   group?: PermissionGroup;
-  licenses: AccountLicense[];
   permissions: AccountPermission[];
   variant?: "icon" | "primary" | "secondary";
 }) {
@@ -108,9 +205,15 @@ function GroupEditorDialog({
     initialGroupState
   );
   const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const selectedPermissions = new Set(group?.permissionKeys ?? []);
   const title = group ? "Sửa nhóm người dùng" : "Tạo nhóm người dùng";
   const triggerLabel = group ? "Sửa nhóm" : "Tạo nhóm";
+  const isArchived = group ? isArchivedGroup(group) : false;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (state.ok) {
@@ -120,109 +223,97 @@ function GroupEditorDialog({
 
   const trigger =
     variant === "icon" ? (
-      <button className="icon-button" type="button" aria-label={`Sửa nhóm ${group?.name ?? ""}`} onClick={() => dialogRef.current?.showModal()}>
+      <IconButton
+        label={`Sửa nhóm ${group?.name ?? ""}`}
+        title={isArchived ? "Nhóm đã lưu trữ không thể sửa" : undefined}
+        disabled={isArchived}
+        onClick={() => dialogRef.current?.showModal()}
+      >
         <PencilSimple size={16} weight="duotone" aria-hidden="true" />
-      </button>
+      </IconButton>
     ) : (
-      <button className={variant === "primary" ? "primary-button" : "secondary-button"} type="button" onClick={() => dialogRef.current?.showModal()}>
-        {group ? <PencilSimple size={16} weight="duotone" aria-hidden="true" /> : <Plus size={16} weight="duotone" aria-hidden="true" />}
+      <Button
+        variant={variant === "primary" ? "primary" : "secondary"}
+        icon={group ? <PencilSimple size={16} weight="duotone" aria-hidden="true" /> : <Plus size={16} weight="duotone" aria-hidden="true" />}
+        title={isArchived ? "Nhóm đã lưu trữ không thể sửa" : undefined}
+        disabled={isArchived}
+        onClick={() => dialogRef.current?.showModal()}
+      >
         {triggerLabel}
-      </button>
+      </Button>
     );
 
   return (
     <>
       {trigger}
-      <dialog className="account-dialog account-edit-dialog group-editor-dialog" ref={dialogRef}>
-        <header className="account-dialog-header">
-          <h2>{title}</h2>
-          <button className="icon-button" type="button" aria-label="Đóng" onClick={() => dialogRef.current?.close()}>
-            <X size={16} weight="duotone" aria-hidden="true" />
-          </button>
-        </header>
+      {isMounted
+        ? createPortal(
+            <ModalDialog className="account-edit-dialog group-editor-dialog" ref={dialogRef} title={title} onCloseRequest={() => dialogRef.current?.close()}>
+              <form className="account-dialog-form" action={formAction}>
+                {group ? <input name="groupId" type="hidden" value={group.id} /> : null}
 
-        <form className="account-dialog-form" action={formAction}>
-          {group ? <input name="groupId" type="hidden" value={group.id} /> : null}
+                <div className="account-dialog-grid">
+                  <FormField label="Tên nhóm">
+                    <FormInput name="name" type="text" required minLength={2} defaultValue={group?.name ?? ""} />
+                  </FormField>
 
-          <div className="account-dialog-grid">
-            <label className="account-dialog-field">
-              <span>Tên nhóm</span>
-              <input name="name" type="text" required minLength={2} defaultValue={group?.name ?? ""} />
-            </label>
+                  <FormField label="Vai trò">
+                    <FormSelect
+                      ariaLabel="Chọn vai trò nhóm"
+                      defaultValue={group?.role ?? "user"}
+                      menuLabel="Vai trò nhóm"
+                      name="roleScope"
+                      options={roleOptions}
+                      placeholder="Chọn vai trò"
+                    />
+                  </FormField>
 
-            <label className="account-dialog-field">
-              <span>Vai trò</span>
-              <FormSelect
-                ariaLabel="Chọn vai trò nhóm"
-                defaultValue={group?.role ?? "user"}
-                menuLabel="Vai trò nhóm"
-                name="roleScope"
-                options={roleOptions}
-                placeholder="Chọn vai trò"
-              />
-            </label>
+                  <FormField label="Mô tả" wide>
+                    <FormTextarea name="description" rows={3} required minLength={2} defaultValue={group?.summary ?? ""} />
+                  </FormField>
+                </div>
 
-            <label className="account-dialog-field">
-              <span>License</span>
-              <FormSelect
-                ariaLabel="Chọn license"
-                defaultValue={group?.licensePlan ?? licenses[0]?.key ?? "standard"}
-                menuLabel="Danh sách license"
-                name="licensePlan"
-                options={licenses.map((license) => ({
-                  value: license.key,
-                  label: license.name,
-                  description: license.summary
-                }))}
-                placeholder="Chọn license"
-              />
-            </label>
+                <fieldset className="account-dialog-permissions">
+                  <legend>Quyền áp dụng</legend>
+                  <div className="account-dialog-permission-grid">
+                    {permissions.map((permission) => (
+                      <FormCheckbox
+                        name="permissionKeys"
+                        value={permission.key}
+                        defaultChecked={selectedPermissions.has(permission.key)}
+                        label={permission.label}
+                        key={permission.key}
+                      />
+                    ))}
+                  </div>
+                </fieldset>
 
-            <label className="account-dialog-field account-dialog-field--wide">
-              <span>Mô tả</span>
-              <textarea name="description" rows={3} required minLength={2} defaultValue={group?.summary ?? ""} />
-            </label>
-          </div>
+                {state.error ? <p className="account-dialog-error">{state.error}</p> : null}
 
-          <fieldset className="account-dialog-permissions">
-            <legend>Quyền áp dụng</legend>
-            <div className="account-dialog-permission-grid">
-              {permissions.map((permission) => (
-                <FormCheckbox
-                  name="permissionKeys"
-                  value={permission.key}
-                  defaultChecked={selectedPermissions.has(permission.key)}
-                  label={permission.label}
-                  key={permission.key}
-                />
-              ))}
-            </div>
-          </fieldset>
-
-          {state.error ? <p className="account-dialog-error">{state.error}</p> : null}
-
-          <div className="account-dialog-actions">
-            <button className="secondary-button" type="button" onClick={() => dialogRef.current?.close()}>
-              <X size={16} weight="duotone" aria-hidden="true" />
-              Hủy
-            </button>
-            <button className="primary-button" type="submit" disabled={isPending}>
-              <CheckCircle size={16} weight="duotone" aria-hidden="true" />
-              {isPending ? "Đang lưu" : "Lưu"}
-            </button>
-          </div>
-        </form>
-      </dialog>
+                <div className="account-dialog-actions">
+                  <Button variant="secondary" icon={<X size={16} weight="duotone" aria-hidden="true" />} onClick={() => dialogRef.current?.close()}>
+                    Hủy
+                  </Button>
+                  <Button variant="primary" type="submit" disabled={isPending} icon={<CheckCircle size={16} weight="duotone" aria-hidden="true" />}>
+                    {isPending ? "Đang lưu" : "Lưu"}
+                  </Button>
+                </div>
+              </form>
+            </ModalDialog>,
+            document.body
+          )
+        : null}
     </>
   );
 }
 
 function UserGroupSummary({ groups }: { groups: PermissionGroup[] }) {
-  const totalMembers = groups.reduce((total, group) => total + group.memberCount, 0);
-  const activeGroups = groups.filter((group) => group.memberCount > 0).length;
-  const configuredPermissions = new Set(groups.flatMap((group) => group.permissionKeys)).size;
+  const activePermissionGroups = groups.filter((group) => !isArchivedGroup(group));
+  const totalMembers = activePermissionGroups.reduce((total, group) => total + group.memberCount, 0);
+  const activeGroups = activePermissionGroups.filter((group) => group.memberCount > 0).length;
+  const configuredPermissions = new Set(activePermissionGroups.flatMap((group) => group.permissionKeys)).size;
   const summaryItems = [
-    { label: "Nhóm quyền", value: groups.length, icon: Users },
+    { label: "Nhóm quyền", value: activePermissionGroups.length, icon: Users },
     { label: "Đang áp dụng", value: activeGroups, icon: CheckCircle },
     { label: "Thành viên áp dụng", value: totalMembers, icon: ShieldCheck },
     { label: "Quyền đang dùng", value: configuredPermissions, icon: Key }
@@ -248,7 +339,6 @@ function UserGroupSummary({ groups }: { groups: PermissionGroup[] }) {
 function GroupDirectoryPanel({
   filter,
   groups,
-  licenses,
   onFilterChange,
   onSelectGroup,
   permissions,
@@ -256,7 +346,6 @@ function GroupDirectoryPanel({
 }: {
   filter: GroupFilter;
   groups: PermissionGroup[];
-  licenses: AccountLicense[];
   onFilterChange: (filter: GroupFilter) => void;
   onSelectGroup: (groupId: string) => void;
   permissions: AccountPermission[];
@@ -267,7 +356,7 @@ function GroupDirectoryPanel({
       return true;
     }
 
-    return group.role === filter || group.licensePlan === filter;
+    return group.role === filter;
   });
 
   function selectByKeyboard(event: KeyboardEvent<HTMLTableRowElement>, groupId: string) {
@@ -282,10 +371,10 @@ function GroupDirectoryPanel({
       <header className="account-panel-header">
         <div>
           <h2 id="group-directory-title">Danh sách nhóm người dùng</h2>
-          <p>Tạo nhóm theo vai trò, license và bộ quyền để phân quyền nhanh.</p>
+          <p>Tạo nhóm theo vai trò và bộ quyền để phân quyền nhanh.</p>
         </div>
         <div className="account-panel-actions">
-          <GroupEditorDialog licenses={licenses} permissions={permissions} />
+          <GroupEditorDialog permissions={permissions} />
         </div>
       </header>
 
@@ -298,11 +387,6 @@ function GroupDirectoryPanel({
             {role.label}
           </button>
         ))}
-        {licenses.map((license) => (
-          <button className={filter === license.key ? "is-selected" : undefined} type="button" key={license.key} onClick={() => onFilterChange(license.key)}>
-            {license.name}
-          </button>
-        ))}
       </div>
 
       <div className="group-table-shell" tabIndex={0} aria-label="Bảng nhóm người dùng có thể cuộn ngang">
@@ -312,7 +396,6 @@ function GroupDirectoryPanel({
               <th scope="col">Nhóm</th>
               <th scope="col">Mã nhóm</th>
               <th scope="col">Thành viên</th>
-              <th scope="col">License</th>
               <th scope="col">Quyền</th>
               <th scope="col">Trạng thái</th>
               <th scope="col">Tác vụ</th>
@@ -339,7 +422,6 @@ function GroupDirectoryPanel({
                     <strong>{group.memberCount} người</strong>
                     <small>{roleLabels[group.role]}</small>
                   </td>
-                  <td>{licenseLabel(licenses, group.licensePlan)}</td>
                   <td>
                     <strong>{group.permissionKeys.length} quyền</strong>
                     <small>{categories.length > 0 ? categories.join(" · ") : "Chưa cấu hình quyền"}</small>
@@ -347,7 +429,8 @@ function GroupDirectoryPanel({
                   <td><GroupStatusBadge group={group} /></td>
                   <td>
                     <div className="account-row-actions">
-                      <GroupEditorDialog group={group} licenses={licenses} permissions={permissions} variant="icon" />
+                      <GroupEditorDialog group={group} permissions={permissions} variant="icon" />
+                      <GroupArchiveAction group={group} />
                     </div>
                   </td>
                 </tr>
@@ -355,7 +438,7 @@ function GroupDirectoryPanel({
             })}
             {filteredGroups.length === 0 ? (
               <tr>
-                <td colSpan={7}>
+                <td colSpan={6}>
                   <span className="account-empty-state">Không có nhóm phù hợp bộ lọc.</span>
                 </td>
               </tr>
@@ -369,11 +452,9 @@ function GroupDirectoryPanel({
 
 function PermissionMatrixPanel({
   group,
-  licenses,
   permissions
 }: {
   group?: PermissionGroup;
-  licenses: AccountLicense[];
   permissions: AccountPermission[];
 }) {
   if (!group) {
@@ -398,7 +479,7 @@ function PermissionMatrixPanel({
             <ShieldCheck size={16} weight="duotone" aria-hidden="true" />
             Quyền chi tiết
           </a>
-          <GroupEditorDialog group={group} licenses={licenses} permissions={permissions} variant="secondary" />
+          <GroupEditorDialog group={group} permissions={permissions} variant="secondary" />
         </div>
       </header>
 
@@ -408,7 +489,6 @@ function PermissionMatrixPanel({
             <tr>
               <th scope="col">Quyền</th>
               <th scope="col">Danh mục</th>
-              <th scope="col">License tối thiểu</th>
               <th scope="col">Admin</th>
               <th scope="col">Trạng thái</th>
             </tr>
@@ -424,7 +504,6 @@ function PermissionMatrixPanel({
                     <small>{permission.key}</small>
                   </th>
                   <td>{permission.category}</td>
-                  <td>{minimumLicenseLabel(permission.minimumLicense)}</td>
                   <td>{permission.adminOnly ? "Có" : "Không"}</td>
                   <td>
                     <span className={isAllowed ? "group-action-check is-allowed" : "group-action-check"}>
@@ -447,11 +526,9 @@ function PermissionMatrixPanel({
 
 function GroupIdentityPanel({
   group,
-  licenses,
   permissions
 }: {
   group?: PermissionGroup;
-  licenses: AccountLicense[];
   permissions: AccountPermission[];
 }) {
   if (!group) {
@@ -463,7 +540,7 @@ function GroupIdentityPanel({
       <header className="account-panel-header">
         <div>
           <h2 id="group-identity-title">{group.name}</h2>
-          <p>{group.id} · {licenseLabel(licenses, group.licensePlan)}</p>
+          <p>{group.id}</p>
         </div>
         <GroupStatusBadge group={group} />
       </header>
@@ -557,32 +634,7 @@ function PermissionCategoryPanel({
   );
 }
 
-function LicenseModulePanel({ group, licenses }: { group?: PermissionGroup; licenses: AccountLicense[] }) {
-  if (!group) {
-    return null;
-  }
-
-  const license = licenses.find((item) => item.key === group.licensePlan);
-
-  return (
-    <section className="account-panel" aria-labelledby="group-license-title">
-      <header className="account-panel-header">
-        <div>
-          <h2 id="group-license-title">Module theo license</h2>
-          <p>{license?.summary ?? "License áp dụng cho nhóm."}</p>
-        </div>
-      </header>
-
-      <div className="group-chip-list">
-        {(license?.modules ?? []).map((module) => (
-          <span key={module}>{module}</span>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function GroupToolsPanel({ group, licenses, permissions }: { group?: PermissionGroup; licenses: AccountLicense[]; permissions: AccountPermission[] }) {
+function GroupToolsPanel({ group, permissions }: { group?: PermissionGroup; permissions: AccountPermission[] }) {
   if (!group) {
     return null;
   }
@@ -590,7 +642,7 @@ function GroupToolsPanel({ group, licenses, permissions }: { group?: PermissionG
   const tools = [
     {
       title: "Sửa nhóm",
-      body: "Cập nhật tên, mô tả, license và các quyền áp dụng cho nhóm.",
+      body: "Cập nhật tên, mô tả và các quyền áp dụng cho nhóm.",
       icon: PencilSimple
     },
     {
@@ -628,7 +680,8 @@ function GroupToolsPanel({ group, licenses, permissions }: { group?: PermissionG
         ))}
       </div>
       <div className="group-chip-list">
-        <GroupEditorDialog group={group} licenses={licenses} permissions={permissions} variant="secondary" />
+        <GroupEditorDialog group={group} permissions={permissions} variant="secondary" />
+        <GroupArchiveAction group={group} variant="button" />
       </div>
     </section>
   );
@@ -685,22 +738,20 @@ export function UserGroupSettingsBoard({ data }: { data: AccountAccessData }) {
           <GroupDirectoryPanel
             filter={filter}
             groups={data.groups}
-            licenses={data.licenses}
             onFilterChange={setFilter}
             onSelectGroup={setSelectedGroupId}
             permissions={data.permissions}
             selectedGroup={selectedGroup}
           />
-          <PermissionMatrixPanel group={selectedGroup} licenses={data.licenses} permissions={data.permissions} />
+          <PermissionMatrixPanel group={selectedGroup} permissions={data.permissions} />
           <GroupExamplePanel />
         </div>
 
         <aside className="account-access-side" aria-label="Chi tiết nhóm đang chọn">
-          <GroupIdentityPanel group={selectedGroup} licenses={data.licenses} permissions={data.permissions} />
+          <GroupIdentityPanel group={selectedGroup} permissions={data.permissions} />
           <MemberPanel accounts={data.accounts} group={selectedGroup} />
           <PermissionCategoryPanel group={selectedGroup} permissions={data.permissions} />
-          <LicenseModulePanel group={selectedGroup} licenses={data.licenses} />
-          <GroupToolsPanel group={selectedGroup} licenses={data.licenses} permissions={data.permissions} />
+          <GroupToolsPanel group={selectedGroup} permissions={data.permissions} />
         </aside>
       </section>
     </main>

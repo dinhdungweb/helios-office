@@ -1,17 +1,24 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { AccountLifecycleStatus, type Prisma } from "@prisma/client";
+import { ConfigService } from "@nestjs/config";
+import { AccountLifecycleStatus, PermissionGroupStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { AdminSettingsService } from "../admin-settings/admin-settings.service";
 import { KeycloakAdminService } from "../auth/keycloak-admin.service";
+import { accountPermissionCatalog } from "../../common/mock-data";
 import {
-  accountLicenses,
-  accountPermissionCatalog,
-} from "../../common/mock-data";
-import {
+  CreatePermissionDefinitionDto,
   CreatePermissionGroupDto,
   CreateUserAccountDto,
+  UpdatePermissionDefinitionDto,
   UpdatePermissionGroupDto,
   UpdateUserAccountDto
 } from "./account-access.dto";
+import {
+  buildPermissionGroupIdBase,
+  buildPermissionGroupIdCandidate,
+  resolveCustomPermissionKeys,
+  resolveEffectivePermissionKeys
+} from "./account-access.utils";
 
 type AccountWithRelations = Prisma.UserAccountGetPayload<{
   include: {
@@ -24,102 +31,220 @@ type AccountWithRelations = Prisma.UserAccountGetPayload<{
   };
 }>;
 
+type PermissionGroupRecord = Prisma.PermissionGroupGetPayload<{}> & {
+  _count?: {
+    accounts: number;
+  };
+};
+
+type PermissionCatalogItem = {
+  key: string;
+  category: string;
+  label: string;
+  description: string | null;
+  adminOnly: boolean;
+  sortOrder: number;
+};
+
+const protectedPermissionGroupIds = new Set([
+  "grp-system-admin",
+  "grp-directors",
+  "grp-employees",
+  "grp-managers"
+]);
+
 @Injectable()
 export class AccountAccessService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly keycloakAdmin: KeycloakAdminService
+    private readonly keycloakAdmin: KeycloakAdminService,
+    private readonly config: ConfigService,
+    private readonly adminSettings: AdminSettingsService
   ) {}
 
   async findSummary() {
     const accounts = await this.prisma.userAccount.findMany();
-    const billableAccounts = accounts.filter((account) => account.accountStatus !== "closed");
 
     return {
       totalAccounts: accounts.length,
       activeAccounts: accounts.filter((account) => account.accountStatus === "active").length,
       pendingActivation: accounts.filter((account) => account.accountStatus === "pending_activation").length,
       closedAccounts: accounts.filter((account) => account.accountStatus === "closed").length,
-      billableLicenses: billableAccounts.length,
       systemAdmins: accounts.filter((account) => account.adminRole === "system_admin").length,
-      customizedAccounts: accounts.filter((account) => account.customPermissionsEnabled).length,
-      licenseUsage: accountLicenses.map((license) => ({
-        ...license,
-        used: billableAccounts.filter((account) => account.licensePlan === license.id).length
-      }))
+      customizedAccounts: accounts.filter((account) => account.customPermissionsEnabled).length
     };
   }
 
   async findAccounts() {
-    const accounts = await this.prisma.userAccount.findMany({
-      include: {
-        employee: {
-          include: {
-            department: true
-          }
+    const [accounts, permissionCatalog] = await Promise.all([
+      this.prisma.userAccount.findMany({
+        include: {
+          employee: {
+            include: {
+              department: true
+            }
+          },
+          permissionGroup: true
         },
-        permissionGroup: true
-      },
-      orderBy: [{ accountStatus: "asc" }, { displayName: "asc" }]
-    });
+        orderBy: [{ accountStatus: "asc" }, { displayName: "asc" }]
+      }),
+      this.findPermissionCatalog()
+    ]);
 
-    return accounts.map((account) => this.resolveAccount(account));
+    return accounts.map((account) => this.resolveAccount(account, permissionCatalog));
   }
 
   async findOne(id: string) {
-    const account = await this.prisma.userAccount.findUnique({
-      where: { id },
-      include: {
-        employee: {
-          include: {
-            department: true
-          }
+    const [account, permissionCatalog] = await Promise.all([
+      this.prisma.userAccount.findUnique({
+        where: { id },
+        include: {
+          employee: {
+            include: {
+              department: true
+            }
+          },
+          permissionGroup: true
         },
-        permissionGroup: true
-      }
-    });
+      }),
+      this.findPermissionCatalog()
+    ]);
 
     if (!account) {
       throw new NotFoundException(`Account ${id} was not found`);
     }
 
-    return this.resolveAccount(account);
+    return this.resolveAccount(account, permissionCatalog);
   }
 
   async findGroups() {
-    const groups = await this.prisma.permissionGroup.findMany({
-      include: {
-        _count: {
-          select: {
-            accounts: true
+    const [groups, permissionCatalog] = await Promise.all([
+      this.prisma.permissionGroup.findMany({
+        include: {
+          _count: {
+            select: {
+              accounts: true
+            }
           }
+        },
+        orderBy: [{ status: "asc" }, { name: "asc" }]
+      }),
+      this.findPermissionCatalog()
+    ]);
+
+    return groups.map((group) => this.resolvePermissionGroup(group, permissionCatalog));
+  }
+
+  async findPermissions() {
+    return this.findPermissionCatalog();
+  }
+
+  async createPermissionDefinition(dto: CreatePermissionDefinitionDto, actorId?: string) {
+    try {
+      const permission = await this.prisma.permissionDefinition.create({
+        data: {
+          key: dto.key,
+          category: dto.category,
+          label: dto.label,
+          description: dto.description,
+          adminOnly: dto.adminOnly ?? false,
+          sortOrder: dto.sortOrder ?? 0
         }
-      },
-      orderBy: { name: "asc" }
+      });
+
+      await this.writeCatalogAudit("permission_definition.create", permission.key, null, permission, actorId);
+
+      return this.resolvePermissionDefinition(permission);
+    } catch (error) {
+      if (this.isUniqueConstraintOn(error, "key")) {
+        throw new ConflictException(`Permission ${dto.key} already exists`);
+      }
+
+      throw error;
+    }
+  }
+
+  async updatePermissionDefinition(key: string, dto: UpdatePermissionDefinitionDto, actorId?: string) {
+    const before = await this.prisma.permissionDefinition.findUnique({
+      where: { key }
     });
 
-    return groups.map((group) => ({
-      ...group,
-      memberCount: group._count.accounts,
-      permissionKeys: group.permissions,
-      permissions: accountPermissionCatalog.filter((permission) =>
-        group.permissions.includes(permission.key)
-      )
-    }));
+    if (!before) {
+      throw new NotFoundException(`Permission ${key} was not found`);
+    }
+
+    const permission = await this.prisma.permissionDefinition.update({
+      where: { key },
+      data: {
+        category: dto.category,
+        label: dto.label,
+        description: dto.description,
+        adminOnly: dto.adminOnly,
+        sortOrder: dto.sortOrder
+      }
+    });
+
+    await this.writeCatalogAudit("permission_definition.update", permission.key, before, permission, actorId);
+
+    return this.resolvePermissionDefinition(permission);
   }
 
-  findLicenses() {
-    return accountLicenses;
+  async deletePermissionDefinition(key: string, actorId?: string) {
+    const before = await this.prisma.permissionDefinition.findUnique({
+      where: { key }
+    });
+
+    if (!before) {
+      throw new NotFoundException(`Permission ${key} was not found`);
+    }
+
+    const [groupsUsingPermission, customAccounts] = await Promise.all([
+      this.prisma.permissionGroup.count({
+        where: {
+          permissions: {
+            has: key
+          }
+        }
+      }),
+      this.prisma.userAccount.findMany({
+        where: {
+          customPermissionsEnabled: true
+        },
+        select: {
+          id: true,
+          customPermissions: true
+        }
+      })
+    ]);
+    const customAccountsUsingPermission = customAccounts.filter((account) =>
+      resolveCustomPermissionKeys(account.customPermissions).includes(key)
+    ).length;
+
+    if (groupsUsingPermission > 0 || customAccountsUsingPermission > 0) {
+      throw new ConflictException(
+        `Permission ${key} is in use by ${groupsUsingPermission} group(s) and ${customAccountsUsingPermission} custom account override(s)`
+      );
+    }
+
+    await this.prisma.permissionDefinition.delete({
+      where: { key }
+    });
+
+    await this.writeCatalogAudit("permission_definition.delete", key, before, null, actorId);
+
+    return { ok: true };
   }
 
-  findPermissions() {
-    return accountPermissionCatalog;
-  }
-
-  async createAccount(dto: CreateUserAccountDto) {
+  async createAccount(dto: CreateUserAccountDto, actorId?: string) {
     const customPermissionKeys = dto.customPermissionKeys ?? [];
     const adminRole = dto.adminRole ?? "user";
     const accountStatus = dto.accountStatus ?? AccountLifecycleStatus.pending_activation;
+    const requirePasswordChange = dto.requirePasswordChange ?? true;
+    const sendInviteEmail = dto.sendInviteEmail ?? false;
+    const temporaryPasswordIssuedAt = dto.initialPassword ? new Date() : null;
+    await this.assertAssignablePermissionGroup(dto.permissionGroupId);
+    await this.assertKnownPermissionKeys(customPermissionKeys);
+
     const existingAccount = await this.prisma.userAccount.findUnique({
       where: { email: dto.email }
     });
@@ -133,6 +258,8 @@ export class AccountAccessService {
       displayName: dto.displayName,
       enabled: this.isKeycloakUserEnabled(accountStatus),
       initialPassword: dto.initialPassword,
+      temporaryPassword: Boolean(dto.initialPassword && requirePasswordChange),
+      requiredActions: requirePasswordChange ? ["UPDATE_PASSWORD"] : [],
       roles: [adminRole],
       username: dto.username ?? dto.email
     });
@@ -144,12 +271,14 @@ export class AccountAccessService {
           displayName: dto.displayName,
           roles: [adminRole],
           adminRole,
-          licensePlan: dto.licensePlan ?? "standard",
           accountStatus,
           permissionGroupId: dto.permissionGroupId,
           customPermissionsEnabled: customPermissionKeys.length > 0,
           customPermissions: customPermissionKeys,
           customPermissionNote: dto.customPermissionNote,
+          passwordResetRequired: requirePasswordChange,
+          temporaryPasswordIssuedAt,
+          inviteEmailRequested: sendInviteEmail,
           activatedAt: accountStatus === AccountLifecycleStatus.active ? new Date() : null
         }
       });
@@ -161,15 +290,23 @@ export class AccountAccessService {
         });
       }
 
-      await this.writeAudit(tx, "account.create", "UserAccount", account.id, null, account);
+      await this.writeAudit(tx, "account.create", "UserAccount", account.id, null, account, actorId);
 
       return account;
     });
 
+    await this.deliverInviteIfReady(created.id, actorId);
+
     return this.findOne(created.id);
   }
 
-  async updateAccount(id: string, dto: UpdateUserAccountDto) {
+  async updateAccount(id: string, dto: UpdateUserAccountDto, actorId?: string) {
+    await this.assertAssignablePermissionGroup(dto.permissionGroupId);
+
+    if (dto.customPermissionKeys !== undefined) {
+      await this.assertKnownPermissionKeys(dto.customPermissionKeys);
+    }
+
     const before = await this.prisma.userAccount.findUnique({
       where: { id },
       include: {
@@ -201,10 +338,6 @@ export class AccountAccessService {
       if (dto.adminRole !== undefined) {
         data.adminRole = dto.adminRole;
         data.roles = [dto.adminRole];
-      }
-
-      if (dto.licensePlan !== undefined) {
-        data.licensePlan = dto.licensePlan;
       }
 
       if (dto.accountStatus !== undefined) {
@@ -253,7 +386,7 @@ export class AccountAccessService {
         }
       }
 
-      await this.writeAudit(tx, "account.update", "UserAccount", account.id, before, account);
+      await this.writeAudit(tx, "account.update", "UserAccount", account.id, before, account, actorId);
 
       return account;
     });
@@ -261,49 +394,136 @@ export class AccountAccessService {
     return this.findOne(updated.id);
   }
 
-  async activateAccount(id: string) {
-    return this.updateAccount(id, {
+  async activateAccount(id: string, actorId?: string) {
+    await this.updateAccount(id, {
       accountStatus: AccountLifecycleStatus.active
-    });
+    }, actorId);
+
+    await this.deliverInviteIfReady(id, actorId);
+
+    return this.findOne(id);
   }
 
-  async closeAccount(id: string) {
+  async closeAccount(id: string, actorId?: string) {
     return this.updateAccount(id, {
       accountStatus: AccountLifecycleStatus.closed
-    });
+    }, actorId);
   }
 
-  async createGroup(dto: CreatePermissionGroupDto) {
-    const group = await this.prisma.permissionGroup.create({
-      data: {
-        name: dto.name,
-        description: dto.description,
-        roleScope: dto.roleScope ?? "user",
-        licensePlan: dto.licensePlan ?? "standard",
-        permissions: dto.permissionKeys ?? []
-      }
+  async resendInvite(id: string, actorId?: string) {
+    const account = await this.prisma.userAccount.findUnique({
+      where: { id }
     });
 
-    await this.prisma.auditLog.create({
-      data: {
-        action: "permission_group.create",
-        entityType: "PermissionGroup",
-        entityId: group.id,
-        afterValue: this.toAuditJson(group)
-      }
-    });
+    if (!account) {
+      throw new NotFoundException(`Account ${id} was not found`);
+    }
 
-    return {
-      ...group,
-      memberCount: 0,
-      permissionKeys: group.permissions,
-      permissions: accountPermissionCatalog.filter((permission) =>
-        group.permissions.includes(permission.key)
-      )
-    };
+    if (account.accountStatus !== AccountLifecycleStatus.active) {
+      throw new ConflictException("Activate the account before sending an invite email");
+    }
+
+    if (!(await this.isInviteEmailEnabled())) {
+      throw new ConflictException("SMTP invite email is not enabled or is missing required configuration");
+    }
+
+    try {
+      let keycloakUserId = account.keycloakUserId;
+
+      if (account.keycloakUserId.startsWith("local-")) {
+        const provisioned = await this.keycloakAdmin.provisionUser({
+          email: account.email,
+          displayName: account.displayName,
+          enabled: true,
+          requiredActions: ["UPDATE_PASSWORD"],
+          roles: [account.adminRole],
+          username: account.email
+        });
+
+        keycloakUserId = provisioned.id;
+      } else {
+        await this.keycloakAdmin.updateUser(account.keycloakUserId, {
+          enabled: true,
+          requiredActions: ["UPDATE_PASSWORD"],
+          roles: [account.adminRole]
+        });
+      }
+
+      await this.keycloakAdmin.sendRequiredActionsEmail(keycloakUserId, ["UPDATE_PASSWORD"]);
+
+      const updated = await this.prisma.userAccount.update({
+        where: { id: account.id },
+        data: {
+          keycloakUserId,
+          passwordResetRequired: true,
+          inviteEmailRequested: true,
+          inviteSentAt: new Date()
+        }
+      });
+
+      await this.writeSystemAudit("account.invite.resent", "UserAccount", account.id, account, updated, actorId);
+
+      return this.findOne(account.id);
+    } catch (error) {
+      await this.writeSystemAudit("account.invite.failed", "UserAccount", account.id, null, {
+        email: account.email,
+        reason: error instanceof Error ? error.message.slice(0, 300) : "unknown_error"
+      }, actorId);
+
+      throw error;
+    }
   }
 
-  async updateGroup(id: string, dto: UpdatePermissionGroupDto) {
+  async createGroup(dto: CreatePermissionGroupDto, actorId?: string) {
+    const baseId = buildPermissionGroupIdBase(dto.name);
+    const permissionKeys = await this.assertKnownPermissionKeys(dto.permissionKeys ?? []);
+
+    for (let attempt = 1; attempt <= 20; attempt += 1) {
+      const id = buildPermissionGroupIdCandidate(baseId, attempt);
+
+      try {
+        const group = await this.prisma.permissionGroup.create({
+          data: {
+            id,
+            name: dto.name,
+            description: dto.description,
+            roleScope: dto.roleScope ?? "user",
+            permissions: permissionKeys,
+            status: PermissionGroupStatus.active
+          }
+        });
+
+        await this.prisma.auditLog.create({
+          data: {
+            actorId,
+            action: "permission_group.create",
+            entityType: "PermissionGroup",
+            entityId: group.id,
+            afterValue: this.toAuditJson(group)
+          }
+        });
+
+        return this.resolvePermissionGroup({ ...group, _count: { accounts: 0 } }, await this.findPermissionCatalog());
+      } catch (error) {
+        if (this.isUniqueConstraintOn(error, "id")) {
+          continue;
+        }
+
+        if (this.isUniqueConstraintOn(error, "name")) {
+          throw new ConflictException(`Permission group "${dto.name}" already exists`);
+        }
+
+        throw error;
+      }
+    }
+
+    throw new ConflictException(`Could not create a unique permission group id for "${dto.name}"`);
+  }
+
+  async updateGroup(id: string, dto: UpdatePermissionGroupDto, actorId?: string) {
+    const permissionKeys = dto.permissionKeys
+      ? await this.assertKnownPermissionKeys(dto.permissionKeys)
+      : dto.permissionKeys;
     const before = await this.prisma.permissionGroup.findUnique({
       where: { id }
     });
@@ -312,19 +532,30 @@ export class AccountAccessService {
       throw new NotFoundException(`Permission group ${id} was not found`);
     }
 
+    if (before.status === PermissionGroupStatus.archived) {
+      throw new ConflictException("Archived permission groups cannot be updated");
+    }
+
     const group = await this.prisma.permissionGroup.update({
       where: { id },
       data: {
         name: dto.name,
         description: dto.description,
         roleScope: dto.roleScope,
-        licensePlan: dto.licensePlan,
-        permissions: dto.permissionKeys
+        permissions: permissionKeys
+      },
+      include: {
+        _count: {
+          select: {
+            accounts: true
+          }
+        }
       }
     });
 
     await this.prisma.auditLog.create({
       data: {
+        actorId,
         action: "permission_group.update",
         entityType: "PermissionGroup",
         entityId: group.id,
@@ -333,26 +564,135 @@ export class AccountAccessService {
       }
     });
 
-    return {
-      ...group,
-      permissionKeys: group.permissions,
-      permissions: accountPermissionCatalog.filter((permission) =>
-        group.permissions.includes(permission.key)
-      )
-    };
+    return this.resolvePermissionGroup(group, await this.findPermissionCatalog());
   }
 
-  private resolveAccount(account: AccountWithRelations) {
+  async archiveGroup(id: string, actorId?: string) {
+    const before = await this.prisma.permissionGroup.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            accounts: true
+          }
+        }
+      }
+    });
+
+    if (!before) {
+      throw new NotFoundException(`Permission group ${id} was not found`);
+    }
+
+    if (protectedPermissionGroupIds.has(before.id)) {
+      throw new ConflictException("Default permission groups cannot be archived");
+    }
+
+    if (before.status === PermissionGroupStatus.archived) {
+      return this.resolvePermissionGroup(before, await this.findPermissionCatalog());
+    }
+
+    if (before._count.accounts > 0) {
+      throw new ConflictException("Move all accounts out of this permission group before archiving it");
+    }
+
+    const group = await this.prisma.permissionGroup.update({
+      where: { id },
+      data: {
+        status: PermissionGroupStatus.archived,
+        archivedAt: new Date()
+      },
+      include: {
+        _count: {
+          select: {
+            accounts: true
+          }
+        }
+      }
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        actorId,
+        action: "permission_group.archive",
+        entityType: "PermissionGroup",
+        entityId: group.id,
+        beforeValue: this.toAuditJson(before),
+        afterValue: this.toAuditJson(group)
+      }
+    });
+
+    return this.resolvePermissionGroup(group, await this.findPermissionCatalog());
+  }
+
+  async restoreGroup(id: string, actorId?: string) {
+    const before = await this.prisma.permissionGroup.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            accounts: true
+          }
+        }
+      }
+    });
+
+    if (!before) {
+      throw new NotFoundException(`Permission group ${id} was not found`);
+    }
+
+    if (before.status === PermissionGroupStatus.active) {
+      return this.resolvePermissionGroup(before, await this.findPermissionCatalog());
+    }
+
+    const group = await this.prisma.permissionGroup.update({
+      where: { id },
+      data: {
+        status: PermissionGroupStatus.active,
+        archivedAt: null
+      },
+      include: {
+        _count: {
+          select: {
+            accounts: true
+          }
+        }
+      }
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        actorId,
+        action: "permission_group.restore",
+        entityType: "PermissionGroup",
+        entityId: group.id,
+        beforeValue: this.toAuditJson(before),
+        afterValue: this.toAuditJson(group)
+      }
+    });
+
+    return this.resolvePermissionGroup(group, await this.findPermissionCatalog());
+  }
+
+  private resolveAccount(account: AccountWithRelations, permissionCatalog: PermissionCatalogItem[]) {
     const group = account.permissionGroup;
-    const license = accountLicenses.find((item) => item.id === account.licensePlan) ?? null;
     const employee = account.employee;
-    const customPermissionKeys = this.resolveCustomPermissionKeys(account.customPermissions);
-    const effectivePermissionKeys = Array.from(
-      new Set([...(group?.permissions ?? []), ...customPermissionKeys])
+    const customPermissionKeys = account.customPermissionsEnabled
+      ? resolveCustomPermissionKeys(account.customPermissions)
+      : [];
+    const effectivePermissionKeys = resolveEffectivePermissionKeys(
+      {
+        adminRole: account.adminRole,
+        accountStatus: account.accountStatus,
+        permissionGroupStatus: group?.status,
+        groupPermissionKeys: group?.permissions,
+        customPermissionKeys
+      },
+      permissionCatalog.map((permission) => permission.key)
     );
+    const { licensePlan: _licensePlan, permissionGroup: _permissionGroup, customPermissions: _customPermissions, ...accountData } = account;
 
     return {
-      ...account,
+      ...accountData,
       employeeId: employee?.id ?? null,
       role: account.adminRole,
       status: account.accountStatus,
@@ -363,30 +703,107 @@ export class AccountAccessService {
             department: employee.department.name
           }
         : null,
-      group,
-      license,
+      group: group ? this.resolvePermissionGroup(group, permissionCatalog) : null,
       customPermissionKeys,
-      effectivePermissions: accountPermissionCatalog.filter((permission) =>
+      effectivePermissionKeys,
+      effectivePermissions: permissionCatalog.filter((permission) =>
         effectivePermissionKeys.includes(permission.key)
       )
     };
   }
 
-  private resolveCustomPermissionKeys(value: unknown) {
-    if (Array.isArray(value)) {
-      return value.filter((item): item is string => typeof item === "string");
+  private resolvePermissionGroup(group: PermissionGroupRecord, permissionCatalog: PermissionCatalogItem[]) {
+    const { _count, licensePlan: _licensePlan, ...permissionGroup } = group;
+
+    return {
+      ...permissionGroup,
+      memberCount: _count?.accounts ?? 0,
+      permissionKeys: group.permissions,
+      permissions: permissionCatalog.filter((permission) =>
+        group.permissions.includes(permission.key)
+      )
+    };
+  }
+
+  private async findPermissionCatalog(): Promise<PermissionCatalogItem[]> {
+    const permissions = await this.prisma.permissionDefinition.findMany({
+      orderBy: [{ sortOrder: "asc" }, { category: "asc" }, { key: "asc" }]
+    });
+    const defaultPermissions = accountPermissionCatalog.map((permission, index) => ({
+      ...permission,
+      description: null,
+      sortOrder: index + 1
+    }));
+
+    if (permissions.length === 0) {
+      return defaultPermissions;
     }
 
-    if (
-      value &&
-      typeof value === "object" &&
-      "keys" in value &&
-      Array.isArray((value as { keys?: unknown }).keys)
-    ) {
-      return (value as { keys: unknown[] }).keys.filter((item): item is string => typeof item === "string");
+    const permissionByKey = new Map<string, PermissionCatalogItem>();
+
+    for (const permission of defaultPermissions) {
+      permissionByKey.set(permission.key, permission);
     }
 
-    return [];
+    for (const permission of permissions) {
+      permissionByKey.set(permission.key, this.resolvePermissionDefinition(permission));
+    }
+
+    return Array.from(permissionByKey.values()).sort(
+      (first, second) =>
+        first.sortOrder - second.sortOrder ||
+        first.category.localeCompare(second.category, "vi") ||
+        first.key.localeCompare(second.key)
+    );
+  }
+
+  private resolvePermissionDefinition(permission: Prisma.PermissionDefinitionGetPayload<{}>): PermissionCatalogItem {
+    return {
+      key: permission.key,
+      category: permission.category,
+      label: permission.label,
+      description: permission.description,
+      adminOnly: permission.adminOnly,
+      sortOrder: permission.sortOrder
+    };
+  }
+
+  private async assertKnownPermissionKeys(permissionKeys: string[]) {
+    if (permissionKeys.length === 0) {
+      return permissionKeys;
+    }
+
+    const catalog = await this.findPermissionCatalog();
+    const catalogKeys = new Set(catalog.map((permission) => permission.key));
+    const unknownKeys = permissionKeys.filter((permissionKey) => !catalogKeys.has(permissionKey));
+
+    if (unknownKeys.length > 0) {
+      throw new ConflictException(`Unknown permission keys: ${unknownKeys.join(", ")}`);
+    }
+
+    return permissionKeys;
+  }
+
+  private async assertAssignablePermissionGroup(groupId: string | null | undefined) {
+    if (groupId === undefined || groupId === null) {
+      return;
+    }
+
+    const group = await this.prisma.permissionGroup.findUnique({
+      where: { id: groupId },
+      select: {
+        id: true,
+        status: true
+      }
+    });
+
+    if (!group) {
+      throw new NotFoundException(`Permission group ${groupId} was not found`);
+    }
+
+    if (group.status === PermissionGroupStatus.archived) {
+      throw new ConflictException("Archived permission groups cannot be assigned to accounts");
+    }
   }
 
   private async writeAudit(
@@ -395,10 +812,12 @@ export class AccountAccessService {
     entityType: string,
     entityId: string,
     beforeValue: unknown,
-    afterValue: unknown
+    afterValue: unknown,
+    actorId?: string
   ) {
     await tx.auditLog.create({
       data: {
+        actorId,
         action,
         entityType,
         entityId,
@@ -410,6 +829,20 @@ export class AccountAccessService {
 
   private toAuditJson(value: unknown) {
     return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+  }
+
+  private isUniqueConstraintOn(error: unknown, field: string) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+      return false;
+    }
+
+    const target = error.meta?.target;
+
+    if (Array.isArray(target)) {
+      return target.includes(field);
+    }
+
+    return typeof target === "string" && target.includes(field);
   }
 
   private isKeycloakUserEnabled(status: AccountLifecycleStatus) {
@@ -455,5 +888,114 @@ export class AccountAccessService {
     });
 
     return null;
+  }
+
+  private async deliverInviteIfReady(accountId: string, actorId?: string) {
+    const account = await this.prisma.userAccount.findUnique({
+      where: { id: accountId },
+      select: {
+        id: true,
+        keycloakUserId: true,
+        email: true,
+        displayName: true,
+        accountStatus: true,
+        passwordResetRequired: true,
+        inviteEmailRequested: true,
+        inviteSentAt: true
+      }
+    });
+
+    if (!account || !account.inviteEmailRequested || account.inviteSentAt) {
+      return;
+    }
+
+    if (account.accountStatus !== AccountLifecycleStatus.active) {
+      await this.writeSystemAudit("account.invite.deferred", "UserAccount", account.id, null, {
+        email: account.email,
+        reason: "account_not_active",
+        accountStatus: account.accountStatus
+      }, actorId);
+      return;
+    }
+
+    if (!account.passwordResetRequired) {
+      await this.writeSystemAudit("account.invite.skipped", "UserAccount", account.id, null, {
+        email: account.email,
+        reason: "no_required_actions"
+      }, actorId);
+      return;
+    }
+
+    if (!(await this.isInviteEmailEnabled())) {
+      await this.writeSystemAudit("account.invite.skipped", "UserAccount", account.id, null, {
+        email: account.email,
+        reason: "invite_email_disabled"
+      }, actorId);
+      return;
+    }
+
+    try {
+      await this.keycloakAdmin.sendRequiredActionsEmail(account.keycloakUserId, ["UPDATE_PASSWORD"]);
+      const updated = await this.prisma.userAccount.update({
+        where: { id: account.id },
+        data: {
+          inviteSentAt: new Date()
+        }
+      });
+
+      await this.writeSystemAudit("account.invite.sent", "UserAccount", account.id, account, updated, actorId);
+    } catch (error) {
+      await this.writeSystemAudit("account.invite.failed", "UserAccount", account.id, null, {
+        email: account.email,
+        reason: error instanceof Error ? error.message.slice(0, 300) : "unknown_error"
+      }, actorId);
+    }
+  }
+
+  private async isInviteEmailEnabled() {
+    if (this.config.get<string>("ACCOUNT_INVITE_EMAIL_ENABLED") === "true") {
+      return true;
+    }
+
+    return this.adminSettings.isSmtpEmailEnabled();
+  }
+
+  private async writeSystemAudit(
+    action: string,
+    entityType: string,
+    entityId: string,
+    beforeValue: unknown,
+    afterValue: unknown,
+    actorId?: string
+  ) {
+    await this.prisma.auditLog.create({
+      data: {
+        actorId,
+        action,
+        entityType,
+        entityId,
+        beforeValue: beforeValue === null ? undefined : this.toAuditJson(beforeValue),
+        afterValue: this.toAuditJson(afterValue)
+      }
+    });
+  }
+
+  private async writeCatalogAudit(
+    action: string,
+    entityId: string,
+    beforeValue: unknown,
+    afterValue: unknown,
+    actorId?: string
+  ) {
+    await this.prisma.auditLog.create({
+      data: {
+        actorId,
+        action,
+        entityType: "PermissionDefinition",
+        entityId,
+        beforeValue: beforeValue === null ? undefined : this.toAuditJson(beforeValue),
+        afterValue: afterValue === null ? undefined : this.toAuditJson(afterValue)
+      }
+    });
   }
 }

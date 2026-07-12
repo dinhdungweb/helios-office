@@ -74,6 +74,7 @@ const launcherSections: LauncherSection[] = [
   {
     title: "Quản trị",
     items: [
+      { label: "Dashboard Admin", icon: ShieldCheck, tone: "green", href: "/admin" as Route },
       { label: "Cài đặt hệ thống", icon: GearSix, tone: "blue", href: "/admin/settings" as Route },
       { label: "Quản trị tài khoản", icon: ShieldCheck, tone: "purple", href: "/admin/settings/accounts" as Route }
     ]

@@ -7,12 +7,12 @@ import {
   AttendanceStatus,
   DeviceAuthStatus,
   EmployeeStatus,
-  LicensePlan,
   PayrollStatus,
   PrismaClient
 } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
+  accountPermissionCatalog,
   attendanceRecords,
   contracts,
   departments,
@@ -41,6 +41,76 @@ const deviceAuthPolicySeed = {
   requireWifiForOffice: true,
   approvalRefreshHint: "Sau khi được xác thực, nhân viên nên đăng xuất và đăng nhập lại App hoặc tải lại trang GPS."
 };
+
+const jobPositionsSeed = [
+  {
+    id: "pos-software-engineer",
+    code: "POS-SWE",
+    name: "Ky su phan mem",
+    family: "Technology",
+    description: "Phat trien, bao tri va toi uu san pham phan mem noi bo."
+  },
+  {
+    id: "pos-hr-executive",
+    code: "POS-HR",
+    name: "HR Executive",
+    family: "People Operations",
+    description: "Quan ly ho so nhan su, hop dong, cham cong va nghiep vu HRM."
+  },
+  {
+    id: "pos-sales-specialist",
+    code: "POS-SALES",
+    name: "Sales Specialist",
+    family: "Sales",
+    description: "Cham soc khach hang, quan ly pipeline va phoi hop xu ly hop dong."
+  },
+  {
+    id: "pos-operations-coordinator",
+    code: "POS-OPS",
+    name: "Operations Coordinator",
+    family: "Operations",
+    description: "Dieu phoi van hanh, theo doi tai san va cap nhat bao cao."
+  }
+];
+
+const jobTitlesSeed = [
+  {
+    id: "title-staff",
+    code: "TTL-STF",
+    name: "Nhan vien",
+    rank: 10,
+    description: "Cap bac nhan su thong thuong."
+  },
+  {
+    id: "title-team-lead",
+    code: "TTL-LEAD",
+    name: "Truong nhom",
+    rank: 40,
+    description: "Dieu phoi nhom nho va co the la buoc duyet trung gian."
+  },
+  {
+    id: "title-manager",
+    code: "TTL-MGR",
+    name: "Truong phong",
+    rank: 70,
+    description: "Quan ly phong ban va phe duyet nghiep vu trong bo phan."
+  },
+  {
+    id: "title-director",
+    code: "TTL-DIR",
+    name: "Giam doc",
+    rank: 100,
+    description: "Cap quan tri cao nhat trong luong phe duyet nghiep vu."
+  }
+];
+
+const employeeJobCatalogByTitle = new Map([
+  ["Web Lead", { positionId: "pos-software-engineer", jobTitleId: "title-team-lead" }],
+  ["HR Executive", { positionId: "pos-hr-executive", jobTitleId: "title-staff" }],
+  ["Sales Specialist", { positionId: "pos-sales-specialist", jobTitleId: "title-staff" }],
+  ["Operations Coordinator", { positionId: "pos-operations-coordinator", jobTitleId: "title-staff" }],
+  ["Sales Manager", { positionId: "pos-sales-specialist", jobTitleId: "title-manager" }]
+]);
 
 const deviceAuthRequestsSeed = [
   {
@@ -162,18 +232,6 @@ function normalizeAdminRole(value: string) {
   return value === "system_admin" ? AccountAdminRole.system_admin : AccountAdminRole.user;
 }
 
-function normalizeLicensePlan(value: string) {
-  if (value === "enterprise") {
-    return LicensePlan.enterprise;
-  }
-
-  if (value === "professional") {
-    return LicensePlan.professional;
-  }
-
-  return LicensePlan.standard;
-}
-
 function normalizeAccountStatus(value: string) {
   if (value === "active") {
     return AccountLifecycleStatus.active;
@@ -200,6 +258,18 @@ function normalizeEmployeeStatus(value: string) {
   }
 
   return EmployeeStatus.active;
+}
+
+function payrollTemplateForDepartment(departmentName: string) {
+  if (departmentName === "Sales") {
+    return "sales";
+  }
+
+  if (departmentName === "Operations") {
+    return "operations";
+  }
+
+  return "office-standard";
 }
 
 function normalizeAttendanceStatus(value: string) {
@@ -268,6 +338,38 @@ function payrollPeriodFromId(id: string) {
   return { periodStart, periodEnd };
 }
 
+async function seedPermissionDefinitions() {
+  for (const [index, permission] of accountPermissionCatalog.entries()) {
+    await prisma.permissionDefinition.upsert({
+      where: { key: permission.key },
+      update: {
+        category: permission.category,
+        label: permission.label,
+        adminOnly: permission.adminOnly,
+        sortOrder: index + 1
+      },
+      create: {
+        key: permission.key,
+        category: permission.category,
+        label: permission.label,
+        adminOnly: permission.adminOnly,
+        sortOrder: index + 1
+      }
+    });
+  }
+}
+
+function seedPermissionKeys(permissionKeys: string[], sourceName: string) {
+  const catalogKeys = new Set(accountPermissionCatalog.map((permission) => permission.key));
+  const unknownKeys = permissionKeys.filter((permissionKey) => !catalogKeys.has(permissionKey));
+
+  if (unknownKeys.length > 0) {
+    throw new Error(`Unknown permission keys in ${sourceName}: ${unknownKeys.join(", ")}`);
+  }
+
+  return permissionKeys;
+}
+
 async function seedPermissionGroups() {
   for (const group of permissionGroups) {
     await prisma.permissionGroup.upsert({
@@ -276,16 +378,14 @@ async function seedPermissionGroups() {
         name: group.name,
         description: group.description,
         roleScope: normalizeAdminRole(group.roleScope),
-        licensePlan: normalizeLicensePlan(group.licensePlan),
-        permissions: group.permissionKeys
+        permissions: seedPermissionKeys(group.permissionKeys, group.id)
       },
       create: {
         id: group.id,
         name: group.name,
         description: group.description,
         roleScope: normalizeAdminRole(group.roleScope),
-        licensePlan: normalizeLicensePlan(group.licensePlan),
-        permissions: group.permissionKeys
+        permissions: seedPermissionKeys(group.permissionKeys, group.id)
       }
     });
   }
@@ -296,15 +396,66 @@ async function seedDepartments() {
     await prisma.department.upsert({
       where: { id: department.id },
       update: {
+        code: department.code,
         name: department.name,
         parentId: department.parentId,
-        headId: department.headId
+        headId: department.headId,
+        status: "active",
+        archivedAt: null
       },
       create: {
         id: department.id,
+        code: department.code,
         name: department.name,
         parentId: department.parentId,
-        headId: department.headId
+        headId: department.headId,
+        status: "active"
+      }
+    });
+  }
+}
+
+async function seedJobCatalog() {
+  for (const position of jobPositionsSeed) {
+    await prisma.jobPosition.upsert({
+      where: { id: position.id },
+      update: {
+        code: position.code,
+        name: position.name,
+        family: position.family,
+        description: position.description,
+        status: "active",
+        archivedAt: null
+      },
+      create: {
+        id: position.id,
+        code: position.code,
+        name: position.name,
+        family: position.family,
+        description: position.description,
+        status: "active"
+      }
+    });
+  }
+
+  for (const title of jobTitlesSeed) {
+    await prisma.jobTitle.upsert({
+      where: { id: title.id },
+      update: {
+        code: title.code,
+        name: title.name,
+        rank: title.rank,
+        description: title.description,
+        status: "active",
+        archivedAt: null
+      },
+      create: {
+        id: title.id,
+        code: title.code,
+        name: title.name,
+        rank: title.rank,
+        description: title.description,
+        status: "active"
       }
     });
   }
@@ -320,11 +471,10 @@ async function seedUserAccounts() {
         displayName: account.displayName,
         roles: [account.role],
         adminRole: normalizeAdminRole(account.role),
-        licensePlan: normalizeLicensePlan(account.licensePlan),
         accountStatus: normalizeAccountStatus(account.status),
         permissionGroupId: account.permissionGroupId,
         customPermissionsEnabled: account.customPermissionsEnabled,
-        customPermissions: account.customPermissionKeys,
+        customPermissions: seedPermissionKeys(account.customPermissionKeys, account.id),
         customPermissionNote: account.customPermissionNote,
         activatedAt: toDate(account.activatedAt),
         closedAt: toDate(account.closedAt)
@@ -336,11 +486,10 @@ async function seedUserAccounts() {
         displayName: account.displayName,
         roles: [account.role],
         adminRole: normalizeAdminRole(account.role),
-        licensePlan: normalizeLicensePlan(account.licensePlan),
         accountStatus: normalizeAccountStatus(account.status),
         permissionGroupId: account.permissionGroupId,
         customPermissionsEnabled: account.customPermissionsEnabled,
-        customPermissions: account.customPermissionKeys,
+        customPermissions: seedPermissionKeys(account.customPermissionKeys, account.id),
         customPermissionNote: account.customPermissionNote,
         activatedAt: toDate(account.activatedAt),
         closedAt: toDate(account.closedAt)
@@ -361,6 +510,7 @@ async function seedEmployees() {
   for (const employee of employees) {
     const department = departmentByName.get(employee.department);
     const account = accountByEmployeeId.get(employee.id);
+    const jobCatalog = employeeJobCatalogByTitle.get(employee.title);
 
     if (!department) {
       throw new Error(`Missing department ${employee.department} for employee ${employee.id}`);
@@ -374,8 +524,15 @@ async function seedEmployees() {
         title: employee.title,
         status: normalizeEmployeeStatus(employee.status),
         startDate: toWorkDate(employee.startDate),
+        employeeType: "official",
+        attendanceCode: employee.code,
+        attendanceMode: "app_and_device",
+        payrollTemplate: payrollTemplateForDepartment(employee.department),
+        standardWorkdays: 26,
         userAccountId: account?.id ?? null,
         departmentId: department.id,
+        positionId: jobCatalog?.positionId ?? null,
+        jobTitleId: jobCatalog?.jobTitleId ?? null,
         managerId: employee.managerId && employeeIds.has(employee.managerId) ? employee.managerId : null
       },
       create: {
@@ -385,8 +542,15 @@ async function seedEmployees() {
         title: employee.title,
         status: normalizeEmployeeStatus(employee.status),
         startDate: toWorkDate(employee.startDate),
+        employeeType: "official",
+        attendanceCode: employee.code,
+        attendanceMode: "app_and_device",
+        payrollTemplate: payrollTemplateForDepartment(employee.department),
+        standardWorkdays: 26,
         userAccountId: account?.id ?? null,
         departmentId: department.id,
+        positionId: jobCatalog?.positionId ?? null,
+        jobTitleId: jobCatalog?.jobTitleId ?? null,
         managerId: employee.managerId && employeeIds.has(employee.managerId) ? employee.managerId : null
       }
     });
@@ -582,8 +746,10 @@ async function seedDeviceAuth() {
 }
 
 async function main() {
+  await seedPermissionDefinitions();
   await seedPermissionGroups();
   await seedDepartments();
+  await seedJobCatalog();
   await seedUserAccounts();
   await seedEmployees();
   await seedContracts();

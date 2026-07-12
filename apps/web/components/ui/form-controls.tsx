@@ -9,7 +9,7 @@ import {
   type InputHTMLAttributes,
   type ReactNode
 } from "react";
-import { CalendarBlank, CaretDown } from "@/lib/icons";
+import { CalendarBlank, CaretDown, Check } from "@/lib/icons";
 
 export type FormSelectOption = {
   label: string;
@@ -343,7 +343,9 @@ export function FormCheckbox({ className, label, ...inputProps }: FormCheckboxPr
   return (
     <label className={joinClassNames("form-checkbox", className)}>
       <input {...inputProps} type="checkbox" />
-      <span className="form-checkbox-box" aria-hidden="true" />
+      <span className="form-checkbox-box" aria-hidden="true">
+        <Check size={13} weight="duotone" />
+      </span>
       <span className="form-checkbox-label">{label}</span>
     </label>
   );

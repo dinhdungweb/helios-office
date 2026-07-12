@@ -31,96 +31,125 @@ export const employees = [
   }
 ];
 
-export const accountLicenses = [
-  {
-    id: "standard",
-    name: "STANDARD",
-    description: "Gói cơ bản cho nhân sự sử dụng các nghiệp vụ thiết yếu.",
-    modules: ["Hồ sơ", "Đơn từ", "Chấm công cá nhân", "Thông báo"]
-  },
-  {
-    id: "professional",
-    name: "PROFESSIONAL",
-    description: "Gói chuyên nghiệp cho quản lý phòng ban và HR vận hành.",
-    modules: ["Duyệt đơn", "Báo cáo phòng ban", "Quy trình", "Tài sản"]
-  },
-  {
-    id: "enterprise",
-    name: "ENTERPRISE",
-    description: "Gói cao nhất cho quản trị hệ thống, API và tùy biến sâu.",
-    modules: ["Open API", "Sơ đồ tổ chức", "Báo cáo tổng thể", "Cấu hình hệ thống"]
-  }
-];
-
 export const accountPermissionCatalog = [
   {
     key: "system.organization.manage",
     category: "Quản trị hệ thống",
     label: "Cài đặt sơ đồ tổ chức",
-    minimumLicense: "enterprise",
     adminOnly: true
   },
   {
     key: "system.accounts.manage",
     category: "Quản trị hệ thống",
     label: "Kích hoạt, đóng tài khoản nhân viên",
-    minimumLicense: "enterprise",
     adminOnly: true
   },
   {
     key: "system.approval_flow.manage",
     category: "Quản trị hệ thống",
     label: "Thiết lập quy trình duyệt",
-    minimumLicense: "professional",
     adminOnly: true
   },
   {
     key: "system.open_api.manage",
     category: "Quản trị hệ thống",
     label: "Cấu hình Open API",
-    minimumLicense: "enterprise",
     adminOnly: true
   },
   {
     key: "system.branding.manage",
     category: "Quản trị hệ thống",
     label: "Thay đổi giao diện và logo công ty",
-    minimumLicense: "enterprise",
     adminOnly: true
   },
   {
     key: "reports.company.view",
     category: "Báo cáo",
     label: "Xem báo cáo tổng thể",
-    minimumLicense: "professional",
     adminOnly: false
   },
   {
     key: "approvals.critical.approve",
     category: "Phê duyệt",
     label: "Phê duyệt đơn từ quan trọng",
-    minimumLicense: "professional",
     adminOnly: false
   },
   {
     key: "employees.department.manage",
     category: "Nhân sự",
     label: "Quản lý nhân sự trong bộ phận",
-    minimumLicense: "professional",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.attendance.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget chấm công HCNS",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.requests.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget đơn từ HCNS",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.people.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget biến động nhân sự",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.contracts.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget hợp đồng HCNS",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.organization.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget cơ cấu tổ chức HCNS",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.analytics.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget BI HRM",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.modules.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget nghiệp vụ HRM",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.birthdays.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget sinh nhật nội bộ",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.shortcuts.view",
+    category: "Dashboard HCNS",
+    label: "Xem lối tắt HCNS",
+    adminOnly: false
+  },
+  {
+    key: "attendance.device.manage",
+    category: "Chấm công",
+    label: "Quản lý xác thực thiết bị chấm công",
     adminOnly: false
   },
   {
     key: "requests.personal.create",
     category: "Cá nhân",
     label: "Tạo đơn từ cá nhân",
-    minimumLicense: "standard",
     adminOnly: false
   },
   {
     key: "tasks.assigned.update",
     category: "Cá nhân",
     label: "Cập nhật công việc được giao",
-    minimumLicense: "standard",
     adminOnly: false
   }
 ];
@@ -131,7 +160,6 @@ export const permissionGroups = [
     name: "Admin hệ thống",
     description: "Chủ doanh nghiệp, IT hoặc HCNS có quyền cao nhất.",
     roleScope: "system_admin",
-    licensePlan: "enterprise",
     memberCount: 2,
     permissionKeys: [
       "system.organization.manage",
@@ -139,6 +167,7 @@ export const permissionGroups = [
       "system.approval_flow.manage",
       "system.open_api.manage",
       "system.branding.manage",
+      "attendance.device.manage",
       "reports.company.view",
       "approvals.critical.approve"
     ]
@@ -148,7 +177,6 @@ export const permissionGroups = [
     name: "Ban giám đốc",
     description: "Xem báo cáo tổng thể và duyệt các đơn từ quan trọng.",
     roleScope: "user",
-    licensePlan: "enterprise",
     memberCount: 4,
     permissionKeys: ["reports.company.view", "approvals.critical.approve"]
   },
@@ -157,7 +185,6 @@ export const permissionGroups = [
     name: "Trưởng phòng",
     description: "Quản lý nhân sự, công việc và phê duyệt trong bộ phận.",
     roleScope: "user",
-    licensePlan: "professional",
     memberCount: 18,
     permissionKeys: ["employees.department.manage", "approvals.critical.approve", "tasks.assigned.update"]
   },
@@ -166,7 +193,6 @@ export const permissionGroups = [
     name: "Nhân viên",
     description: "Tạo đơn cá nhân, xem công việc được giao và cập nhật báo cáo.",
     roleScope: "user",
-    licensePlan: "standard",
     memberCount: 176,
     permissionKeys: ["requests.personal.create", "tasks.assigned.update"]
   }
@@ -179,7 +205,6 @@ export const userAccounts = [
     displayName: "Đặng Đình Dũng",
     email: "dungdd@helios.vn",
     role: "system_admin",
-    licensePlan: "enterprise",
     permissionGroupId: "grp-system-admin",
     status: "active",
     customPermissionsEnabled: true,
@@ -194,7 +219,6 @@ export const userAccounts = [
     displayName: "Nguyễn Hải Anh",
     email: "haianh@helios.vn",
     role: "user",
-    licensePlan: "professional",
     permissionGroupId: "grp-managers",
     status: "active",
     customPermissionsEnabled: false,
@@ -209,7 +233,6 @@ export const userAccounts = [
     displayName: "Lê Minh Khang",
     email: "khanglm@helios.vn",
     role: "user",
-    licensePlan: "standard",
     permissionGroupId: "grp-employees",
     status: "active",
     customPermissionsEnabled: false,
@@ -224,7 +247,6 @@ export const userAccounts = [
     displayName: "Trần Bảo Minh",
     email: "baominh@helios.vn",
     role: "user",
-    licensePlan: "standard",
     permissionGroupId: "grp-employees",
     status: "pending_activation",
     customPermissionsEnabled: false,
@@ -239,7 +261,6 @@ export const userAccounts = [
     displayName: "Phạm Thanh Trúc",
     email: "tructp@helios.vn",
     role: "user",
-    licensePlan: "standard",
     permissionGroupId: "grp-employees",
     status: "closed",
     customPermissionsEnabled: false,
@@ -304,7 +325,7 @@ export const systemSettingItems = [
     owner: "System Admin",
     status: "configured",
     href: "/admin/settings/accounts/groups",
-    controls: ["Nhóm", "Vai trò", "License", "Thành viên"]
+    controls: ["Nhóm", "Vai trò", "Quyền", "Thành viên"]
   },
   {
     id: "detailed-permissions",
@@ -419,6 +440,16 @@ export const moduleSettingGroups = [
     summary: "Thiết lập luật nhân sự, chấm công, lương và đánh giá.",
     status: "configured",
     settings: [
+      {
+        id: "hrm-dashboard-widgets",
+        tier: "module",
+        category: "Dashboard",
+        title: "Dashboard HCNS & widget hiển thị",
+        summary: "Cấu hình nhóm HCNS được xem widget nào trên dashboard riêng.",
+        owner: "System Admin",
+        status: "configured",
+        controls: ["Chấm công", "Đơn từ", "Hợp đồng", "BI HRM"]
+      },
       {
         id: "hrm-requests",
         tier: "module",
@@ -538,7 +569,7 @@ export const operationSettingItems = [
     summary: "Theo dõi số người dùng thực tế, hóa đơn và lịch sử gia hạn dịch vụ.",
     owner: "Finance",
     status: "configured",
-    controls: ["Người dùng", "Hóa đơn", "Gia hạn", "License"]
+    controls: ["Người dùng", "Hóa đơn", "Gia hạn", "Thanh toán"]
   },
   {
     id: "audit-log",
@@ -600,10 +631,10 @@ export const adminOperationEvents = [
 ];
 
 export const departments = [
-  { id: "dep-001", name: "Technology", headId: "emp-001", parentId: null, headcount: 24 },
-  { id: "dep-002", name: "People Operations", headId: "emp-002", parentId: null, headcount: 8 },
-  { id: "dep-003", name: "Sales", headId: "emp-003", parentId: null, headcount: 65 },
-  { id: "dep-004", name: "Operations", headId: "emp-010", parentId: null, headcount: 42 }
+  { id: "dep-001", code: "DEP-001", name: "Technology", headId: "emp-001", parentId: null, headcount: 24 },
+  { id: "dep-002", code: "DEP-002", name: "People Operations", headId: "emp-002", parentId: null, headcount: 8 },
+  { id: "dep-003", code: "DEP-003", name: "Sales", headId: "emp-003", parentId: null, headcount: 65 },
+  { id: "dep-004", code: "DEP-004", name: "Operations", headId: "emp-010", parentId: null, headcount: 42 }
 ];
 
 export const contracts = [

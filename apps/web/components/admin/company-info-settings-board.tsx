@@ -1,3 +1,10 @@
+"use client";
+
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
+import { Button, FormField, FormInput, ModalDialog } from "@/components/ui/primitives";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import {
   Bank,
   Buildings,
@@ -5,6 +12,7 @@ import {
   CheckCircle,
   FileText,
   IdentificationBadge,
+  PencilSimple,
   Phone,
   SealCheck,
   UploadSimple,
@@ -14,17 +22,20 @@ import {
   X
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
-import {
-  companyBankAccounts,
-  companyContactInfo,
-  companyGeneralConfig,
-  companyIdentityInfo,
-  companyLegalAssets,
-  companyLegalRepresentative,
-  companyOffices,
-  type CompanyInfoItem,
-  type CompanyInfoStatus
-} from "@/lib/mock-data";
+import { updateCompanyInfoAction, type AdminSettingsFormState } from "@/lib/admin-settings-actions";
+import type {
+  CompanyBankAccount,
+  CompanyInfoItem,
+  CompanyInfoSettings,
+  CompanyInfoSettingsData,
+  CompanyInfoStatus,
+  CompanyLegalAsset,
+  CompanyOffice
+} from "@/lib/admin-settings-api";
+
+const initialState: AdminSettingsFormState = {
+  ok: false
+};
 
 const statusLabels: Record<CompanyInfoStatus, string> = {
   complete: "Đã khai báo",
@@ -38,29 +49,53 @@ const statusIcons: Record<CompanyInfoStatus, Icon> = {
   missing: X
 };
 
+const statusTones: Record<CompanyInfoStatus, BadgeTone> = {
+  complete: "success",
+  missing: "danger",
+  review: "warning"
+};
+
+const fallbackSettings: CompanyInfoSettings = {
+  identityInfo: [],
+  contactInfo: [],
+  offices: [],
+  legalRepresentative: [],
+  bankAccounts: [],
+  generalConfig: [],
+  legalAssets: [],
+  status: "needs_review"
+};
+
+function findValue(items: CompanyInfoItem[], id: string) {
+  return items.find((item) => item.id === id)?.value ?? "";
+}
+
 function CompanyStatusBadge({ status }: { status: CompanyInfoStatus }) {
   const StatusIcon = statusIcons[status];
 
   return (
-    <span className={`company-status company-status--${status}`}>
-      <StatusIcon size={14} weight="duotone" aria-hidden="true" />
+    <Badge
+      className={`company-status company-status--${status}`}
+      icon={<StatusIcon size={14} weight="duotone" aria-hidden="true" />}
+      tone={statusTones[status]}
+    >
       {statusLabels[status]}
-    </span>
+    </Badge>
   );
 }
 
-function CompanySummary() {
+function CompanySummary({ settings }: { settings: CompanyInfoSettings }) {
   const completeItems = [
-    ...companyIdentityInfo,
-    ...companyContactInfo,
-    ...companyLegalRepresentative,
-    ...companyGeneralConfig
+    ...settings.identityInfo,
+    ...settings.contactInfo,
+    ...settings.legalRepresentative,
+    ...settings.generalConfig
   ].filter((item) => item.status === "complete").length;
   const summaryItems = [
     { label: "Thông tin hoàn tất", value: completeItems, icon: CheckCircle },
-    { label: "Văn phòng", value: companyOffices.length, icon: Buildings },
-    { label: "Tài khoản ngân hàng", value: companyBankAccounts.length, icon: Bank },
-    { label: "Con dấu/chữ ký", value: companyLegalAssets.length, icon: SealCheck }
+    { label: "Văn phòng", value: settings.offices.length, icon: Buildings },
+    { label: "Tài khoản ngân hàng", value: settings.bankAccounts.length, icon: Bank },
+    { label: "Con dấu/chữ ký", value: settings.legalAssets.length, icon: SealCheck }
   ];
 
   return (
@@ -80,13 +115,7 @@ function CompanySummary() {
   );
 }
 
-function InfoList({
-  items,
-  icon: RowIcon
-}: {
-  items: CompanyInfoItem[];
-  icon: Icon;
-}) {
+function InfoList({ items, icon: RowIcon }: { items: CompanyInfoItem[]; icon: Icon }) {
   return (
     <div className="company-info-list">
       {items.map((item) => (
@@ -110,37 +139,31 @@ function InfoList({
   );
 }
 
-function IdentityPanel() {
+function InfoPanel({
+  description,
+  icon,
+  items,
+  title
+}: {
+  description: string;
+  icon: Icon;
+  items: CompanyInfoItem[];
+  title: string;
+}) {
   return (
-    <section className="account-panel" aria-labelledby="company-identity-title">
+    <section className="account-panel" aria-label={title}>
       <header className="account-panel-header">
         <div>
-          <h2 id="company-identity-title">Thông tin định danh cơ bản</h2>
-          <p>Bộ nhận diện pháp lý dùng trên văn bản chính thức, hợp đồng và hóa đơn.</p>
+          <h2>{title}</h2>
+          <p>{description}</p>
         </div>
       </header>
-
-      <InfoList icon={IdentificationBadge} items={companyIdentityInfo} />
+      <InfoList icon={icon} items={items} />
     </section>
   );
 }
 
-function ContactPanel() {
-  return (
-    <section className="account-panel" aria-labelledby="company-contact-title">
-      <header className="account-panel-header">
-        <div>
-          <h2 id="company-contact-title">Thông tin liên hệ</h2>
-          <p>Footer/header trên báo giá, hợp đồng, hóa đơn và đơn từ.</p>
-        </div>
-      </header>
-
-      <InfoList icon={Phone} items={companyContactInfo} />
-    </section>
-  );
-}
-
-function OfficesPanel() {
+function OfficesPanel({ offices }: { offices: CompanyOffice[] }) {
   return (
     <section className="account-panel" aria-labelledby="company-office-title">
       <header className="account-panel-header">
@@ -149,9 +172,8 @@ function OfficesPanel() {
           <p>Địa chỉ nhân viên có thể chọn khi lập mẫu đơn từ hoặc chứng từ.</p>
         </div>
       </header>
-
       <div className="company-office-list">
-        {companyOffices.map((office) => (
+        {offices.map((office) => (
           <article key={office.id}>
             <span>
               <Buildings size={17} weight="duotone" aria-hidden="true" />
@@ -169,22 +191,7 @@ function OfficesPanel() {
   );
 }
 
-function LegalRepresentativePanel() {
-  return (
-    <section className="account-panel" aria-labelledby="company-legal-title">
-      <header className="account-panel-header">
-        <div>
-          <h2 id="company-legal-title">Đại diện pháp luật</h2>
-          <p>Tự động điền vào hợp đồng lao động, hợp đồng kinh tế và ký số.</p>
-        </div>
-      </header>
-
-      <InfoList icon={UserCircle} items={companyLegalRepresentative} />
-    </section>
-  );
-}
-
-function BankAccountsPanel() {
+function BankAccountsPanel({ bankAccounts }: { bankAccounts: CompanyBankAccount[] }) {
   return (
     <section className="account-panel" aria-labelledby="company-bank-title">
       <header className="account-panel-header">
@@ -192,12 +199,11 @@ function BankAccountsPanel() {
           <h2 id="company-bank-title">Tài khoản ngân hàng</h2>
           <p>Hiển thị trên báo giá, đơn hàng và hướng dẫn chuyển khoản.</p>
         </div>
-        <button className="primary-button" type="button">
+        <button className="secondary-button" type="button">
           <Wallet size={16} weight="duotone" aria-hidden="true" />
-          Thêm tài khoản
+          Quản lý sau
         </button>
       </header>
-
       <div className="company-bank-table-shell" tabIndex={0} aria-label="Bảng tài khoản ngân hàng có thể cuộn ngang">
         <table className="company-bank-table">
           <thead>
@@ -210,18 +216,19 @@ function BankAccountsPanel() {
             </tr>
           </thead>
           <tbody>
-            {companyBankAccounts.map((account) => (
+            {bankAccounts.map((account) => (
               <tr key={account.id}>
                 <th scope="row">{account.accountNumber}</th>
                 <td>{account.bankName}</td>
                 <td>{account.branch}</td>
                 <td>{account.owner}</td>
                 <td>
-                  {account.isDefault ? (
-                    <span className="company-status company-status--complete">Mặc định</span>
-                  ) : (
-                    <span className="company-status company-status--review">Dự phòng</span>
-                  )}
+                  <Badge
+                    className={`company-status company-status--${account.isDefault ? "complete" : "review"}`}
+                    tone={account.isDefault ? "success" : "warning"}
+                  >
+                    {account.isDefault ? "Mặc định" : "Dự phòng"}
+                  </Badge>
                 </td>
               </tr>
             ))}
@@ -232,37 +239,21 @@ function BankAccountsPanel() {
   );
 }
 
-function GeneralConfigPanel() {
-  return (
-    <section className="account-panel" aria-labelledby="company-general-title">
-      <header className="account-panel-header">
-        <div>
-          <h2 id="company-general-title">Cấu hình chung</h2>
-          <p>Tài khóa, lĩnh vực hoạt động và cơ chế đồng bộ mẫu in.</p>
-        </div>
-      </header>
-
-      <InfoList icon={CalendarBlank} items={companyGeneralConfig} />
-    </section>
-  );
-}
-
-function LegalAssetsPanel() {
+function LegalAssetsPanel({ legalAssets }: { legalAssets: CompanyLegalAsset[] }) {
   return (
     <section className="account-panel" aria-labelledby="company-assets-title">
       <header className="account-panel-header">
         <div>
           <h2 id="company-assets-title">Con dấu & chữ ký</h2>
-          <p>Ảnh nền trong suốt dùng cho văn bản, hợp đồng điện tử và phê duyệt tự động.</p>
+          <p>Ảnh nền trong suốt dùng cho văn bản và hợp đồng điện tử.</p>
         </div>
         <button className="secondary-button" type="button">
           <UploadSimple size={16} weight="duotone" aria-hidden="true" />
-          Tải lên
+          Tải lên sau
         </button>
       </header>
-
       <div className="company-asset-list">
-        {companyLegalAssets.map((asset) => (
+        {legalAssets.map((asset) => (
           <article key={asset.id}>
             <span>
               <SealCheck size={17} weight="duotone" aria-hidden="true" />
@@ -288,41 +279,189 @@ function PrintTemplateSyncPanel() {
       </span>
       <div>
         <h2>Lưu ý cho Admin</h2>
-        <p>Khi cập nhật thông tin doanh nghiệp, hãy kiểm tra lại mẫu in Báo giá, Hợp đồng và Hóa đơn. Hệ thống sẽ tự động đồng bộ các biến như tên công ty, mã số thuế, địa chỉ, tài khoản ngân hàng và người đại diện.</p>
+        <p>Khi cập nhật thông tin doanh nghiệp, hãy kiểm tra lại mẫu in báo giá, hợp đồng và hóa đơn.</p>
       </div>
     </section>
   );
 }
 
-export function CompanyInfoSettingsBoard() {
+function SaveStateMessage({ state }: { state: AdminSettingsFormState }) {
+  if (state.ok && state.message) {
+    return <p className="employee-create-success" role="status">{state.message}</p>;
+  }
+
+  if (state.error) {
+    return <p className="employee-create-error" role="alert">{state.error}</p>;
+  }
+
+  return null;
+}
+
+function CompanyInfoForm({ onClose, settings }: { onClose: () => void; settings: CompanyInfoSettings }) {
+  const router = useRouter();
+  const handledSuccessRef = useRef(false);
+  const [state, formAction, isPending] = useActionState(updateCompanyInfoAction, initialState);
+
+  useEffect(() => {
+    if (isPending) {
+      handledSuccessRef.current = false;
+    }
+  }, [isPending]);
+
+  useEffect(() => {
+    if (!state.ok || handledSuccessRef.current) {
+      return;
+    }
+
+    handledSuccessRef.current = true;
+    router.refresh();
+    onClose();
+  }, [onClose, router, state.ok]);
+
+  return (
+    <form className="account-dialog-form" action={formAction}>
+      <div className="account-dialog-grid">
+        <FormField label="Tên doanh nghiệp">
+          <FormInput name="companyName" defaultValue={findValue(settings.identityInfo, "company-name")} />
+        </FormField>
+        <FormField label="Tên viết tắt">
+          <FormInput name="shortName" defaultValue={findValue(settings.identityInfo, "company-short-name")} />
+        </FormField>
+        <FormField label="Mã số thuế">
+          <FormInput name="taxCode" defaultValue={findValue(settings.identityInfo, "tax-code")} />
+        </FormField>
+        <FormField label="Website">
+          <FormInput name="website" type="url" defaultValue={findValue(settings.identityInfo, "website")} />
+        </FormField>
+        <FormField label="Hotline">
+          <FormInput name="hotline" defaultValue={findValue(settings.contactInfo, "hotline")} />
+        </FormField>
+        <FormField label="Email liên hệ">
+          <FormInput name="email" type="email" defaultValue={findValue(settings.contactInfo, "email")} />
+        </FormField>
+        <FormField label="Địa chỉ trụ sở" wide>
+          <FormInput name="headOffice" defaultValue={findValue(settings.contactInfo, "head-office")} />
+        </FormField>
+        <FormField label="Người đại diện">
+          <FormInput name="representativeName" defaultValue={findValue(settings.legalRepresentative, "representative-name")} />
+        </FormField>
+        <FormField label="Chức vụ">
+          <FormInput name="representativeTitle" defaultValue={findValue(settings.legalRepresentative, "representative-title")} />
+        </FormField>
+        <FormField label="Ngày bắt đầu tài khóa">
+          <FormInput name="fiscalYear" defaultValue={findValue(settings.generalConfig, "fiscal-year")} />
+        </FormField>
+        <FormField label="Lĩnh vực hoạt động">
+          <FormInput name="industry" defaultValue={findValue(settings.generalConfig, "industry")} />
+        </FormField>
+        <FormField label="Đồng bộ mẫu in" wide>
+          <FormInput name="templateSync" defaultValue={findValue(settings.generalConfig, "template-sync")} />
+        </FormField>
+      </div>
+
+      <SaveStateMessage state={state} />
+
+      <div className="account-dialog-actions">
+        <Button variant="secondary" icon={<X size={16} weight="duotone" aria-hidden="true" />} onClick={onClose}>
+          Hủy
+        </Button>
+        <Button variant="primary" type="submit" disabled={isPending} icon={<CheckCircle size={16} weight="duotone" aria-hidden="true" />}>
+          {isPending ? "Đang lưu" : "Lưu"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function CompanyEditDialog({ settings }: { settings: CompanyInfoSettings }) {
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const closeDialog = useCallback(() => {
+    dialogRef.current?.close();
+  }, []);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  return (
+    <>
+      <Button variant="primary" icon={<PencilSimple size={16} weight="duotone" aria-hidden="true" />} onClick={() => dialogRef.current?.showModal()}>
+        Sửa thông tin
+      </Button>
+      {isMounted
+        ? createPortal(
+            <ModalDialog ref={dialogRef} title="Sửa thông tin doanh nghiệp" onCloseRequest={closeDialog}>
+              <CompanyInfoForm settings={settings} onClose={closeDialog} />
+            </ModalDialog>,
+            document.body
+          )
+        : null}
+    </>
+  );
+}
+
+export function CompanyInfoSettingsBoard({ data }: { data: CompanyInfoSettingsData }) {
+  const settings = data.settings ?? fallbackSettings;
+
   return (
     <main className="account-access-page company-info-page" aria-label="Thông tin doanh nghiệp">
+      {data.source === "unavailable" ? (
+        <section className="account-api-banner" role="status">
+          <strong>Chưa kết nối được Company API</strong>
+          <span>{data.error ?? "Hãy bật API server rồi tải lại trang."}</span>
+        </section>
+      ) : null}
+
       <section className="org-page-heading" aria-labelledby="company-info-page-title">
         <div>
           <span>Cài đặt hệ thống</span>
           <h1 id="company-info-page-title">Thông tin doanh nghiệp</h1>
           <p>Khai báo thông tin pháp lý, liên hệ, đại diện, ngân hàng, tài khóa, con dấu và chữ ký dùng cho mẫu in.</p>
         </div>
-        <a className="secondary-button" href="/admin/settings#system-settings">
-          Quay lại cài đặt
-        </a>
+        <div className="account-panel-actions">
+          <a className="secondary-button" href="/admin/settings#system-settings">
+            Quay lại cài đặt
+          </a>
+          <CompanyEditDialog settings={settings} />
+        </div>
       </section>
 
-      <CompanySummary />
+      <CompanySummary settings={settings} />
 
       <section className="account-access-layout" aria-label="Thiết lập thông tin doanh nghiệp">
         <div className="account-access-main">
-          <IdentityPanel />
-          <ContactPanel />
-          <BankAccountsPanel />
+          <InfoPanel
+            description="Bộ nhận diện pháp lý dùng trên văn bản chính thức, hợp đồng và hóa đơn."
+            icon={IdentificationBadge}
+            items={settings.identityInfo}
+            title="Thông tin định danh cơ bản"
+          />
+          <InfoPanel
+            description="Footer/header trên báo giá, hợp đồng, hóa đơn và đơn từ."
+            icon={Phone}
+            items={settings.contactInfo}
+            title="Thông tin liên hệ"
+          />
+          <BankAccountsPanel bankAccounts={settings.bankAccounts} />
           <PrintTemplateSyncPanel />
         </div>
 
         <aside className="account-access-side" aria-label="Pháp lý và cấu hình doanh nghiệp">
-          <LegalRepresentativePanel />
-          <OfficesPanel />
-          <GeneralConfigPanel />
-          <LegalAssetsPanel />
+          <InfoPanel
+            description="Tự động điền vào hợp đồng lao động, hợp đồng kinh tế và ký số."
+            icon={UserCircle}
+            items={settings.legalRepresentative}
+            title="Đại diện pháp luật"
+          />
+          <OfficesPanel offices={settings.offices} />
+          <InfoPanel
+            description="Tài khóa, lĩnh vực hoạt động và cơ chế đồng bộ mẫu in."
+            icon={CalendarBlank}
+            items={settings.generalConfig}
+            title="Cấu hình chung"
+          />
+          <LegalAssetsPanel legalAssets={settings.legalAssets} />
         </aside>
       </section>
     </main>

@@ -2,33 +2,25 @@ import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
 
 export type AccountRole = "system_admin" | "user";
-export type AccountLicensePlan = "standard" | "professional" | "enterprise";
 export type AccountLifecycleStatus = "pending_activation" | "active" | "closed";
+export type PermissionGroupStatus = "active" | "archived";
 
 export type AccountAccessSummary = {
   totalAccounts: number;
   activeAccounts: number;
   pendingActivation: number;
   closedAccounts: number;
-  billableLicenses: number;
   systemAdmins: number;
   customizedAccounts: number;
-};
-
-export type AccountLicense = {
-  key: AccountLicensePlan;
-  name: string;
-  summary: string;
-  modules: string[];
-  seatLimit: number;
 };
 
 export type AccountPermission = {
   key: string;
   category: string;
   label: string;
-  minimumLicense: AccountLicensePlan;
+  description?: string | null;
   adminOnly: boolean;
+  sortOrder?: number;
 };
 
 export type PermissionGroup = {
@@ -36,7 +28,8 @@ export type PermissionGroup = {
   name: string;
   summary: string;
   role: AccountRole;
-  licensePlan: AccountLicensePlan;
+  status: PermissionGroupStatus;
+  archivedAt?: string | null;
   memberCount: number;
   permissionKeys: string[];
 };
@@ -59,11 +52,15 @@ export type ManagedUserAccount = {
   title: string;
   department: string;
   role: AccountRole;
-  licensePlan: AccountLicensePlan;
   groupId: string | null;
   status: AccountLifecycleStatus;
   customPermissionKeys: string[];
+  effectivePermissionKeys: string[];
   customPermissionNote?: string | null;
+  passwordResetRequired: boolean;
+  inviteEmailRequested: boolean;
+  temporaryPasswordIssuedAt?: string | null;
+  inviteSentAt?: string | null;
   activatedAt?: string | null;
   closedAt?: string | null;
 };
@@ -71,7 +68,6 @@ export type ManagedUserAccount = {
 export type AccountAccessData = {
   summary: AccountAccessSummary;
   accounts: ManagedUserAccount[];
-  licenses: AccountLicense[];
   permissions: AccountPermission[];
   groups: PermissionGroup[];
   availableEmployees: AccountProvisionEmployee[];
@@ -82,10 +78,11 @@ export type AccountAccessData = {
 export type AccountMutationPayload = {
   username?: string;
   initialPassword?: string;
+  requirePasswordChange?: boolean;
+  sendInviteEmail?: boolean;
   email?: string;
   displayName?: string;
   adminRole?: AccountRole;
-  licensePlan?: AccountLicensePlan;
   accountStatus?: AccountLifecycleStatus;
   permissionGroupId?: string | null;
   employeeId?: string | null;
@@ -97,23 +94,16 @@ export type PermissionGroupMutationPayload = {
   name: string;
   description: string;
   roleScope?: AccountRole;
-  licensePlan?: AccountLicensePlan;
   permissionKeys?: string[];
-};
-
-type ApiLicense = {
-  id: string;
-  name: string;
-  description?: string;
-  modules?: string[];
 };
 
 type ApiPermission = {
   key: string;
   category: string;
   label: string;
-  minimumLicense: AccountLicensePlan;
+  description?: string | null;
   adminOnly: boolean;
+  sortOrder?: number;
 };
 
 type ApiPermissionGroup = {
@@ -121,7 +111,8 @@ type ApiPermissionGroup = {
   name: string;
   description?: string;
   roleScope?: AccountRole;
-  licensePlan?: AccountLicensePlan;
+  status?: PermissionGroupStatus;
+  archivedAt?: string | null;
   memberCount?: number;
   permissionKeys?: string[];
 };
@@ -132,13 +123,17 @@ type ApiAccount = {
   displayName: string;
   role?: AccountRole;
   adminRole?: AccountRole;
-  licensePlan?: AccountLicensePlan;
   status?: AccountLifecycleStatus;
   accountStatus?: AccountLifecycleStatus;
   groupId?: string | null;
   permissionGroupId?: string | null;
   customPermissionKeys?: string[];
+  effectivePermissionKeys?: string[];
   customPermissionNote?: string | null;
+  passwordResetRequired?: boolean;
+  inviteEmailRequested?: boolean;
+  temporaryPasswordIssuedAt?: string | null;
+  inviteSentAt?: string | null;
   activatedAt?: string | null;
   closedAt?: string | null;
   employee?: {
@@ -163,15 +158,8 @@ const emptySummary: AccountAccessSummary = {
   activeAccounts: 0,
   pendingActivation: 0,
   closedAccounts: 0,
-  billableLicenses: 0,
   systemAdmins: 0,
   customizedAccounts: 0
-};
-
-const licenseSeatLimits: Record<AccountLicensePlan, number> = {
-  standard: 140,
-  professional: 45,
-  enterprise: 15
 };
 
 function apiBaseUrl() {
@@ -211,14 +199,6 @@ async function fetchJson<T>(path: string): Promise<T> {
   return requestJson<T>(path);
 }
 
-function toAccountLicensePlan(value: string | undefined): AccountLicensePlan {
-  if (value === "enterprise" || value === "professional") {
-    return value;
-  }
-
-  return "standard";
-}
-
 function toAccountRole(value: string | undefined): AccountRole {
   return value === "system_admin" ? "system_admin" : "user";
 }
@@ -253,25 +233,14 @@ function formatDate(value: string | null | undefined) {
   }).format(new Date(value));
 }
 
-function normalizeLicense(license: ApiLicense): AccountLicense {
-  const key = toAccountLicensePlan(license.id);
-
-  return {
-    key,
-    name: license.name,
-    summary: license.description ?? license.name,
-    modules: license.modules ?? [],
-    seatLimit: licenseSeatLimits[key]
-  };
-}
-
 function normalizeGroup(group: ApiPermissionGroup): PermissionGroup {
   return {
     id: group.id,
     name: group.name,
     summary: group.description ?? "Chua co mo ta.",
     role: toAccountRole(group.roleScope),
-    licensePlan: toAccountLicensePlan(group.licensePlan),
+    status: group.status === "archived" ? "archived" : "active",
+    archivedAt: group.archivedAt ?? null,
     memberCount: group.memberCount ?? 0,
     permissionKeys: group.permissionKeys ?? []
   };
@@ -289,11 +258,15 @@ function normalizeAccount(account: ApiAccount): ManagedUserAccount {
     title: account.employee?.title ?? "Chua gan nhan su",
     department: account.employee?.department ?? "Chua gan phong ban",
     role: toAccountRole(account.role ?? account.adminRole),
-    licensePlan: toAccountLicensePlan(account.licensePlan),
     groupId: account.groupId ?? account.permissionGroupId ?? null,
     status: toLifecycleStatus(account.status ?? account.accountStatus),
     customPermissionKeys: account.customPermissionKeys ?? [],
+    effectivePermissionKeys: account.effectivePermissionKeys ?? [],
     customPermissionNote: account.customPermissionNote,
+    passwordResetRequired: Boolean(account.passwordResetRequired),
+    inviteEmailRequested: Boolean(account.inviteEmailRequested),
+    temporaryPasswordIssuedAt: formatDate(account.temporaryPasswordIssuedAt),
+    inviteSentAt: formatDate(account.inviteSentAt),
     activatedAt: formatDate(account.activatedAt),
     closedAt: formatDate(account.closedAt)
   };
@@ -312,11 +285,10 @@ function normalizeProvisionEmployee(employee: ApiEmployee): AccountProvisionEmpl
 
 export async function getAccountAccessData(): Promise<AccountAccessData> {
   try {
-    const [summary, accounts, groups, licenses, permissions, employees] = await Promise.all([
+    const [summary, accounts, groups, permissions, employees] = await Promise.all([
       fetchJson<AccountAccessSummary>("/account-access/summary"),
       fetchJson<ApiAccount[]>("/account-access/accounts"),
       fetchJson<ApiPermissionGroup[]>("/account-access/groups"),
-      fetchJson<ApiLicense[]>("/account-access/licenses"),
       fetchJson<ApiPermission[]>("/account-access/permissions"),
       fetchJson<ApiEmployee[]>("/employees")
     ]);
@@ -325,7 +297,6 @@ export async function getAccountAccessData(): Promise<AccountAccessData> {
       summary,
       accounts: accounts.map(normalizeAccount),
       groups: groups.map(normalizeGroup),
-      licenses: licenses.map(normalizeLicense),
       permissions,
       availableEmployees: employees.map(normalizeProvisionEmployee).filter((employee) => !employee.accountEmail),
       source: "api"
@@ -335,7 +306,6 @@ export async function getAccountAccessData(): Promise<AccountAccessData> {
       summary: emptySummary,
       accounts: [],
       groups: [],
-      licenses: [],
       permissions: [],
       availableEmployees: [],
       source: "unavailable",
@@ -352,6 +322,12 @@ export async function activateAccount(accountId: string) {
 
 export async function closeAccount(accountId: string) {
   return requestJson<unknown>(`/account-access/accounts/${accountId}/close`, {
+    method: "POST"
+  });
+}
+
+export async function resendAccountInvite(accountId: string) {
+  return requestJson<unknown>(`/account-access/accounts/${accountId}/resend-invite`, {
     method: "POST"
   });
 }
@@ -395,5 +371,17 @@ export async function updatePermissionGroup(groupId: string, payload: Permission
       "Content-Type": "application/json"
     },
     body: JSON.stringify(payload)
+  });
+}
+
+export async function archivePermissionGroup(groupId: string) {
+  return requestJson<unknown>(`/account-access/groups/${groupId}/archive`, {
+    method: "POST"
+  });
+}
+
+export async function restorePermissionGroup(groupId: string) {
+  return requestJson<unknown>(`/account-access/groups/${groupId}/restore`, {
+    method: "POST"
   });
 }

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition, type Dispatch, type SetStateAction } from "react";
 import { FormCheckbox, FormSwitch } from "@/components/ui/form-controls";
+import { Button, FormField, FormInput, FormTextarea, ModalDialog } from "@/components/ui/primitives";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import {
   deleteDeviceAuthRequestAction,
   updateDeviceAuthPolicyAction,
@@ -36,6 +38,13 @@ const statusIcons = {
   approved: CheckCircle,
   rejected: X,
   locked: Lock
+};
+
+const statusTones: Record<DeviceAuthStatus, BadgeTone> = {
+  approved: "success",
+  locked: "neutral",
+  pending: "warning",
+  rejected: "danger"
 };
 
 const statusFilters: DeviceAuthStatus[] = ["pending", "approved", "rejected", "locked"];
@@ -77,10 +86,13 @@ function DeviceStatusBadge({ status }: { status: DeviceAuthStatus }) {
   const StatusIcon = statusIcons[status];
 
   return (
-    <span className={`device-status device-status--${status}`}>
-      <StatusIcon size={14} weight="duotone" aria-hidden="true" />
+    <Badge
+      className={`device-status device-status--${status}`}
+      icon={<StatusIcon size={14} weight="duotone" aria-hidden="true" />}
+      tone={statusTones[status]}
+    >
       {statusLabels[status]}
-    </span>
+    </Badge>
   );
 }
 
@@ -620,18 +632,11 @@ function DevicePolicyDialog({
 
   return (
     <>
-      <button className="secondary-button" type="button" onClick={openDialog}>
+      <Button variant="secondary" onClick={openDialog}>
         <PencilSimple size={16} weight="duotone" aria-hidden="true" />
         Sửa
-      </button>
-      <dialog className="account-dialog device-policy-dialog" ref={dialogRef}>
-        <header className="account-dialog-header">
-          <h2>Sửa cài đặt thiết bị</h2>
-          <button className="icon-button" type="button" aria-label="Đóng" onClick={() => dialogRef.current?.close()}>
-            <X size={16} weight="duotone" aria-hidden="true" />
-          </button>
-        </header>
-
+      </Button>
+      <ModalDialog className="device-policy-dialog" ref={dialogRef} title="Sửa cài đặt thiết bị" onCloseRequest={() => dialogRef.current?.close()}>
         <form
           className="account-dialog-form"
           onSubmit={(event) => {
@@ -640,9 +645,8 @@ function DevicePolicyDialog({
           }}
         >
           <div className="account-dialog-grid">
-            <label className="account-dialog-field account-dialog-field--wide">
-              <span>Giới hạn thiết bị</span>
-              <input
+            <FormField label="Giới hạn thiết bị" wide>
+              <FormInput
                 type="number"
                 min={1}
                 max={5}
@@ -653,16 +657,15 @@ function DevicePolicyDialog({
                   })
                 }
               />
-            </label>
+            </FormField>
 
-            <label className="account-dialog-field account-dialog-field--wide">
-              <span>Ghi chú sau xác thực</span>
-              <textarea
+            <FormField label="Ghi chú sau xác thực" wide>
+              <FormTextarea
                 rows={4}
                 value={draft.approvalRefreshHint}
                 onChange={(event) => updateDraft({ approvalRefreshHint: event.target.value })}
               />
-            </label>
+            </FormField>
           </div>
 
           <fieldset className="account-dialog-permissions device-policy-dialog-rules">
@@ -720,9 +723,8 @@ function DevicePolicyDialog({
           ) : null}
 
           <div className="account-dialog-actions">
-            <button
-              className="secondary-button"
-              type="button"
+            <Button
+              variant="secondary"
               disabled={isPending}
               onClick={() => {
                 resetDraft();
@@ -731,14 +733,14 @@ function DevicePolicyDialog({
             >
               <X size={16} weight="duotone" aria-hidden="true" />
               Hủy
-            </button>
-            <button className="primary-button" type="submit" disabled={isPending || !isDirty}>
+            </Button>
+            <Button variant="primary" type="submit" disabled={isPending || !isDirty}>
               <CheckCircle size={16} weight="duotone" aria-hidden="true" />
               {isPending ? "Đang lưu" : "Lưu"}
-            </button>
+            </Button>
           </div>
         </form>
-      </dialog>
+      </ModalDialog>
     </>
   );
 }

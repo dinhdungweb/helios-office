@@ -3,13 +3,15 @@
 import { revalidatePath } from "next/cache";
 import {
   activateAccount,
+  archivePermissionGroup,
   closeAccount,
   createAccount,
   createPermissionGroup,
+  resendAccountInvite,
+  restorePermissionGroup,
   updateAccount,
   updatePermissionGroup,
   type AccountLifecycleStatus,
-  type AccountLicensePlan,
   type AccountMutationPayload,
   type AccountRole,
   type PermissionGroupMutationPayload
@@ -18,6 +20,7 @@ import {
 export type AccountFormState = {
   ok: boolean;
   error?: string;
+  message?: string;
 };
 
 export type GroupFormState = {
@@ -63,6 +66,10 @@ function readRequiredString(formData: FormData, key: string) {
   return value;
 }
 
+function readBoolean(formData: FormData, key: string) {
+  return formData.get(key) === "on";
+}
+
 function readCustomPermissionKeys(formData: FormData) {
   return formData
     .getAll("customPermissionKeys")
@@ -75,16 +82,20 @@ function readPermissionKeys(formData: FormData) {
     .filter((value): value is string => typeof value === "string" && value.length > 0);
 }
 
-function readAccountPayload(formData: FormData): Required<Pick<AccountMutationPayload, "email" | "displayName">> & AccountMutationPayload {
+function readAccountPayload(
+  formData: FormData,
+  options: { includeProvisionPolicy?: boolean } = {}
+): Required<Pick<AccountMutationPayload, "email" | "displayName">> & AccountMutationPayload {
   const customPermissionKeys = readCustomPermissionKeys(formData);
 
   return {
     username: readOptionalString(formData, "username"),
     initialPassword: readOptionalString(formData, "initialPassword"),
+    requirePasswordChange: options.includeProvisionPolicy ? readBoolean(formData, "requirePasswordChange") : undefined,
+    sendInviteEmail: options.includeProvisionPolicy ? readBoolean(formData, "sendInviteEmail") : undefined,
     email: readRequiredString(formData, "email"),
     displayName: readRequiredString(formData, "displayName"),
     adminRole: readRequiredString(formData, "adminRole") as AccountRole,
-    licensePlan: readRequiredString(formData, "licensePlan") as AccountLicensePlan,
     accountStatus: readRequiredString(formData, "accountStatus") as AccountLifecycleStatus,
     permissionGroupId: readOptionalString(formData, "permissionGroupId"),
     employeeId: readOptionalString(formData, "employeeId"),
@@ -98,7 +109,6 @@ function readGroupPayload(formData: FormData): PermissionGroupMutationPayload {
     name: readRequiredString(formData, "name"),
     description: readRequiredString(formData, "description"),
     roleScope: readRequiredString(formData, "roleScope") as AccountRole,
-    licensePlan: readRequiredString(formData, "licensePlan") as AccountLicensePlan,
     permissionKeys: readPermissionKeys(formData)
   };
 }
@@ -113,9 +123,26 @@ export async function closeAccountAction(formData: FormData) {
   revalidatePath("/admin/settings/accounts");
 }
 
+export async function resendAccountInviteAction(_state: AccountFormState, formData: FormData): Promise<AccountFormState> {
+  try {
+    await resendAccountInvite(readAccountId(formData));
+    revalidatePath("/admin/settings/accounts");
+
+    return {
+      ok: true,
+      message: "Đã gửi yêu cầu invite/reset password."
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : accountFormInitialError
+    };
+  }
+}
+
 export async function createAccountAction(_state: AccountFormState, formData: FormData): Promise<AccountFormState> {
   try {
-    await createAccount(readAccountPayload(formData));
+    await createAccount(readAccountPayload(formData, { includeProvisionPolicy: true }));
     revalidatePath("/admin/settings/accounts");
 
     return { ok: true };
@@ -177,4 +204,20 @@ export async function updatePermissionGroupAction(_state: GroupFormState, formDa
       error: error instanceof Error ? error.message : groupFormInitialError
     };
   }
+}
+
+export async function archivePermissionGroupAction(formData: FormData) {
+  const groupId = readRequiredString(formData, "groupId");
+
+  await archivePermissionGroup(groupId);
+  revalidatePath("/admin/settings/accounts");
+  revalidatePath("/admin/settings/accounts/groups");
+}
+
+export async function restorePermissionGroupAction(formData: FormData) {
+  const groupId = readRequiredString(formData, "groupId");
+
+  await restorePermissionGroup(groupId);
+  revalidatePath("/admin/settings/accounts");
+  revalidatePath("/admin/settings/accounts/groups");
 }

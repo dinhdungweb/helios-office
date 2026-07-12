@@ -2,7 +2,6 @@ import {
   CheckCircle,
   Clock,
   FunnelSimple,
-  Key,
   Lock,
   Plus,
   ShieldCheck,
@@ -14,13 +13,11 @@ import {
 import { AccountEditDialog } from "@/components/admin/account-editor-dialog";
 import { AccountProvisionDialog } from "@/components/admin/account-provision-dialog";
 import { AccountManagedTable } from "@/components/admin/account-table-client";
+import { Badge, type BadgeTone } from "@/components/ui/badge";
 import type {
   AccountAccessData,
   AccountLifecycleStatus,
-  AccountLicense,
-  AccountLicensePlan,
   AccountPermission,
-  AccountProvisionEmployee,
   AccountRole,
   ManagedUserAccount,
   PermissionGroup
@@ -30,12 +27,6 @@ import { activateAccountAction, closeAccountAction } from "@/lib/account-access-
 const roleLabels: Record<AccountRole, string> = {
   system_admin: "Admin",
   user: "User"
-};
-
-const licenseLabels: Record<AccountLicensePlan, string> = {
-  standard: "STANDARD",
-  professional: "PROFESSIONAL",
-  enterprise: "ENTERPRISE"
 };
 
 const statusLabels: Record<AccountLifecycleStatus, string> = {
@@ -50,31 +41,28 @@ const statusIcons = {
   closed: X
 };
 
+const statusTones: Record<AccountLifecycleStatus, BadgeTone> = {
+  active: "success",
+  closed: "danger",
+  pending_activation: "warning"
+};
+
 type AccountAccessMaps = {
-  groupById: Map<string, PermissionGroup>;
   permissionByKey: Map<string, AccountPermission>;
   permissionCategories: string[];
 };
-
-function getEffectivePermissions(account: ManagedUserAccount, maps: AccountAccessMaps) {
-  const group = account.groupId ? maps.groupById.get(account.groupId) : null;
-  const permissionKeys = Array.from(
-    new Set([...(group?.permissionKeys ?? []), ...account.customPermissionKeys])
-  );
-
-  return permissionKeys
-    .map((permissionKey) => maps.permissionByKey.get(permissionKey))
-    .filter(Boolean);
-}
 
 function AccountStatusBadge({ status }: { status: AccountLifecycleStatus }) {
   const StatusIcon = statusIcons[status];
 
   return (
-    <span className={`account-status account-status--${status}`}>
-      <StatusIcon size={14} weight="duotone" aria-hidden="true" />
+    <Badge
+      className={`account-status account-status--${status}`}
+      icon={<StatusIcon size={14} weight="duotone" aria-hidden="true" />}
+      tone={statusTones[status]}
+    >
       {statusLabels[status]}
-    </span>
+    </Badge>
   );
 }
 
@@ -96,12 +84,10 @@ function AccountAvatar({ account }: { account: ManagedUserAccount }) {
 function AccountRowActions({
   account,
   groups,
-  licenses,
   permissions
 }: {
   account: ManagedUserAccount;
   groups: PermissionGroup[];
-  licenses: AccountLicense[];
   permissions: AccountPermission[];
 }) {
   return (
@@ -122,7 +108,7 @@ function AccountRowActions({
           </button>
         </form>
       ) : null}
-      <AccountEditDialog account={account} groups={groups} licenses={licenses} permissions={permissions} />
+      <AccountEditDialog account={account} groups={groups} permissions={permissions} />
     </div>
   );
 }
@@ -131,7 +117,7 @@ function SummaryStrip({ summary }: { summary: AccountAccessData["summary"] }) {
   const summaryItems = [
     { label: "Tài khoản hoạt động", value: summary.activeAccounts, icon: Users },
     { label: "Admin hệ thống", value: summary.systemAdmins, icon: ShieldCheck },
-    { label: "License tính phí", value: summary.billableLicenses, icon: Key },
+    { label: "Chờ kích hoạt", value: summary.pendingActivation, icon: Clock },
     { label: "Quyền cá nhân", value: summary.customizedAccounts, icon: Star }
   ];
 
@@ -148,132 +134,6 @@ function SummaryStrip({ summary }: { summary: AccountAccessData["summary"] }) {
           </div>
         </article>
       ))}
-    </section>
-  );
-}
-
-function AccountTable({
-  accounts,
-  availableEmployees,
-  groups,
-  licenses,
-  permissions,
-  maps
-}: {
-  accounts: ManagedUserAccount[];
-  availableEmployees: AccountProvisionEmployee[];
-  groups: PermissionGroup[];
-  licenses: AccountLicense[];
-  permissions: AccountPermission[];
-  maps: AccountAccessMaps;
-}) {
-  return (
-    <section className="account-panel account-table-panel" aria-labelledby="account-table-title">
-      <header className="account-panel-header">
-        <div>
-          <h2 id="account-table-title">Tài khoản người dùng</h2>
-          <p>{accounts.length} hồ sơ đăng nhập</p>
-        </div>
-        <div className="account-panel-actions">
-          <a className="secondary-button" href="/admin/settings/accounts/device-auth">
-            <ShieldCheck size={16} weight="duotone" aria-hidden="true" />
-            Xác thực thiết bị
-          </a>
-          <button className="secondary-button" type="button">
-            <FunnelSimple size={16} weight="duotone" aria-hidden="true" />
-            Bộ lọc
-          </button>
-          <button className="secondary-button" type="button">
-            <SlidersHorizontal size={16} weight="duotone" aria-hidden="true" />
-            Cột
-          </button>
-          <AccountProvisionDialog employees={availableEmployees} groups={groups} licenses={licenses} />
-        </div>
-      </header>
-
-      <div className="account-filter-row" aria-label="Bộ lọc nhanh">
-        {(["active", "pending_activation", "closed"] as const).map((status) => (
-          <button className={status === "active" ? "is-selected" : undefined} type="button" key={status}>
-            {statusLabels[status]}
-          </button>
-        ))}
-        {licenses.map((license) => (
-          <button type="button" key={license.key}>
-            {license.name}
-          </button>
-        ))}
-      </div>
-
-      <div className="account-table-shell" tabIndex={0} aria-label="Bảng tài khoản có thể cuộn ngang">
-        <table className="account-table">
-          <thead>
-            <tr>
-              <th scope="col">Nhân sự</th>
-              <th scope="col">Quyền</th>
-              <th scope="col">License</th>
-              <th scope="col">Nhóm quyền</th>
-              <th scope="col">Trạng thái</th>
-              <th scope="col">Hiệu lực</th>
-              <th scope="col">
-                <span className="sr-only">Thao tác</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {accounts.map((account) => {
-              const group = account.groupId ? maps.groupById.get(account.groupId) : null;
-              const effectivePermissions = getEffectivePermissions(account, maps);
-
-              return (
-                <tr key={account.id}>
-                  <th scope="row">
-                    <span className="account-person-cell">
-                      <AccountAvatar account={account} />
-                      <span>
-                        <strong>{account.name}</strong>
-                        <small>{account.employeeCode ?? "Chưa có mã"} · {account.email}</small>
-                      </span>
-                    </span>
-                  </th>
-                  <td>
-                    <span className={`account-role account-role--${account.role}`}>
-                      {roleLabels[account.role]}
-                    </span>
-                    <small>{account.title}</small>
-                  </td>
-                  <td>
-                    <span className={`account-license account-license--${account.licensePlan}`}>
-                      {licenseLabels[account.licensePlan]}
-                    </span>
-                  </td>
-                  <td>
-                    <strong>{group?.name ?? "Chưa gán"}</strong>
-                    <small>{effectivePermissions.length} quyền hiệu lực</small>
-                  </td>
-                  <td>
-                    <AccountStatusBadge status={account.status} />
-                    {account.status === "closed" ? <small>Không tính phí license</small> : null}
-                  </td>
-                  <td>
-                    <span>{account.activatedAt ?? "Chờ cấp"}</span>
-                    {account.closedAt ? <small>Đóng: {account.closedAt}</small> : null}
-                  </td>
-                  <td>
-                    <AccountRowActions account={account} groups={groups} licenses={licenses} permissions={permissions} />
-                  </td>
-                </tr>
-              );
-            })}
-            {accounts.length === 0 ? (
-              <tr>
-                <td colSpan={7}>
-                  <span className="account-empty-state">Chưa có dữ liệu tài khoản từ API.</span>
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
     </section>
   );
 }
@@ -311,56 +171,13 @@ function PermissionGroupsPanel({ groups }: { groups: PermissionGroup[] }) {
               <h3>{group.name}</h3>
               <p>{group.summary}</p>
               <div>
-                <span>{roleLabels[group.role]}</span>
-                <span>{licenseLabels[group.licensePlan]}</span>
-                <span>{group.memberCount} người</span>
+                <Badge tone={group.role === "system_admin" ? "accent" : "neutral"}>{roleLabels[group.role]}</Badge>
+                <Badge tone="neutral">{group.memberCount} người</Badge>
               </div>
             </div>
           </article>
         ))}
         {groups.length === 0 ? <p className="account-empty-state">Chưa có nhóm quyền từ API.</p> : null}
-      </div>
-    </section>
-  );
-}
-
-function LicenseUsagePanel({
-  accounts,
-  licenses
-}: {
-  accounts: ManagedUserAccount[];
-  licenses: AccountLicense[];
-}) {
-  return (
-    <section className="account-panel" aria-labelledby="license-usage-title">
-      <header className="account-panel-header">
-        <div>
-          <h2 id="license-usage-title">License</h2>
-          <p>Không tính tài khoản đã đóng</p>
-        </div>
-      </header>
-
-      <div className="license-usage-list">
-        {licenses.map((license) => {
-          const used = accounts.filter(
-            (account) => account.licensePlan === license.key && account.status !== "closed"
-          ).length;
-          const usage = license.seatLimit > 0 ? Math.min(Math.round((used / license.seatLimit) * 100), 100) : 0;
-
-          return (
-            <article className="license-usage-row" key={license.key}>
-              <header>
-                <strong>{license.name}</strong>
-                <span>{used}/{license.seatLimit}</span>
-              </header>
-              <div className="license-usage-track" aria-hidden="true">
-                <span style={{ width: `${usage}%` }} />
-              </div>
-              <p>{license.modules.join(" · ")}</p>
-            </article>
-          );
-        })}
-        {licenses.length === 0 ? <p className="account-empty-state">Chưa có dữ liệu license từ API.</p> : null}
       </div>
     </section>
   );
@@ -402,7 +219,6 @@ function PermissionMatrixPanel({
                 <th scope="row">
                   <span className="permission-group-cell">
                     <strong>{group.name}</strong>
-                    <small>{licenseLabels[group.licensePlan]}</small>
                   </span>
                 </th>
                 {maps.permissionCategories.map((category) => {
@@ -414,7 +230,7 @@ function PermissionMatrixPanel({
                   return (
                     <td key={`${group.id}-${category}`}>
                       {count > 0 ? (
-                        <span className="permission-count">{count}</span>
+                        <Badge className="permission-count" tone="success">{count}</Badge>
                       ) : (
                         <Lock size={15} weight="duotone" aria-label="Không có quyền" />
                       )}
@@ -479,8 +295,8 @@ function ApiStatusBanner({ data }: { data: AccountAccessData }) {
 }
 
 export function AccountAccessBoard({ data }: { data: AccountAccessData }) {
+  const activeGroups = data.groups.filter((group) => group.status !== "archived");
   const maps: AccountAccessMaps = {
-    groupById: new Map(data.groups.map((group) => [group.id, group])),
     permissionByKey: new Map(data.permissions.map((permission) => [permission.key, permission])),
     permissionCategories: Array.from(new Set(data.permissions.map((permission) => permission.category)))
   };
@@ -495,16 +311,14 @@ export function AccountAccessBoard({ data }: { data: AccountAccessData }) {
           <AccountManagedTable
             accounts={data.accounts}
             availableEmployees={data.availableEmployees}
-            groups={data.groups}
-            licenses={data.licenses}
+            groups={activeGroups}
             permissions={data.permissions}
           />
-          <PermissionMatrixPanel groups={data.groups} maps={maps} />
+          <PermissionMatrixPanel groups={activeGroups} maps={maps} />
         </div>
 
-        <aside className="account-access-side" aria-label="Nhóm quyền và license">
-          <PermissionGroupsPanel groups={data.groups} />
-          <LicenseUsagePanel accounts={data.accounts} licenses={data.licenses} />
+        <aside className="account-access-side" aria-label="Nhóm quyền và quyền riêng">
+          <PermissionGroupsPanel groups={activeGroups} />
           <CustomPermissionPanel accounts={data.accounts} />
         </aside>
       </section>

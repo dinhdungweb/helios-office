@@ -27,11 +27,17 @@ type KeycloakRoleRepresentation = {
   name: string;
 };
 
+type KeycloakRealmRepresentation = {
+  smtpServer?: Record<string, string>;
+};
+
 export type ProvisionKeycloakUserInput = {
   email: string;
   displayName: string;
   enabled: boolean;
   initialPassword?: string;
+  temporaryPassword?: boolean;
+  requiredActions?: string[];
   roles: string[];
   username?: string;
 };
@@ -40,6 +46,7 @@ export type UpdateKeycloakUserInput = {
   displayName?: string;
   email?: string;
   enabled?: boolean;
+  requiredActions?: string[];
   roles?: string[];
 };
 
@@ -63,7 +70,13 @@ export class KeycloakAdminService {
       });
 
       if (input.initialPassword) {
-        await this.setPassword(existing.id, input.initialPassword);
+        await this.setPassword(existing.id, input.initialPassword, Boolean(input.temporaryPassword));
+      }
+
+      if (input.requiredActions) {
+        await this.updateUser(existing.id, {
+          requiredActions: input.requiredActions
+        });
       }
 
       return { id: existing.id, username };
@@ -83,13 +96,13 @@ export class KeycloakAdminService {
         lastName: profile.lastName,
         enabled: input.enabled,
         emailVerified: true,
-        requiredActions: [],
+        requiredActions: input.requiredActions ?? [],
         credentials: input.initialPassword
           ? [
               {
                 type: "password",
                 value: input.initialPassword,
-                temporary: false
+                temporary: Boolean(input.temporaryPassword)
               }
             ]
           : undefined
@@ -124,11 +137,14 @@ export class KeycloakAdminService {
       const profile = this.splitDisplayName(input.displayName);
       body.firstName = profile.firstName;
       body.lastName = profile.lastName;
-      body.requiredActions = [];
     }
 
     if (input.enabled !== undefined) {
       body.enabled = input.enabled;
+    }
+
+    if (input.requiredActions !== undefined) {
+      body.requiredActions = input.requiredActions;
     }
 
     if (Object.keys(body).length > 0) {
@@ -155,7 +171,70 @@ export class KeycloakAdminService {
     await this.updateUser(userId, { enabled });
   }
 
-  private async setPassword(userId: string, password: string) {
+  async sendRequiredActionsEmail(userId: string, actions: string[]) {
+    const token = await this.getAdminToken();
+    const url = this.adminUrl(`users/${encodeURIComponent(userId)}/execute-actions-email`);
+    const clientId = this.config.get<string>("KEYCLOAK_ACCOUNT_CLIENT_ID") || this.config.get<string>("KEYCLOAK_CLIENT_ID");
+    const redirectUri = this.config.get<string>("ACCOUNT_INVITE_REDIRECT_URI");
+    const lifespan = this.config.get<string>("ACCOUNT_INVITE_LIFESPAN_SECONDS");
+
+    if (clientId) {
+      url.searchParams.set("client_id", clientId);
+    }
+
+    if (redirectUri) {
+      url.searchParams.set("redirect_uri", redirectUri);
+    }
+
+    if (lifespan) {
+      url.searchParams.set("lifespan", lifespan);
+    }
+
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(actions)
+    });
+
+    if (!response.ok) {
+      await this.throwKeycloakError("send required actions email", response);
+    }
+  }
+
+  async updateRealmSmtpSettings(smtpServer: Record<string, string>) {
+    const token = await this.getAdminToken();
+    const currentResponse = await fetch(this.adminUrl(""), {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (!currentResponse.ok) {
+      await this.throwKeycloakError("read realm", currentResponse);
+    }
+
+    const currentRealm = (await currentResponse.json()) as KeycloakRealmRepresentation;
+    const response = await fetch(this.adminUrl(""), {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        ...currentRealm,
+        smtpServer
+      })
+    });
+
+    if (!response.ok) {
+      await this.throwKeycloakError("update realm smtp", response);
+    }
+  }
+
+  private async setPassword(userId: string, password: string, temporary: boolean) {
     const token = await this.getAdminToken();
     const response = await fetch(this.adminUrl(`users/${encodeURIComponent(userId)}/reset-password`), {
       method: "PUT",
@@ -166,7 +245,7 @@ export class KeycloakAdminService {
       body: JSON.stringify({
         type: "password",
         value: password,
-        temporary: false
+        temporary
       })
     });
 

@@ -1,10 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
-import type {
-  AccountLicense,
-  AccountLicensePlan,
-  PermissionGroup
-} from "@/lib/account-access-api";
+import type { PermissionGroup } from "@/lib/account-access-api";
 
 export type DepartmentOption = {
   id: string;
@@ -20,11 +16,26 @@ export type EmployeeOption = {
   department: string;
 };
 
+export type JobPositionOption = {
+  id: string;
+  code: string;
+  name: string;
+  family: string | null;
+};
+
+export type JobTitleOption = {
+  id: string;
+  code: string;
+  name: string;
+  rank: number;
+};
+
 export type EmployeeCreateData = {
   departments: DepartmentOption[];
+  positions: JobPositionOption[];
+  jobTitles: JobTitleOption[];
   managers: EmployeeOption[];
   groups: PermissionGroup[];
-  licenses: AccountLicense[];
   source: "api" | "unavailable";
   error?: string;
 };
@@ -44,27 +55,29 @@ type ApiEmployee = {
   department: string;
 };
 
-type ApiLicense = {
-  id: AccountLicensePlan;
-  name: string;
-  description?: string;
-  modules?: string[];
-};
-
 type ApiPermissionGroup = {
   id: string;
   name: string;
   description?: string;
   roleScope?: "system_admin" | "user";
-  licensePlan?: AccountLicensePlan;
+  status?: "active" | "archived";
+  archivedAt?: string | null;
   memberCount?: number;
   permissionKeys?: string[];
 };
 
-const licenseSeatLimits: Record<AccountLicensePlan, number> = {
-  standard: 140,
-  professional: 45,
-  enterprise: 15
+type ApiJobPosition = {
+  id: string;
+  code: string;
+  name: string;
+  family?: string | null;
+};
+
+type ApiJobTitle = {
+  id: string;
+  code: string;
+  name: string;
+  rank?: number;
 };
 
 async function requestJson<T>(path: string) {
@@ -87,23 +100,14 @@ async function requestJson<T>(path: string) {
   return response.json() as Promise<T>;
 }
 
-function normalizeLicense(license: ApiLicense): AccountLicense {
-  return {
-    key: license.id,
-    name: license.name,
-    summary: license.description ?? license.name,
-    modules: license.modules ?? [],
-    seatLimit: licenseSeatLimits[license.id]
-  };
-}
-
 function normalizeGroup(group: ApiPermissionGroup): PermissionGroup {
   return {
     id: group.id,
     name: group.name,
     summary: group.description ?? group.name,
     role: group.roleScope ?? "user",
-    licensePlan: group.licensePlan ?? "standard",
+    status: group.status === "archived" ? "archived" : "active",
+    archivedAt: group.archivedAt ?? null,
     memberCount: group.memberCount ?? 0,
     permissionKeys: group.permissionKeys ?? []
   };
@@ -119,28 +123,49 @@ function normalizeEmployee(employee: ApiEmployee): EmployeeOption {
   };
 }
 
+function normalizePosition(position: ApiJobPosition): JobPositionOption {
+  return {
+    id: position.id,
+    code: position.code,
+    name: position.name,
+    family: position.family ?? null
+  };
+}
+
+function normalizeJobTitle(title: ApiJobTitle): JobTitleOption {
+  return {
+    id: title.id,
+    code: title.code,
+    name: title.name,
+    rank: title.rank ?? 0
+  };
+}
+
 export async function getEmployeeCreateData(): Promise<EmployeeCreateData> {
   try {
-    const [departments, employees, groups, licenses] = await Promise.all([
+    const [departments, positions, jobTitles, employees, groups] = await Promise.all([
       requestJson<ApiDepartment[]>("/departments"),
+      requestJson<ApiJobPosition[]>("/job-positions"),
+      requestJson<ApiJobTitle[]>("/job-titles"),
       requestJson<ApiEmployee[]>("/employees"),
-      requestJson<ApiPermissionGroup[]>("/account-access/groups"),
-      requestJson<ApiLicense[]>("/account-access/licenses")
+      requestJson<ApiPermissionGroup[]>("/account-access/groups")
     ]);
 
     return {
       departments,
+      positions: positions.map(normalizePosition),
+      jobTitles: jobTitles.map(normalizeJobTitle),
       managers: employees.map(normalizeEmployee),
       groups: groups.map(normalizeGroup),
-      licenses: licenses.map(normalizeLicense),
       source: "api"
     };
   } catch (error) {
     return {
       departments: [],
+      positions: [],
+      jobTitles: [],
       managers: [],
       groups: [],
-      licenses: [],
       source: "unavailable",
       error: error instanceof Error ? error.message : "Cannot reach employee create API"
     };

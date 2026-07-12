@@ -18,11 +18,13 @@ import {
 import type { Icon } from "@/lib/icons";
 import type { ReactNode } from "react";
 import { AppLauncher } from "@/components/dashboard/app-launcher";
+import { AdminMobileNav, AdminRail } from "@/components/user/admin-frame-nav";
+import { HcnsMobileNav, HcnsRail } from "@/components/user/hcns-frame-nav";
 import { ProfileMenu } from "@/components/user/profile-menu";
 import { UserQuickCreateMenu } from "@/components/user/user-quick-create-menu";
 import { currentUser } from "@/lib/mock-data";
 
-export type UserModuleKey = "home" | "attendance" | "payroll" | "requests" | "profile" | "loans" | "settings" | "admin";
+export type UserModuleKey = "home" | "attendance" | "payroll" | "requests" | "profile" | "loans" | "settings" | "admin" | "hcns";
 
 type UserRailItem = {
   key: UserModuleKey;
@@ -44,7 +46,7 @@ const userRailItems: UserRailItem[] = [
   { key: "payroll", label: "Lương", href: "/user?customMenu=user-board-payroll", icon: Bank },
   { key: "requests", label: "Đơn từ", href: "/user?customMenu=user-board-requests", icon: ClipboardText },
   { key: "profile", label: "Hồ sơ", href: "/user?customMenu=user-board-profile", icon: IdentificationBadge },
-  { key: "admin", label: "Quản trị", href: "/admin/settings", icon: ShieldCheck },
+  { key: "admin", label: "Quản trị", href: "/admin", icon: ShieldCheck },
   { key: "loans", label: "Vay", href: "#", icon: MoneyWavy },
   { key: "settings", label: "Tùy chỉnh", href: "#", icon: MagicWand }
 ];
@@ -164,16 +166,19 @@ function UserTopbar({
 }
 
 export function UserFrame({ activeModule, children, showSearch, title }: UserFrameProps) {
+  const isAdminFrame = activeModule === "admin";
+  const isHcnsFrame = activeModule === "hcns";
+
   return (
     <div className="user-shell">
-      <UserRail activeModule={activeModule} />
+      {isAdminFrame ? <AdminRail /> : isHcnsFrame ? <HcnsRail /> : <UserRail activeModule={activeModule} />}
 
       <div className="user-workspace">
         <UserTopbar activeModule={activeModule} showSearch={showSearch} title={title} />
         {children}
       </div>
 
-      <UserMobileNav activeModule={activeModule} />
+      {isAdminFrame ? <AdminMobileNav /> : isHcnsFrame ? <HcnsMobileNav /> : <UserMobileNav activeModule={activeModule} />}
     </div>
   );
 }

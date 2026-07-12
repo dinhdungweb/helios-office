@@ -10,7 +10,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     user.account.adminRole !== "system_admin" ||
     user.account.accountStatus !== "active"
   ) {
-    redirect("/login?redirectTo=/admin/settings");
+    redirect("/login?redirectTo=/admin");
   }
 
   return children;

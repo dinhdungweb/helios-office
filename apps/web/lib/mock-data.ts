@@ -321,22 +321,12 @@ export const quickActions = [
 ];
 
 export type AccountRole = "system_admin" | "user";
-export type AccountLicensePlan = "standard" | "professional" | "enterprise";
 export type AccountLifecycleStatus = "pending_activation" | "active" | "closed";
-
-export type AccountLicense = {
-  key: AccountLicensePlan;
-  name: "STANDARD" | "PROFESSIONAL" | "ENTERPRISE";
-  summary: string;
-  modules: string[];
-  seatLimit: number;
-};
 
 export type AccountPermission = {
   key: string;
   category: string;
   label: string;
-  minimumLicense: AccountLicensePlan;
   adminOnly: boolean;
 };
 
@@ -346,7 +336,6 @@ export type PermissionGroup = {
   name: string;
   summary: string;
   role: AccountRole;
-  licensePlan: AccountLicensePlan;
   memberCount: number;
   status: "active" | "paused";
   memberSources: Array<{
@@ -409,7 +398,6 @@ export type ManagedUserAccount = {
   title: string;
   department: string;
   role: AccountRole;
-  licensePlan: AccountLicensePlan;
   groupId: string;
   status: AccountLifecycleStatus;
   customPermissionKeys: string[];
@@ -606,106 +594,131 @@ export type OrganizationChangeLog = {
   target: string;
 };
 
-export const accountLicenses: AccountLicense[] = [
-  {
-    key: "standard",
-    name: "STANDARD",
-    summary: "Tài khoản cơ bản cho nhân sự làm việc hằng ngày.",
-    modules: ["Hồ sơ", "Đơn từ", "Chấm công cá nhân", "Thông báo"],
-    seatLimit: 140
-  },
-  {
-    key: "professional",
-    name: "PROFESSIONAL",
-    summary: "Tài khoản chuyên nghiệp cho quản lý và HR vận hành.",
-    modules: ["Duyệt đơn", "Báo cáo phòng ban", "Quy trình", "Tài sản"],
-    seatLimit: 45
-  },
-  {
-    key: "enterprise",
-    name: "ENTERPRISE",
-    summary: "Tài khoản cao nhất cho quản trị hệ thống và tùy biến sâu.",
-    modules: ["Open API", "Sơ đồ tổ chức", "Báo cáo tổng thể", "Cấu hình"],
-    seatLimit: 15
-  }
-];
-
 export const accountPermissions: AccountPermission[] = [
   {
     key: "system.organization.manage",
     category: "Quản trị hệ thống",
     label: "Cài đặt sơ đồ tổ chức",
-    minimumLicense: "enterprise",
     adminOnly: true
   },
   {
     key: "system.accounts.manage",
     category: "Quản trị hệ thống",
     label: "Kích hoạt, đóng tài khoản nhân viên",
-    minimumLicense: "enterprise",
     adminOnly: true
   },
   {
     key: "system.approval_flow.manage",
     category: "Quản trị hệ thống",
     label: "Thiết lập quy trình duyệt",
-    minimumLicense: "professional",
     adminOnly: true
   },
   {
     key: "system.open_api.manage",
     category: "Quản trị hệ thống",
     label: "Cấu hình Open API",
-    minimumLicense: "enterprise",
     adminOnly: true
   },
   {
     key: "system.branding.manage",
     category: "Quản trị hệ thống",
     label: "Thay đổi giao diện/logo công ty",
-    minimumLicense: "enterprise",
     adminOnly: true
   },
   {
     key: "reports.company.view",
     category: "Báo cáo",
     label: "Xem báo cáo tổng thể",
-    minimumLicense: "professional",
     adminOnly: false
   },
   {
     key: "approvals.critical.approve",
     category: "Phê duyệt",
     label: "Phê duyệt đơn từ quan trọng",
-    minimumLicense: "professional",
     adminOnly: false
   },
   {
     key: "employees.department.manage",
     category: "Nhân sự",
     label: "Quản lý nhân sự trong bộ phận",
-    minimumLicense: "professional",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.attendance.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget chấm công HCNS",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.requests.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget đơn từ HCNS",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.people.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget biến động nhân sự",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.contracts.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget hợp đồng HCNS",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.organization.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget cơ cấu tổ chức HCNS",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.analytics.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget BI HRM",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.modules.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget nghiệp vụ HRM",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.birthdays.view",
+    category: "Dashboard HCNS",
+    label: "Xem widget sinh nhật nội bộ",
+    adminOnly: false
+  },
+  {
+    key: "hr.dashboard.shortcuts.view",
+    category: "Dashboard HCNS",
+    label: "Xem lối tắt HCNS",
+    adminOnly: false
+  },
+  {
+    key: "attendance.device.manage",
+    category: "Chấm công",
+    label: "Quản lý xác thực thiết bị chấm công",
     adminOnly: false
   },
   {
     key: "requests.personal.create",
     category: "Cá nhân",
     label: "Tạo đơn từ cá nhân",
-    minimumLicense: "standard",
     adminOnly: false
   },
   {
     key: "tasks.assigned.update",
     category: "Cá nhân",
     label: "Cập nhật công việc được giao",
-    minimumLicense: "standard",
     adminOnly: false
   },
   {
     key: "reports.personal.view",
     category: "Cá nhân",
     label: "Xem báo cáo cá nhân",
-    minimumLicense: "standard",
     adminOnly: false
   }
 ];
@@ -717,7 +730,6 @@ export const permissionGroups: PermissionGroup[] = [
     name: "Admin hệ thống",
     summary: "Chủ doanh nghiệp, IT hoặc HCNS có quyền cao nhất.",
     role: "system_admin",
-    licensePlan: "enterprise",
     memberCount: 2,
     status: "active",
     memberSources: [
@@ -740,6 +752,7 @@ export const permissionGroups: PermissionGroup[] = [
       "system.approval_flow.manage",
       "system.open_api.manage",
       "system.branding.manage",
+      "attendance.device.manage",
       "reports.company.view",
       "approvals.critical.approve"
     ]
@@ -750,7 +763,6 @@ export const permissionGroups: PermissionGroup[] = [
     name: "Ban giám đốc",
     summary: "Xem báo cáo tổng thể và duyệt các đơn từ quan trọng.",
     role: "user",
-    licensePlan: "enterprise",
     memberCount: 4,
     status: "active",
     memberSources: [
@@ -774,7 +786,6 @@ export const permissionGroups: PermissionGroup[] = [
     name: "Trưởng phòng",
     summary: "Quản lý nhân sự, công việc và phê duyệt trong bộ phận.",
     role: "user",
-    licensePlan: "professional",
     memberCount: 18,
     status: "active",
     memberSources: [
@@ -799,7 +810,6 @@ export const permissionGroups: PermissionGroup[] = [
     name: "Quản lý dự án",
     summary: "Quản lý dự án và công việc của nhân sự cấp dưới theo phạm vi phòng ban.",
     role: "user",
-    licensePlan: "professional",
     memberCount: 12,
     status: "active",
     memberSources: [
@@ -824,7 +834,6 @@ export const permissionGroups: PermissionGroup[] = [
     name: "Nhân viên",
     summary: "Tạo đơn từ cá nhân, xem công việc được giao và cập nhật báo cáo.",
     role: "user",
-    licensePlan: "standard",
     memberCount: 176,
     status: "active",
     memberSources: [
@@ -1040,7 +1049,6 @@ export const managedUserAccounts: ManagedUserAccount[] = [
     title: "Web Lead",
     department: "Helios",
     role: "system_admin",
-    licensePlan: "enterprise",
     groupId: "grp-system-admin",
     status: "active",
     customPermissionKeys: ["system.open_api.manage"],
@@ -1056,7 +1064,6 @@ export const managedUserAccounts: ManagedUserAccount[] = [
     title: "HR Executive",
     department: "People Operations",
     role: "user",
-    licensePlan: "professional",
     groupId: "grp-managers",
     status: "active",
     customPermissionKeys: [],
@@ -1071,7 +1078,6 @@ export const managedUserAccounts: ManagedUserAccount[] = [
     title: "Sales Specialist",
     department: "Sales",
     role: "user",
-    licensePlan: "standard",
     groupId: "grp-employees",
     status: "active",
     customPermissionKeys: [],
@@ -1086,7 +1092,6 @@ export const managedUserAccounts: ManagedUserAccount[] = [
     title: "Operations Coordinator",
     department: "Operations",
     role: "user",
-    licensePlan: "standard",
     groupId: "grp-employees",
     status: "pending_activation",
     customPermissionKeys: []
@@ -1100,7 +1105,6 @@ export const managedUserAccounts: ManagedUserAccount[] = [
     title: "Sales Manager",
     department: "Sales",
     role: "user",
-    licensePlan: "professional",
     groupId: "grp-managers",
     status: "active",
     customPermissionKeys: ["reports.company.view"],
@@ -1116,7 +1120,6 @@ export const managedUserAccounts: ManagedUserAccount[] = [
     title: "HR Executive",
     department: "People Operations",
     role: "user",
-    licensePlan: "standard",
     groupId: "grp-employees",
     status: "closed",
     customPermissionKeys: [],
@@ -1711,6 +1714,17 @@ export const systemSettingItems: AdminSettingItem[] = [
     controls: ["Vị trí", "Chức vụ", "Cấp bậc", "Hồ sơ"]
   },
   {
+    id: "employee-directory",
+    tier: "system",
+    category: "Quản trị Tổ chức & Nhân sự",
+    title: "Hồ sơ nhân sự",
+    summary: "Quản lý hồ sơ nhân viên, phòng ban, quản lý trực tiếp và liên kết tài khoản đăng nhập.",
+    owner: "HR Admin",
+    status: "configured",
+    href: "/admin/hr/employees",
+    controls: ["Hồ sơ", "Phòng ban", "Quản lý", "Tài khoản"]
+  },
+  {
     id: "user-accounts",
     tier: "system",
     category: "Quản trị Tổ chức & Nhân sự",
@@ -1741,7 +1755,7 @@ export const systemSettingItems: AdminSettingItem[] = [
     owner: "System Admin",
     status: "configured",
     href: "/admin/settings/accounts/groups",
-    controls: ["Nhóm", "Vai trò", "License", "Thành viên"]
+    controls: ["Nhóm", "Vai trò", "Quyền", "Thành viên"]
   },
   {
     id: "detailed-permissions",
@@ -1856,6 +1870,16 @@ export const moduleSettingGroups: AdminModuleSettingGroup[] = [
     summary: "Thiết lập luật nhân sự, chấm công, lương và đánh giá.",
     status: "configured",
     settings: [
+      {
+        id: "hrm-dashboard-widgets",
+        tier: "module",
+        category: "Dashboard",
+        title: "Dashboard HCNS & widget hiển thị",
+        summary: "Cấu hình nhóm HCNS được xem widget nào trên dashboard riêng.",
+        owner: "System Admin",
+        status: "configured",
+        controls: ["Chấm công", "Đơn từ", "Hợp đồng", "BI HRM"]
+      },
       {
         id: "hrm-requests",
         tier: "module",
@@ -1975,7 +1999,7 @@ export const operationSettingItems: AdminSettingItem[] = [
     summary: "Theo dõi số người dùng thực tế, hóa đơn và lịch sử gia hạn dịch vụ.",
     owner: "Finance",
     status: "configured",
-    controls: ["Người dùng", "Hóa đơn", "Gia hạn", "License"]
+    controls: ["Người dùng", "Hóa đơn", "Gia hạn", "Thanh toán"]
   },
   {
     id: "audit-log",

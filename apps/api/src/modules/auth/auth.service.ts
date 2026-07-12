@@ -1,7 +1,12 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
+import { accountPermissionCatalog } from "../../common/mock-data";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import {
+  resolveCustomPermissionKeys,
+  resolveEffectivePermissionKeys
+} from "../account-access/account-access.utils";
 import type { AuthenticatedUser } from "./auth.types";
 
 @Injectable()
@@ -80,22 +85,79 @@ export class AuthService {
   }
 
   private async resolveAccount(keycloakUserId: string, email: string | undefined) {
-    return this.prisma.userAccount.findFirst({
-      where: {
-        OR: [
-          { keycloakUserId },
-          ...(email ? [{ email }] : [])
-        ]
+    const [account, permissionCatalog] = await Promise.all([
+      this.prisma.userAccount.findFirst({
+        where: {
+          OR: [
+            { keycloakUserId },
+            ...(email ? [{ email }] : [])
+          ]
+        },
+        select: {
+          id: true,
+          email: true,
+          displayName: true,
+          adminRole: true,
+          accountStatus: true,
+          customPermissions: true,
+          customPermissionsEnabled: true,
+          employee: {
+            select: {
+              id: true
+            }
+          },
+          permissionGroup: {
+            select: {
+              permissions: true,
+              status: true
+            }
+          }
+        }
+      }),
+      this.resolvePermissionCatalogKeys()
+    ]);
+
+    if (!account) {
+      return null;
+    }
+    const customPermissionKeys = account.customPermissionsEnabled
+      ? resolveCustomPermissionKeys(account.customPermissions)
+      : [];
+    const effectivePermissionKeys = resolveEffectivePermissionKeys(
+      {
+        adminRole: account.adminRole,
+        accountStatus: account.accountStatus,
+        permissionGroupStatus: account.permissionGroup?.status,
+        groupPermissionKeys: account.permissionGroup?.permissions,
+        customPermissionKeys
       },
+      permissionCatalog
+    );
+
+    return {
+      id: account.id,
+      email: account.email,
+      displayName: account.displayName,
+      employeeId: account.employee?.id ?? null,
+      adminRole: account.adminRole,
+      accountStatus: account.accountStatus,
+      effectivePermissionKeys
+    };
+  }
+
+  private async resolvePermissionCatalogKeys() {
+    const permissions = await this.prisma.permissionDefinition.findMany({
       select: {
-        id: true,
-        email: true,
-        displayName: true,
-        adminRole: true,
-        licensePlan: true,
-        accountStatus: true
+        key: true
       }
     });
+    const keys = new Set(accountPermissionCatalog.map((permission) => permission.key));
+
+    for (const permission of permissions) {
+      keys.add(permission.key);
+    }
+
+    return Array.from(keys);
   }
 
   private resolveRoles(payload: JWTPayload) {
