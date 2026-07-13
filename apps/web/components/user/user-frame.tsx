@@ -14,6 +14,7 @@ import { UserQuickCreateMenu } from "@/components/user/user-quick-create-menu";
 import { UserPersonalNavigation } from "@/components/user/user-personal-navigation";
 import { getCurrentSessionUser, type CurrentSessionUser } from "@/lib/auth-user";
 import { currentUser } from "@/lib/mock-data";
+import { getOrgChartData, type OrgChartData } from "@/lib/org-chart-api";
 import type { UserProfile } from "@/lib/mock-data";
 
 export type UserModuleKey = "home" | "attendance" | "payroll" | "requests" | "profile" | "loans" | "settings" | "admin" | "hcns";
@@ -68,10 +69,12 @@ function UserTopbar({
   canOpenAdminSettings,
   showSearch,
   title,
-  user
+  user,
+  orgChartData
 }: {
   activeModule: UserModuleKey;
   canOpenAdminSettings: boolean;
+  orgChartData?: OrgChartData;
   showSearch?: boolean;
   title?: string;
   user: UserProfile;
@@ -82,7 +85,10 @@ function UserTopbar({
         <div className="user-mobile-launcher">
           <AppLauncher />
         </div>
-        <UserQuickCreateMenu mode={activeModule === "admin" ? "admin" : "default"} />
+        <UserQuickCreateMenu
+          mode={activeModule === "admin" ? "admin" : "default"}
+          orgChartData={activeModule === "admin" ? orgChartData : undefined}
+        />
         <h1>{title ?? user.name}</h1>
       </div>
 
@@ -129,9 +135,13 @@ function UserTopbar({
 }
 
 export async function UserFrame({ activeModule, children, showSearch, title }: UserFrameProps) {
-  const viewer = resolveViewer(await getCurrentSessionUser());
   const isAdminFrame = activeModule === "admin";
   const isHcnsFrame = activeModule === "hcns";
+  const [sessionUser, orgChartData] = await Promise.all([
+    getCurrentSessionUser(),
+    isAdminFrame ? getOrgChartData() : Promise.resolve(undefined)
+  ]);
+  const viewer = resolveViewer(sessionUser);
 
   return (
     <div className="user-shell">
@@ -162,6 +172,7 @@ export async function UserFrame({ activeModule, children, showSearch, title }: U
         <UserTopbar
           activeModule={activeModule}
           canOpenAdminSettings={viewer.isAdmin}
+          orgChartData={orgChartData}
           showSearch={showSearch}
           title={title}
           user={viewer.profile}

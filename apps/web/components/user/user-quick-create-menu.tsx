@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { DepartmentDialog } from "@/components/admin/org-chart-settings-board";
+import { FormSelect } from "@/components/ui/form-controls";
+import { FormField, FormInput, ModalDialog } from "@/components/ui/primitives";
 import { CaretRight, Plus } from "@/lib/icons";
+import type { OrgChartData } from "@/lib/org-chart-api";
 
 type UserQuickCreateMode = "default" | "admin";
 
@@ -18,7 +22,7 @@ const adminShortcutItems = [
   { label: "Phòng ban, chi nhánh", href: "/admin/settings/org-chart" },
   { label: "Khối nghiệp vụ", href: "/admin/settings/positions-titles" },
   { label: "Loại phòng ban", href: "/admin/settings/org-chart" },
-  { label: "Nhóm người dùng", href: "/admin/settings/accounts/groups" },
+  { label: "Nhóm người dùng", href: "/admin/settings/accounts/groups/new" },
   { label: "Quản lý tiền tệ", href: "/admin/settings#system-settings" },
   { label: "Cấu hình SSO", href: "/admin/settings#system-settings" },
   { label: "BÁO CÁO TÌNH HÌNH SỬ DỤNG CỦA NGƯỜI DÙNG THÁNG 07/2026", href: "/admin/settings#audit-logs" }
@@ -26,10 +30,105 @@ const adminShortcutItems = [
 
 type UserQuickCreateMenuProps = {
   mode?: UserQuickCreateMode;
+  orgChartData?: Pick<OrgChartData, "departments" | "employees">;
 };
 
-export function UserQuickCreateMenu({ mode = "default" }: UserQuickCreateMenuProps) {
+function BusinessUnitDialog({ onClose }: { onClose: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+
+  useEffect(() => {
+    dialogRef.current?.showModal();
+  }, []);
+
+  return (
+    <ModalDialog
+      className="business-unit-dialog org-department-dialog org-department-dialog--quick"
+      onCloseRequest={onClose}
+      ref={dialogRef}
+      title="Tạo mới nghiệp vụ"
+    >
+      <form className="account-dialog-form org-department-form business-unit-form" autoComplete="off">
+        <div className="account-dialog-grid org-department-form-grid business-unit-form-grid">
+          <FormField label={<>Tên nghiệp vụ <b aria-hidden="true">*</b></>} wide>
+            <FormInput name="name" required minLength={2} placeholder="Tên nghiệp vụ" autoComplete="off" />
+          </FormField>
+          <FormField label="Trạng thái" wide>
+            <FormSelect
+              ariaLabel="Chọn trạng thái"
+              defaultValue="active"
+              menuLabel="Trạng thái nghiệp vụ"
+              name="status"
+              options={[
+                { label: "Hoạt động", value: "active" },
+                { label: "Tạm dừng", value: "inactive" }
+              ]}
+              placeholder="Trạng thái"
+            />
+          </FormField>
+        </div>
+        <div className="account-dialog-actions org-department-actions business-unit-actions">
+          <button className="secondary-button" type="button" onClick={onClose}>
+            HỦY BỎ
+          </button>
+          <button className="primary-button" type="button" onClick={onClose}>
+            CẬP NHẬT
+          </button>
+        </div>
+      </form>
+    </ModalDialog>
+  );
+}
+
+function DepartmentTypeDialog({ onClose }: { onClose: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+
+  useEffect(() => {
+    dialogRef.current?.showModal();
+  }, []);
+
+  return (
+    <ModalDialog
+      className="department-type-dialog business-unit-dialog org-department-dialog org-department-dialog--quick"
+      onCloseRequest={onClose}
+      ref={dialogRef}
+      title="Tạo mới loại phòng ban"
+    >
+      <form className="account-dialog-form org-department-form business-unit-form" autoComplete="off">
+        <div className="account-dialog-grid org-department-form-grid business-unit-form-grid">
+          <FormField label={<>Tiêu đề <b aria-hidden="true">*</b></>} wide>
+            <FormInput name="title" required minLength={2} placeholder="Tiêu đề" autoComplete="off" />
+          </FormField>
+          <FormField label="Trạng thái" wide>
+            <FormSelect
+              ariaLabel="Chọn trạng thái"
+              menuLabel="Trạng thái loại phòng ban"
+              name="status"
+              options={[
+                { label: "Hoạt động", value: "active" },
+                { label: "Tạm dừng", value: "inactive" }
+              ]}
+              placeholder="Trạng thái"
+            />
+          </FormField>
+        </div>
+        <div className="account-dialog-actions org-department-actions business-unit-actions">
+          <button className="secondary-button" type="button" onClick={onClose}>
+            HỦY BỎ
+          </button>
+          <button className="primary-button" type="button" onClick={onClose}>
+            CẬP NHẬT
+          </button>
+        </div>
+      </form>
+    </ModalDialog>
+  );
+}
+
+export function UserQuickCreateMenu({ mode = "default", orgChartData }: UserQuickCreateMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false);
+  const [isBusinessDialogOpen, setIsBusinessDialogOpen] = useState(false);
+  const [isDepartmentTypeDialogOpen, setIsDepartmentTypeDialogOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState<"requests" | null>(null);
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -97,20 +196,78 @@ export function UserQuickCreateMenu({ mode = "default" }: UserQuickCreateMenuPro
         >
           {isAdminMode ? (
             <div className="user-quick-create-column">
-              {adminShortcutItems.map((item, index) => (
-                <a
-                  className="user-quick-create-item"
-                  href={item.href}
-                  key={item.label}
-                  ref={index === 0 ? (node) => {
-                    firstItemRef.current = node;
-                  } : undefined}
-                  role="menuitem"
-                  onClick={() => setIsOpen(false)}
-                >
-                  {item.label}
-                </a>
-              ))}
+              {adminShortcutItems.map((item, index) => {
+                const ref = index === 0 ? (node: HTMLAnchorElement | HTMLButtonElement | null) => {
+                  firstItemRef.current = node;
+                } : undefined;
+
+                if (index === 0) {
+                  return (
+                    <button
+                      className="user-quick-create-item"
+                      key={item.label}
+                      ref={ref}
+                      role="menuitem"
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false);
+                        setIsDepartmentDialogOpen(true);
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                }
+
+                if (index === 1) {
+                  return (
+                    <button
+                      className="user-quick-create-item"
+                      key={item.label}
+                      ref={ref}
+                      role="menuitem"
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false);
+                        setIsBusinessDialogOpen(true);
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                }
+
+                if (index === 2) {
+                  return (
+                    <button
+                      className="user-quick-create-item"
+                      key={item.label}
+                      ref={ref}
+                      role="menuitem"
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false);
+                        setIsDepartmentTypeDialogOpen(true);
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                }
+
+                return (
+                  <a
+                    className="user-quick-create-item"
+                    href={item.href}
+                    key={item.label}
+                    ref={ref}
+                    role="menuitem"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {item.label}
+                  </a>
+                );
+              })}
             </div>
           ) : (
             <>
@@ -145,6 +302,18 @@ export function UserQuickCreateMenu({ mode = "default" }: UserQuickCreateMenuPro
           )}
         </div>
       ) : null}
+
+      {isDepartmentDialogOpen ? (
+        <DepartmentDialog
+          departments={orgChartData?.departments ?? []}
+          employees={orgChartData?.employees ?? []}
+          mode="create"
+          onClose={() => setIsDepartmentDialogOpen(false)}
+        />
+      ) : null}
+
+      {isBusinessDialogOpen ? <BusinessUnitDialog onClose={() => setIsBusinessDialogOpen(false)} /> : null}
+      {isDepartmentTypeDialogOpen ? <DepartmentTypeDialog onClose={() => setIsDepartmentTypeDialogOpen(false)} /> : null}
     </div>
   );
 }

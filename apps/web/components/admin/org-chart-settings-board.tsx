@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { FormSelect } from "@/components/ui/form-controls";
-import { Button, FormField, FormInput, ModalDialog, StateBlock } from "@/components/ui/primitives";
+import { FormCheckbox, FormSelect } from "@/components/ui/form-controls";
+import { Button, FormField, FormInput, FormTextarea, ModalDialog, StateBlock } from "@/components/ui/primitives";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowSquareOut,
@@ -13,6 +13,7 @@ import {
   Clock,
   FileClock,
   Key,
+  MagnifyingGlass,
   Network,
   Package,
   PencilSimple,
@@ -161,7 +162,7 @@ function OrgSummary({ departments }: { departments: DepartmentRecord[] }) {
   );
 }
 
-function DepartmentDialog({
+export function DepartmentDialog({
   department,
   departments,
   employees,
@@ -190,12 +191,117 @@ function DepartmentDialog({
     }
   }, [onClose, state.ok]);
 
+  if (mode === "create") {
+    return (
+      <ModalDialog
+        className="org-department-dialog org-department-dialog--quick"
+        onCloseRequest={onClose}
+        ref={dialogRef}
+        title="Tạo mới phòng ban"
+      >
+        <form className="account-dialog-form org-department-form" action={formAction} autoComplete="off">
+          <div className="account-dialog-grid org-department-form-grid">
+            <FormField className="org-floating-field" label={<>Cấu trúc quyền <b aria-hidden="true">*</b></>}>
+              <FormSelect
+                ariaLabel="Chọn cấu trúc quyền"
+                defaultValue="department"
+                menuLabel="Danh sách cấu trúc quyền"
+                name="permissionStructure"
+                options={[
+                  { label: "Công ty", value: "company" },
+                  { label: "Chi nhánh công ty", value: "branch" },
+                  { label: "Phòng ban", value: "department" }
+                ]}
+                placeholder="Cấu trúc quyền"
+                required
+              />
+            </FormField>
+            <FormField label="Mã">
+              <FormInput name="code" placeholder="Mã" autoComplete="off" />
+            </FormField>
+            <FormField label={<>Tên phòng ban <b aria-hidden="true">*</b></>} wide>
+              <FormInput name="name" required minLength={2} placeholder="Tên phòng ban" autoComplete="off" />
+            </FormField>
+            <FormCheckbox className="org-department-manager-check" name="isManagementUnit" label="Là đơn vị cấp quản lý" />
+            <FormField className="org-floating-field org-department-search-field" label="Giám sát công việc" wide>
+              <FormSelect
+                ariaLabel="Chọn giám sát công việc"
+                menuLabel="Danh sách nhân sự"
+                name="headId"
+                options={buildHeadOptions(employees)}
+                placeholder="Giám sát công việc"
+              />
+              <MagnifyingGlass size={18} weight="duotone" aria-hidden="true" />
+            </FormField>
+            <FormField label="Thuộc phòng ban" wide>
+              <FormSelect
+                ariaLabel="Chọn phòng ban cấp cha"
+                menuLabel="Danh sách phòng ban cấp cha"
+                name="parentId"
+                options={buildDepartmentOptions(departments)}
+                placeholder="Chọn phòng ban"
+              />
+            </FormField>
+            <FormField
+              helpText="Lựa chọn cài đặt này giúp người quản trị có thể xuất ra các báo cáo theo nghiệp vụ. VD: Báo cáo lương của khối nghiệp vụ kế toán, kinh doanh,..."
+              label="Khối nghiệp vụ"
+              wide
+            >
+              <FormSelect
+                ariaLabel="Chọn khối nghiệp vụ"
+                menuLabel="Danh sách khối nghiệp vụ"
+                name="businessUnit"
+                options={[
+                  { label: "Khối kinh doanh", value: "business" },
+                  { label: "Khối vận hành", value: "operations" },
+                  { label: "Khối kế toán", value: "accounting" },
+                  { label: "Khối nhân sự", value: "people" }
+                ]}
+                placeholder="Khối nghiệp vụ"
+              />
+            </FormField>
+            <FormField
+              helpText="Phòng ban là 1 đơn vị nội bộ trực thuộc doanh nghiệp, nó được hiểu là 1 nhóm / 1 đội / 1 phòng / 1 ban / 1 khối... Để lên báo cáo một cách tường minh hơn, bạn nên cấu hình và lựa chọn loại cài đặt này"
+              label="Loại phòng ban"
+              wide
+            >
+              <FormSelect
+                ariaLabel="Chọn loại phòng ban"
+                menuLabel="Danh sách loại phòng ban"
+                name="departmentType"
+                options={[
+                  { label: "Phòng ban", value: "department" },
+                  { label: "Chi nhánh", value: "branch" },
+                  { label: "Nhóm", value: "team" },
+                  { label: "Khối", value: "division" }
+                ]}
+                placeholder="Loại phòng ban"
+              />
+            </FormField>
+            <FormField className="org-floating-field" label="Mô tả" wide>
+              <FormTextarea name="description" rows={2} placeholder="Mô tả" autoComplete="off" />
+            </FormField>
+          </div>
+          {state.error ? <p className="account-dialog-error">{state.error}</p> : null}
+          <div className="account-dialog-actions org-department-actions">
+            <button className="secondary-button" type="button" onClick={onClose}>
+              HỦY BỎ
+            </button>
+            <button className="primary-button" disabled={isPending} type="submit">
+              {isPending ? "ĐANG XỬ LÝ" : "CẬP NHẬT"}
+            </button>
+          </div>
+        </form>
+      </ModalDialog>
+    );
+  }
+
   return (
     <ModalDialog
       className="org-department-dialog"
       onCloseRequest={onClose}
       ref={dialogRef}
-      title={mode === "create" ? "Tạo phòng ban" : "Sửa phòng ban"}
+      title="Sửa phòng ban"
     >
       <form className="account-dialog-form" action={formAction}>
         {department ? <input name="id" type="hidden" value={department.id} /> : null}
