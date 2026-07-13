@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import {
   Bank,
   BookOpenText,
   Briefcase,
   CaretRight,
+  Check,
   GearSix,
   IdentificationBadge,
   Key,
@@ -19,10 +20,88 @@ type ProfileMenuProps = {
   user: UserProfile;
 };
 
+type ThemeColor = {
+  id: string;
+  label: string;
+  primary: string;
+  strong: string;
+  soft: string;
+  border: string;
+};
+
+const appearancePreferenceScope = "appearance.theme";
+const appearanceStorageKeyPrefix = "helios:appearance-theme";
+
+const themeColors: ThemeColor[] = [
+  { id: "orange", label: "Cam", primary: "#f15a24", strong: "#d94918", soft: "#fff0ea", border: "#ffd7cb" },
+  { id: "red", label: "Đỏ", primary: "#ef4444", strong: "#dc2626", soft: "#fef2f2", border: "#fecaca" },
+  { id: "rose", label: "Hồng", primary: "#e11d48", strong: "#be123c", soft: "#fff1f2", border: "#fecdd3" },
+  { id: "amber", label: "Vàng", primary: "#f59e0b", strong: "#d97706", soft: "#fffbeb", border: "#fde68a" },
+  { id: "emerald", label: "Xanh lá", primary: "#10b981", strong: "#059669", soft: "#ecfdf5", border: "#a7f3d0" },
+  { id: "cyan", label: "Xanh cyan", primary: "#06b6d4", strong: "#0891b2", soft: "#ecfeff", border: "#a5f3fc" },
+  { id: "blue", label: "Xanh dương", primary: "#2563eb", strong: "#1d4ed8", soft: "#eff6ff", border: "#bfdbfe" },
+  { id: "violet", label: "Tím", primary: "#7c3aed", strong: "#6d28d9", soft: "#f5f3ff", border: "#ddd6fe" },
+  { id: "slate", label: "Đen", primary: "#30363d", strong: "#1f2328", soft: "#f3f4f6", border: "#d1d5db" }
+];
+
+function getThemeColor(themeId: string | null | undefined) {
+  return themeColors.find((theme) => theme.id === themeId) ?? themeColors[0];
+}
+
+function applyThemeColor(theme: ThemeColor) {
+  const root = document.documentElement;
+
+  root.style.setProperty("--color-primary", theme.primary);
+  root.style.setProperty("--color-primary-strong", theme.strong);
+  root.style.setProperty("--color-primary-soft", theme.soft);
+  root.style.setProperty("--color-primary-border", theme.border);
+  root.style.setProperty("--color-primary-contrast", "#ffffff");
+}
+
+function readPreferenceTheme(value: unknown) {
+  if (!value || typeof value !== "object" || !("themeId" in value)) {
+    return null;
+  }
+
+  const themeId = (value as { themeId?: unknown }).themeId;
+
+  return typeof themeId === "string" ? themeId : null;
+}
+
+async function fetchThemePreference() {
+  const response = await fetch(`/api/user-preferences/${encodeURIComponent(appearancePreferenceScope)}`, {
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(`Theme preference read returned ${response.status}`);
+  }
+
+  return response.json() as Promise<{ value: unknown }>;
+}
+
+async function saveThemePreference(themeId: string) {
+  const response = await fetch(`/api/user-preferences/${encodeURIComponent(appearancePreferenceScope)}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ value: { themeId } })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Theme preference update returned ${response.status}`);
+  }
+}
+
 export function ProfileMenu({ user }: ProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isThemeOpen, setIsThemeOpen] = useState(false);
+  const [selectedThemeId, setSelectedThemeId] = useState(themeColors[0].id);
   const menuId = useId();
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const selectedTheme = getThemeColor(selectedThemeId);
+  const appearanceStorageKey = `${appearanceStorageKeyPrefix}:${user.name}:${user.department}`;
 
   useEffect(() => {
     if (!isOpen) {
@@ -49,6 +128,63 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    try {
+      const storedTheme = window.localStorage.getItem(appearanceStorageKey);
+      const localTheme = getThemeColor(storedTheme);
+
+      setSelectedThemeId(localTheme.id);
+      applyThemeColor(localTheme);
+    } catch {
+      applyThemeColor(themeColors[0]);
+    }
+
+    fetchThemePreference()
+      .then((preference) => {
+        if (!isActive) {
+          return;
+        }
+
+        const preferenceThemeId = readPreferenceTheme(preference.value);
+
+        if (!preferenceThemeId) {
+          return;
+        }
+
+        const preferenceTheme = getThemeColor(preferenceThemeId);
+        setSelectedThemeId(preferenceTheme.id);
+        applyThemeColor(preferenceTheme);
+
+        try {
+          window.localStorage.setItem(appearanceStorageKey, preferenceTheme.id);
+        } catch {
+          // Local storage is best-effort.
+        }
+      })
+      .catch(() => {
+        // The local theme keeps the UI stable if the preference API is unavailable.
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const chooseTheme = (theme: ThemeColor) => {
+    setSelectedThemeId(theme.id);
+    applyThemeColor(theme);
+
+    try {
+      window.localStorage.setItem(appearanceStorageKey, theme.id);
+    } catch {
+      // Local storage is best-effort.
+    }
+
+    void saveThemePreference(theme.id).catch(() => undefined);
+  };
 
   return (
     <div className="user-profile-menu-wrap" ref={menuRef}>
@@ -86,7 +222,7 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
               <IdentificationBadge size={18} weight="duotone" aria-hidden="true" />
               <span>Tài khoản</span>
             </a>
-            <a href="/admin/settings#system-settings" role="menuitem">
+            <a href="/admin/settings" role="menuitem">
               <GearSix size={18} weight="duotone" aria-hidden="true" />
               <span>Cài đặt hệ thống</span>
             </a>
@@ -98,11 +234,40 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
               <BookOpenText size={18} weight="duotone" aria-hidden="true" />
               <span>Hướng dẫn sử dụng</span>
             </button>
-            <button type="button" role="menuitem">
-              <MagicWand size={18} weight="duotone" aria-hidden="true" />
-              <span>Màu giao diện</span>
-              <span className="theme-preview" aria-hidden="true" />
-            </button>
+            <div className="theme-menu-item-wrap">
+              <button
+                type="button"
+                role="menuitem"
+                aria-expanded={isThemeOpen}
+                onClick={() => setIsThemeOpen((current) => !current)}
+              >
+                <MagicWand size={18} weight="duotone" aria-hidden="true" />
+                <span>Màu giao diện</span>
+                <span className="theme-preview" style={{ "--theme-color": selectedTheme.primary } as CSSProperties} aria-hidden="true" />
+              </button>
+              {isThemeOpen ? (
+                <div className="theme-color-grid" role="group" aria-label="Chọn màu giao diện">
+                  {themeColors.map((theme) => {
+                    const isSelected = theme.id === selectedThemeId;
+
+                    return (
+                      <button
+                        className={isSelected ? "theme-color-swatch is-selected" : "theme-color-swatch"}
+                        key={theme.id}
+                        type="button"
+                        aria-label={`Chọn màu ${theme.label}`}
+                        aria-pressed={isSelected}
+                        style={{ "--theme-color": theme.primary } as CSSProperties}
+                        onClick={() => chooseTheme(theme)}
+                      >
+                        <span aria-hidden="true" />
+                        {isSelected ? <Check size={18} weight="duotone" aria-hidden="true" /> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
             <button type="button" role="menuitem">
               <Language size={18} weight="duotone" aria-hidden="true" />
               <span>Ngôn ngữ</span>

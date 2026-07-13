@@ -116,8 +116,22 @@ model UserAccount {
   inviteSentAt             DateTime?
   activatedAt              DateTime?
   closedAt                 DateTime?
+  preferences              UserPreference[]
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
+}
+
+model UserPreference {
+  id        String      @id @default(uuid())
+  accountId String
+  account   UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  scope     String
+  value     Json
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([accountId, scope])
+  @@index([scope])
 }
 
 model PermissionGroup {

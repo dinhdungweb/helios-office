@@ -151,6 +151,114 @@ export const accountPermissionCatalog = [
     category: "Cá nhân",
     label: "Cập nhật công việc được giao",
     adminOnly: false
+  },
+  {
+    key: "reports.personal.view",
+    category: "Cá nhân",
+    label: "Xem báo cáo cá nhân",
+    adminOnly: false
+  },
+  {
+    key: "menu.user.loans",
+    category: "Menu Trang cá nhân",
+    label: "Thêm module Vay vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.user.attendance",
+    category: "Menu Trang cá nhân",
+    label: "Thêm module Công vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.user.payroll",
+    category: "Menu Trang cá nhân",
+    label: "Thêm module Lương vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.user.requests",
+    category: "Menu Trang cá nhân",
+    label: "Thêm module Đơn từ vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.user.profile",
+    category: "Menu Trang cá nhân",
+    label: "Thêm module Hồ sơ vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.work.tasks",
+    category: "Menu WORKPLACE",
+    label: "Thêm module Công việc thường vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.work.projects",
+    category: "Menu WORKPLACE",
+    label: "Thêm module Dự án vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.work.processes",
+    category: "Menu WORKPLACE",
+    label: "Thêm module Quy trình vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.work.timesheets",
+    category: "Menu WORKPLACE",
+    label: "Thêm module Timesheet vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.work.documents",
+    category: "Menu WORKPLACE",
+    label: "Thêm module Tài liệu vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.hrm.dashboard",
+    category: "Menu HRM",
+    label: "Thêm module Dashboard HCNS vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.hrm.employees",
+    category: "Menu HRM",
+    label: "Thêm module Hồ sơ nhân sự vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.hrm.contracts",
+    category: "Menu HRM",
+    label: "Thêm module Hợp đồng lao động vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.hrm.recruitment",
+    category: "Menu HRM",
+    label: "Thêm module Tuyển dụng vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.hrm.performance",
+    category: "Menu HRM",
+    label: "Thêm module Đánh giá vào sidebar",
+    adminOnly: false
+  },
+  {
+    key: "menu.admin.console",
+    category: "Menu Quản trị",
+    label: "Thêm module Quản trị vào sidebar",
+    adminOnly: true
+  },
+  {
+    key: "menu.admin.settings",
+    category: "Menu Quản trị",
+    label: "Thêm module Cấu hình vào sidebar",
+    adminOnly: true
   }
 ];
 
@@ -186,7 +294,17 @@ export const permissionGroups = [
     description: "Quản lý nhân sự, công việc và phê duyệt trong bộ phận.",
     roleScope: "user",
     memberCount: 18,
-    permissionKeys: ["employees.department.manage", "approvals.critical.approve", "tasks.assigned.update"]
+    permissionKeys: [
+      "employees.department.manage",
+      "approvals.critical.approve",
+      "tasks.assigned.update",
+      "menu.user.attendance",
+      "menu.user.requests",
+      "menu.user.profile",
+      "menu.work.tasks",
+      "menu.hrm.dashboard",
+      "menu.hrm.employees"
+    ]
   },
   {
     id: "grp-employees",
@@ -194,22 +312,30 @@ export const permissionGroups = [
     description: "Tạo đơn cá nhân, xem công việc được giao và cập nhật báo cáo.",
     roleScope: "user",
     memberCount: 176,
-    permissionKeys: ["requests.personal.create", "tasks.assigned.update"]
+    permissionKeys: [
+      "requests.personal.create",
+      "tasks.assigned.update",
+      "reports.personal.view",
+      "menu.user.loans",
+      "menu.user.attendance",
+      "menu.user.requests",
+      "menu.user.profile"
+    ]
   }
 ];
 
 export const userAccounts = [
   {
     id: "acc-001",
-    employeeId: "emp-001",
-    displayName: "Đặng Đình Dũng",
-    email: "dungdd@helios.vn",
+    employeeId: null,
+    displayName: "Admin",
+    email: "admin@helios.vn",
     role: "system_admin",
-    permissionGroupId: "grp-system-admin",
+    permissionGroupId: null,
     status: "active",
-    customPermissionsEnabled: true,
-    customPermissionKeys: ["system.open_api.manage"],
-    customPermissionNote: "Được cấp riêng quyền Open API cho tích hợp web.",
+    customPermissionsEnabled: false,
+    customPermissionKeys: [],
+    customPermissionNote: null,
     activatedAt: "2024-02-26T02:00:00.000Z",
     closedAt: null
   },

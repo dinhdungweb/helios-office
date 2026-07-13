@@ -548,7 +548,7 @@ export function OrgChartSettingsBoard({ data }: { data: OrgChartData }) {
           <h1 id="org-page-title">Sơ đồ tổ chức</h1>
           <p>Quản lý phòng ban, cấp cha, trưởng phòng và trạng thái lưu trữ bằng dữ liệu thật.</p>
         </div>
-        <a className="secondary-button" href="/admin/settings#system-settings">
+        <a className="secondary-button" href="/admin/settings">
           Quay lại cài đặt
         </a>
       </section>

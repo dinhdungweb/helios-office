@@ -3,6 +3,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { CaretRight, Plus } from "@/lib/icons";
 
+type UserQuickCreateMode = "default" | "admin";
+
 const requestCreateItems = [
   { label: "Đơn xin nghỉ", href: "/user/requests/new?type=leave" },
   { label: "Đơn vắng mặt", href: "/user/requests/new?type=absence" },
@@ -12,12 +14,27 @@ const requestCreateItems = [
   { label: "Đơn thôi việc", href: "/user/requests/new?type=resignation" }
 ];
 
-export function UserQuickCreateMenu() {
+const adminShortcutItems = [
+  { label: "Phòng ban, chi nhánh", href: "/admin/settings/org-chart" },
+  { label: "Khối nghiệp vụ", href: "/admin/settings/positions-titles" },
+  { label: "Loại phòng ban", href: "/admin/settings/org-chart" },
+  { label: "Nhóm người dùng", href: "/admin/settings/accounts/groups" },
+  { label: "Quản lý tiền tệ", href: "/admin/settings#system-settings" },
+  { label: "Cấu hình SSO", href: "/admin/settings#system-settings" },
+  { label: "BÁO CÁO TÌNH HÌNH SỬ DỤNG CỦA NGƯỜI DÙNG THÁNG 07/2026", href: "/admin/settings#audit-logs" }
+];
+
+type UserQuickCreateMenuProps = {
+  mode?: UserQuickCreateMode;
+};
+
+export function UserQuickCreateMenu({ mode = "default" }: UserQuickCreateMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState<"requests" | null>(null);
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const firstItemRef = useRef<HTMLButtonElement | null>(null);
+  const firstItemRef = useRef<HTMLAnchorElement | HTMLButtonElement | null>(null);
+  const isAdminMode = mode === "admin";
 
   useEffect(() => {
     if (!isOpen) {
@@ -56,8 +73,8 @@ export function UserQuickCreateMenu() {
         aria-controls={menuId}
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        aria-label="Tạo nhanh"
-        className="icon-button user-quick-create"
+        aria-label={isAdminMode ? "Mở menu cấu hình nhanh" : "Tạo nhanh"}
+        className={isAdminMode ? "icon-button user-quick-create is-admin-mode" : "icon-button user-quick-create"}
         type="button"
         onClick={() => {
           setIsOpen((current) => !current);
@@ -69,36 +86,63 @@ export function UserQuickCreateMenu() {
 
       {isOpen ? (
         <div
-          className={activeGroup ? "user-quick-create-popover is-nested" : "user-quick-create-popover"}
+          className={[
+            "user-quick-create-popover",
+            activeGroup ? "is-nested" : "",
+            isAdminMode ? "is-admin-menu" : ""
+          ].filter(Boolean).join(" ")}
           id={menuId}
           role="menu"
-          aria-label="Tạo nhanh"
+          aria-label={isAdminMode ? "Cấu hình nhanh" : "Tạo nhanh"}
         >
-          <div className="user-quick-create-column">
-            <button
-              aria-expanded={activeGroup === "requests"}
-              aria-haspopup="menu"
-              className={activeGroup === "requests" ? "user-quick-create-item is-active" : "user-quick-create-item"}
-              ref={firstItemRef}
-              role="menuitem"
-              type="button"
-              onClick={() => setActiveGroup("requests")}
-              onMouseEnter={() => setActiveGroup("requests")}
-            >
-              <span>Đơn từ</span>
-              <CaretRight size={15} weight="duotone" aria-hidden="true" />
-            </button>
-          </div>
-
-          {activeGroup === "requests" ? (
-            <div className="user-quick-create-column" role="menu" aria-label="Đơn từ">
-              {requestCreateItems.map((item) => (
-                <a className="user-quick-create-item" href={item.href} key={item.label} role="menuitem" onClick={() => setIsOpen(false)}>
+          {isAdminMode ? (
+            <div className="user-quick-create-column">
+              {adminShortcutItems.map((item, index) => (
+                <a
+                  className="user-quick-create-item"
+                  href={item.href}
+                  key={item.label}
+                  ref={index === 0 ? (node) => {
+                    firstItemRef.current = node;
+                  } : undefined}
+                  role="menuitem"
+                  onClick={() => setIsOpen(false)}
+                >
                   {item.label}
                 </a>
               ))}
             </div>
-          ) : null}
+          ) : (
+            <>
+              <div className="user-quick-create-column">
+                <button
+                  aria-expanded={activeGroup === "requests"}
+                  aria-haspopup="menu"
+                  className={activeGroup === "requests" ? "user-quick-create-item is-active" : "user-quick-create-item"}
+                  ref={(node) => {
+                    firstItemRef.current = node;
+                  }}
+                  role="menuitem"
+                  type="button"
+                  onClick={() => setActiveGroup("requests")}
+                  onMouseEnter={() => setActiveGroup("requests")}
+                >
+                  <span>Đơn từ</span>
+                  <CaretRight size={15} weight="duotone" aria-hidden="true" />
+                </button>
+              </div>
+
+              {activeGroup === "requests" ? (
+                <div className="user-quick-create-column" role="menu" aria-label="Đơn từ">
+                  {requestCreateItems.map((item) => (
+                    <a className="user-quick-create-item" href={item.href} key={item.label} role="menuitem" onClick={() => setIsOpen(false)}>
+                      {item.label}
+                    </a>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
       ) : null}
     </div>

@@ -15,6 +15,7 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
 import { PayrollModule } from "./modules/payroll/payroll.module";
 import { PostsModule } from "./modules/posts/posts.module";
 import { ReportsModule } from "./modules/reports/reports.module";
+import { UserPreferencesModule } from "./modules/user-preferences/user-preferences.module";
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { ReportsModule } from "./modules/reports/reports.module";
     DeviceAuthModule,
     PayrollModule,
     ReportsModule,
+    UserPreferencesModule,
     NotificationsModule
   ]
 })

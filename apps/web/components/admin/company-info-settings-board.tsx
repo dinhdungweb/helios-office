@@ -420,7 +420,7 @@ export function CompanyInfoSettingsBoard({ data }: { data: CompanyInfoSettingsDa
           <p>Khai báo thông tin pháp lý, liên hệ, đại diện, ngân hàng, tài khóa, con dấu và chữ ký dùng cho mẫu in.</p>
         </div>
         <div className="account-panel-actions">
-          <a className="secondary-button" href="/admin/settings#system-settings">
+          <a className="secondary-button" href="/admin/settings">
             Quay lại cài đặt
           </a>
           <CompanyEditDialog settings={settings} />

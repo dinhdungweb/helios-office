@@ -27,9 +27,9 @@ const adminRailItems: AdminNavItem[] = [
   {
     key: "settings",
     label: "Cấu hình",
-    href: "/admin/settings#system-settings",
+    href: "/admin/settings",
     icon: GearSix,
-    activeHashes: ["#system-settings", "#module-settings"]
+    exact: true
   },
   { key: "logs", label: "Nhật ký", href: "/admin/settings#audit-logs", icon: ClipboardText, activeHashes: ["#audit-logs"] }
 ];

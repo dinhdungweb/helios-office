@@ -321,7 +321,7 @@ export function PositionTitleSettingsBoard({ data }: { data: PositionTitleData }
           <h1 id="position-title-page-title">Vị trí & chức danh</h1>
           <p>Vị trí mô tả chuyên môn công việc; chức danh mô tả cấp bậc trong tổ chức.</p>
         </div>
-        <a className="secondary-button" href="/admin/settings#system-settings">
+        <a className="secondary-button" href="/admin/settings">
           Quay lại cài đặt
         </a>
       </section>

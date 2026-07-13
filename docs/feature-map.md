@@ -75,6 +75,7 @@ flowchart TD
 | --- | --- | --- | --- |
 | `auth` | `GET /auth/me` | Keycloak + UserAccount | Done |
 | `account-access` | `/account-access/accounts`, `/groups`, `/permissions` | UserAccount, PermissionGroup, PermissionDefinition | Done/Partial |
+| `user-preferences` | `/user-preferences/:scope` | UserPreference | Done |
 | `device-auth` | `/device-auth/requests`, `/policy` | DeviceAuthRequest, DeviceAuthPolicy | Done |
 | `employees` | `/employees`, `/employees/org-chart`, `/departments`, `/job-positions`, `/job-titles`, `/contracts` | Employee, Department, JobPosition, JobTitle, Contract | Done baseline/Partial |
 | `attendance` | `/attendance`, `/attendance/summary` | AttendanceRecord | Partial |
@@ -92,6 +93,7 @@ flowchart TD
 ```mermaid
 erDiagram
   UserAccount ||--o{ AuditLog : writes
+  UserAccount ||--o{ UserPreference : stores
   PermissionGroup ||--o{ UserAccount : groups
   PermissionDefinition ||..o{ PermissionGroup : permission_keys
   Employee ||--o| UserAccount : account
@@ -166,6 +168,7 @@ Da trien khai:
 - CRUD nhom quyen va archive an toan cho nhom khong con account.
 - User/group license da bo khoi UI va frontend/API contract hien tai.
 - API account tra `effectivePermissionKeys` de UI dung cung mot logic tinh quyen.
+- Cac sidebar `/user`, `/admin`, `/hcns` co tuy chinh module theo account. `/user` loc module theo quyen `menu.*` hoac quyen nghiep vu tuong ung; admin/HCNS dung catalog rieng. Cau hinh duoc luu vao `UserPreference` theo scope `user.sidebar`, `admin.sidebar`, `hcns.sidebar`.
 - Permission catalog da co model `PermissionDefinition`, seed vao DB, API doc tu DB, va man hinh quyen chi tiet doc du lieu that.
 - API guard theo permission key da ap dung cho account/group, device-auth, employee/department endpoints chinh.
 - Cap tai khoan moi co password tam, optional `UPDATE_PASSWORD`, metadata invite va audit invite sent/skipped/deferred/failed.

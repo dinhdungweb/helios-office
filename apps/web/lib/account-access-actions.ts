@@ -164,6 +164,7 @@ export async function updateAccountAction(_state: AccountFormState, formData: Fo
       permissionGroupId: readNullableString(formData, "permissionGroupId")
     });
     revalidatePath("/admin/settings/accounts");
+    revalidatePath(`/admin/settings/accounts/${accountId}`);
 
     return { ok: true };
   } catch (error) {

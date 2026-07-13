@@ -236,13 +236,18 @@ export class AccountAccessService {
   }
 
   async createAccount(dto: CreateUserAccountDto, actorId?: string) {
-    const customPermissionKeys = dto.customPermissionKeys ?? [];
     const adminRole = dto.adminRole ?? "user";
+    const isSystemAdmin = adminRole === "system_admin";
+    const customPermissionKeys = isSystemAdmin ? [] : dto.customPermissionKeys ?? [];
+    const permissionGroupId = isSystemAdmin ? null : dto.permissionGroupId;
     const accountStatus = dto.accountStatus ?? AccountLifecycleStatus.pending_activation;
     const requirePasswordChange = dto.requirePasswordChange ?? true;
     const sendInviteEmail = dto.sendInviteEmail ?? false;
     const temporaryPasswordIssuedAt = dto.initialPassword ? new Date() : null;
-    await this.assertAssignablePermissionGroup(dto.permissionGroupId);
+    if (isSystemAdmin) {
+      await this.assertSingleSystemAdmin();
+    }
+    await this.assertAssignablePermissionGroup(permissionGroupId);
     await this.assertKnownPermissionKeys(customPermissionKeys);
 
     const existingAccount = await this.prisma.userAccount.findUnique({
@@ -272,10 +277,10 @@ export class AccountAccessService {
           roles: [adminRole],
           adminRole,
           accountStatus,
-          permissionGroupId: dto.permissionGroupId,
+          permissionGroupId,
           customPermissionsEnabled: customPermissionKeys.length > 0,
           customPermissions: customPermissionKeys,
-          customPermissionNote: dto.customPermissionNote,
+          customPermissionNote: isSystemAdmin ? null : dto.customPermissionNote,
           passwordResetRequired: requirePasswordChange,
           temporaryPasswordIssuedAt,
           inviteEmailRequested: sendInviteEmail,
@@ -283,7 +288,7 @@ export class AccountAccessService {
         }
       });
 
-      if (dto.employeeId) {
+      if (!isSystemAdmin && dto.employeeId) {
         await tx.employee.update({
           where: { id: dto.employeeId },
           data: { userAccountId: account.id }
@@ -301,12 +306,6 @@ export class AccountAccessService {
   }
 
   async updateAccount(id: string, dto: UpdateUserAccountDto, actorId?: string) {
-    await this.assertAssignablePermissionGroup(dto.permissionGroupId);
-
-    if (dto.customPermissionKeys !== undefined) {
-      await this.assertKnownPermissionKeys(dto.customPermissionKeys);
-    }
-
     const before = await this.prisma.userAccount.findUnique({
       where: { id },
       include: {
@@ -316,6 +315,20 @@ export class AccountAccessService {
 
     if (!before) {
       throw new NotFoundException(`Account ${id} was not found`);
+    }
+
+    const nextAdminRole = dto.adminRole ?? before.adminRole;
+    const isSystemAdmin = nextAdminRole === "system_admin";
+    const nextPermissionGroupId = isSystemAdmin ? null : dto.permissionGroupId;
+
+    if (isSystemAdmin) {
+      await this.assertSingleSystemAdmin(id);
+    }
+
+    await this.assertAssignablePermissionGroup(nextPermissionGroupId);
+
+    if (!isSystemAdmin && dto.customPermissionKeys !== undefined) {
+      await this.assertKnownPermissionKeys(dto.customPermissionKeys);
     }
 
     const keycloakSync = await this.syncKeycloakBeforeUpdate(before, dto);
@@ -354,14 +367,21 @@ export class AccountAccessService {
         data.permissionGroupId = dto.permissionGroupId;
       }
 
-      if (dto.customPermissionKeys !== undefined) {
+      if (isSystemAdmin) {
+        data.permissionGroupId = null;
+        data.customPermissions = [];
+        data.customPermissionsEnabled = false;
+        data.customPermissionNote = null;
+      }
+
+      if (!isSystemAdmin && dto.customPermissionKeys !== undefined) {
         data.customPermissions = dto.customPermissionKeys;
         data.customPermissionsEnabled = dto.customPermissionsEnabled ?? dto.customPermissionKeys.length > 0;
-      } else if (dto.customPermissionsEnabled !== undefined) {
+      } else if (!isSystemAdmin && dto.customPermissionsEnabled !== undefined) {
         data.customPermissionsEnabled = dto.customPermissionsEnabled;
       }
 
-      if (dto.customPermissionNote !== undefined) {
+      if (!isSystemAdmin && dto.customPermissionNote !== undefined) {
         data.customPermissionNote = dto.customPermissionNote;
       }
 
@@ -370,7 +390,14 @@ export class AccountAccessService {
         data
       });
 
-      if (dto.employeeId !== undefined) {
+      if (isSystemAdmin) {
+        if (before.employee) {
+          await tx.employee.update({
+            where: { id: before.employee.id },
+            data: { userAccountId: null }
+          });
+        }
+      } else if (dto.employeeId !== undefined) {
         if (before.employee && before.employee.id !== dto.employeeId) {
           await tx.employee.update({
             where: { id: before.employee.id },
@@ -674,9 +701,10 @@ export class AccountAccessService {
   }
 
   private resolveAccount(account: AccountWithRelations, permissionCatalog: PermissionCatalogItem[]) {
-    const group = account.permissionGroup;
-    const employee = account.employee;
-    const customPermissionKeys = account.customPermissionsEnabled
+    const isSystemAdmin = account.adminRole === "system_admin";
+    const group = isSystemAdmin ? null : account.permissionGroup;
+    const employee = isSystemAdmin ? null : account.employee;
+    const customPermissionKeys = !isSystemAdmin && account.customPermissionsEnabled
       ? resolveCustomPermissionKeys(account.customPermissions)
       : [];
     const effectivePermissionKeys = resolveEffectivePermissionKeys(
@@ -693,10 +721,14 @@ export class AccountAccessService {
 
     return {
       ...accountData,
+      displayName: isSystemAdmin ? "Admin" : account.displayName,
       employeeId: employee?.id ?? null,
       role: account.adminRole,
       status: account.accountStatus,
-      groupId: account.permissionGroupId,
+      groupId: isSystemAdmin ? null : account.permissionGroupId,
+      permissionGroupId: isSystemAdmin ? null : account.permissionGroupId,
+      customPermissionsEnabled: isSystemAdmin ? false : account.customPermissionsEnabled,
+      customPermissionNote: isSystemAdmin ? null : account.customPermissionNote,
       employee: employee
         ? {
             ...employee,
@@ -803,6 +835,22 @@ export class AccountAccessService {
 
     if (group.status === PermissionGroupStatus.archived) {
       throw new ConflictException("Archived permission groups cannot be assigned to accounts");
+    }
+  }
+
+  private async assertSingleSystemAdmin(excludedAccountId?: string) {
+    const existingAdmin = await this.prisma.userAccount.findFirst({
+      where: {
+        adminRole: "system_admin",
+        ...(excludedAccountId ? { id: { not: excludedAccountId } } : {})
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (existingAdmin) {
+      throw new ConflictException("System admin account already exists");
     }
   }
 

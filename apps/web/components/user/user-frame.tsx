@@ -1,37 +1,22 @@
 import {
-  Bank,
   Bell,
   BookmarkSimple,
-  CalendarCheck,
   ChatCircle,
-  ClipboardText,
   GearSix,
   House,
-  IdentificationBadge,
-  MagicWand,
   MagnifyingGlass,
-  Megaphone,
-  MoneyWavy,
-  ShieldCheck,
   SlidersHorizontal
 } from "@/lib/icons";
-import type { Icon } from "@/lib/icons";
 import type { ReactNode } from "react";
 import { AppLauncher } from "@/components/dashboard/app-launcher";
-import { AdminMobileNav, AdminRail } from "@/components/user/admin-frame-nav";
-import { HcnsMobileNav, HcnsRail } from "@/components/user/hcns-frame-nav";
 import { ProfileMenu } from "@/components/user/profile-menu";
 import { UserQuickCreateMenu } from "@/components/user/user-quick-create-menu";
+import { UserPersonalNavigation } from "@/components/user/user-personal-navigation";
+import { getCurrentSessionUser, type CurrentSessionUser } from "@/lib/auth-user";
 import { currentUser } from "@/lib/mock-data";
+import type { UserProfile } from "@/lib/mock-data";
 
 export type UserModuleKey = "home" | "attendance" | "payroll" | "requests" | "profile" | "loans" | "settings" | "admin" | "hcns";
-
-type UserRailItem = {
-  key: UserModuleKey;
-  label: string;
-  href: string;
-  icon: Icon;
-};
 
 type UserFrameProps = {
   activeModule: UserModuleKey;
@@ -40,80 +25,56 @@ type UserFrameProps = {
   title?: string;
 };
 
-const userRailItems: UserRailItem[] = [
-  { key: "home", label: "Trang chủ", href: "/user", icon: House },
-  { key: "attendance", label: "Công", href: "/user?customMenu=user-board-attendance", icon: CalendarCheck },
-  { key: "payroll", label: "Lương", href: "/user?customMenu=user-board-payroll", icon: Bank },
-  { key: "requests", label: "Đơn từ", href: "/user?customMenu=user-board-requests", icon: ClipboardText },
-  { key: "profile", label: "Hồ sơ", href: "/user?customMenu=user-board-profile", icon: IdentificationBadge },
-  { key: "admin", label: "Quản trị", href: "/admin", icon: ShieldCheck },
-  { key: "loans", label: "Vay", href: "#", icon: MoneyWavy },
-  { key: "settings", label: "Tùy chỉnh", href: "#", icon: MagicWand }
-];
+type UserFrameViewer = {
+  id: string;
+  isAdmin: boolean;
+  permissionKeys: string[];
+  profile: UserProfile;
+};
 
-function UserRail({ activeModule }: { activeModule: UserModuleKey }) {
-  return (
-    <aside className="user-rail" aria-label="Điều hướng cá nhân">
-      <div className="user-rail-launcher">
-        <AppLauncher />
-      </div>
+function initialsFromName(name: string) {
+  const initials = name
+    .split(" ")
+    .filter(Boolean)
+    .slice(-2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 
-      <nav className="user-rail-nav" aria-label="Module cá nhân">
-        {userRailItems.map((item) => {
-          const isActive = item.key === activeModule;
-
-          return (
-            <a
-              aria-current={isActive ? "page" : undefined}
-              className={isActive ? "user-rail-link is-current" : "user-rail-link"}
-              href={item.href}
-              key={item.key}
-            >
-              <item.icon size={19} weight="duotone" aria-hidden="true" />
-              <span>{item.label}</span>
-            </a>
-          );
-        })}
-      </nav>
-
-      <a className="user-ai-link" href="#ai-support" aria-label="AI Support">
-        <Megaphone size={18} weight="duotone" aria-hidden="true" />
-        <span>AI Support</span>
-      </a>
-    </aside>
-  );
+  return initials || currentUser.avatar;
 }
 
-function UserMobileNav({ activeModule }: { activeModule: UserModuleKey }) {
-  return (
-    <nav className="user-mobile-nav" aria-label="Điều hướng cá nhân trên mobile">
-      {userRailItems.slice(0, 5).map((item) => {
-        const isActive = item.key === activeModule;
+function resolveViewer(user: CurrentSessionUser | null): UserFrameViewer {
+  const account = user?.account;
+  const name = account?.displayName ?? user?.name ?? currentUser.name;
+  const isAdmin = account?.adminRole === "system_admin";
 
-        return (
-          <a
-            aria-current={isActive ? "page" : undefined}
-            className={isActive ? "user-mobile-nav-link is-current" : "user-mobile-nav-link"}
-            href={item.href}
-            key={item.key}
-          >
-            <item.icon size={20} weight="duotone" aria-hidden="true" />
-            <span>{item.label}</span>
-          </a>
-        );
-      })}
-    </nav>
-  );
+  return {
+    id: account?.id ?? user?.sub ?? "guest",
+    isAdmin,
+    permissionKeys: account?.effectivePermissionKeys ?? [],
+    profile: {
+      ...currentUser,
+      name,
+      avatar: initialsFromName(name),
+      title: isAdmin ? "Admin hệ thống" : currentUser.title,
+      department: account?.email ?? user?.email ?? currentUser.department
+    }
+  };
 }
 
 function UserTopbar({
   activeModule,
+  canOpenAdminSettings,
   showSearch,
-  title
+  title,
+  user
 }: {
   activeModule: UserModuleKey;
+  canOpenAdminSettings: boolean;
   showSearch?: boolean;
   title?: string;
+  user: UserProfile;
 }) {
   return (
     <header className="user-topbar">
@@ -121,8 +82,8 @@ function UserTopbar({
         <div className="user-mobile-launcher">
           <AppLauncher />
         </div>
-        <UserQuickCreateMenu />
-        <h1>{title ?? currentUser.name}</h1>
+        <UserQuickCreateMenu mode={activeModule === "admin" ? "admin" : "default"} />
+        <h1>{title ?? user.name}</h1>
       </div>
 
       {showSearch ? (
@@ -156,29 +117,57 @@ function UserTopbar({
         <button className="icon-button" type="button" aria-label="Thông báo">
           <Bell size={18} weight="duotone" aria-hidden="true" />
         </button>
-        <a className="icon-button" href="/admin/settings#module-settings" aria-label="Cài đặt phân hệ">
-          <GearSix size={18} weight="duotone" aria-hidden="true" />
-        </a>
-        <ProfileMenu user={currentUser} />
+        {canOpenAdminSettings ? (
+          <a className="icon-button" href="/admin/settings" aria-label="Cài đặt hệ thống">
+            <GearSix size={18} weight="duotone" aria-hidden="true" />
+          </a>
+        ) : null}
+        <ProfileMenu user={user} />
       </nav>
     </header>
   );
 }
 
-export function UserFrame({ activeModule, children, showSearch, title }: UserFrameProps) {
+export async function UserFrame({ activeModule, children, showSearch, title }: UserFrameProps) {
+  const viewer = resolveViewer(await getCurrentSessionUser());
   const isAdminFrame = activeModule === "admin";
   const isHcnsFrame = activeModule === "hcns";
 
   return (
     <div className="user-shell">
-      {isAdminFrame ? <AdminRail /> : isHcnsFrame ? <HcnsRail /> : <UserRail activeModule={activeModule} />}
+      {isAdminFrame ? (
+        <UserPersonalNavigation
+          accountId={viewer.id}
+          isAdmin={viewer.isAdmin}
+          permissionKeys={viewer.permissionKeys}
+          variant="admin"
+        />
+      ) : isHcnsFrame ? (
+        <UserPersonalNavigation
+          accountId={viewer.id}
+          isAdmin={viewer.isAdmin}
+          permissionKeys={viewer.permissionKeys}
+          variant="hcns"
+        />
+      ) : (
+        <UserPersonalNavigation
+          activeModule={activeModule}
+          accountId={viewer.id}
+          isAdmin={viewer.isAdmin}
+          permissionKeys={viewer.permissionKeys}
+        />
+      )}
 
       <div className="user-workspace">
-        <UserTopbar activeModule={activeModule} showSearch={showSearch} title={title} />
+        <UserTopbar
+          activeModule={activeModule}
+          canOpenAdminSettings={viewer.isAdmin}
+          showSearch={showSearch}
+          title={title}
+          user={viewer.profile}
+        />
         {children}
       </div>
-
-      {isAdminFrame ? <AdminMobileNav /> : isHcnsFrame ? <HcnsMobileNav /> : <UserMobileNav activeModule={activeModule} />}
     </div>
   );
 }

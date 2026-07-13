@@ -247,22 +247,24 @@ function normalizeGroup(group: ApiPermissionGroup): PermissionGroup {
 }
 
 function normalizeAccount(account: ApiAccount): ManagedUserAccount {
-  const name = account.displayName;
+  const role = toAccountRole(account.role ?? account.adminRole);
+  const isSystemAdmin = role === "system_admin";
+  const name = isSystemAdmin ? "Admin" : account.displayName;
 
   return {
     id: account.id,
-    employeeCode: account.employee?.code,
+    employeeCode: isSystemAdmin ? undefined : account.employee?.code,
     name,
     email: account.email,
     avatar: initialsFromName(name),
-    title: account.employee?.title ?? "Chua gan nhan su",
-    department: account.employee?.department ?? "Chua gan phong ban",
-    role: toAccountRole(account.role ?? account.adminRole),
-    groupId: account.groupId ?? account.permissionGroupId ?? null,
+    title: isSystemAdmin ? "--" : account.employee?.title ?? "Chua gan nhan su",
+    department: isSystemAdmin ? "--" : account.employee?.department ?? "Chua gan phong ban",
+    role,
+    groupId: isSystemAdmin ? null : account.groupId ?? account.permissionGroupId ?? null,
     status: toLifecycleStatus(account.status ?? account.accountStatus),
-    customPermissionKeys: account.customPermissionKeys ?? [],
+    customPermissionKeys: isSystemAdmin ? [] : account.customPermissionKeys ?? [],
     effectivePermissionKeys: account.effectivePermissionKeys ?? [],
-    customPermissionNote: account.customPermissionNote,
+    customPermissionNote: isSystemAdmin ? null : account.customPermissionNote,
     passwordResetRequired: Boolean(account.passwordResetRequired),
     inviteEmailRequested: Boolean(account.inviteEmailRequested),
     temporaryPasswordIssuedAt: formatDate(account.temporaryPasswordIssuedAt),

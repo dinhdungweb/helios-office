@@ -415,7 +415,7 @@ export function IntranetSettingsBoard({ data }: { data: IntranetSettingsData }) 
           <p>Thiết lập thương hiệu, bảng tin, thông tin cá nhân, vinh danh, hashtag, cảm xúc, chat và thông báo nội bộ.</p>
         </div>
         <div className="account-panel-actions">
-          <a className="secondary-button" href="/admin/settings#system-settings">
+          <a className="secondary-button" href="/admin/settings">
             Quay lại cài đặt
           </a>
           <IntranetEditDialog settings={settings} />

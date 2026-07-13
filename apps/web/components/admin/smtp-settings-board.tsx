@@ -648,7 +648,7 @@ export function SmtpSettingsBoard({ data }: { data: SmtpSettingsData }) {
           <p>Thiết lập máy chủ gửi thư để hệ thống gửi invite, reset password, phiếu lương, thông báo duyệt đơn và email tự động.</p>
         </div>
         <div className="account-panel-actions">
-          <a className="secondary-button" href="/admin/settings#system-settings">
+          <a className="secondary-button" href="/admin/settings">
             Quay lại cài đặt
           </a>
           <SmtpEditDialog settings={settings} />
