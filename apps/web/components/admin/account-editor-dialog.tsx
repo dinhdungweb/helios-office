@@ -17,8 +17,7 @@ import type {
 } from "@/lib/account-access-api";
 
 const roleOptions: Array<{ value: AccountRole; label: string }> = [
-  { value: "user", label: "User" },
-  { value: "system_admin", label: "Admin" }
+  { value: "user", label: "User" }
 ];
 
 const statusOptions: Array<{ value: AccountLifecycleStatus; label: string }> = [

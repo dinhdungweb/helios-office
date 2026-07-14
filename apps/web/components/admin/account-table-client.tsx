@@ -261,10 +261,11 @@ export function AccountManagedTable({
     }),
     [groups, permissions]
   );
+  const userAccounts = useMemo(() => accounts.filter((account) => account.role !== "system_admin"), [accounts]);
 
   const filteredAccounts = useMemo(
     () =>
-      accounts.filter((account) => {
+      userAccounts.filter((account) => {
         if (quickFilter !== "all") {
           if (statusFilters.includes(quickFilter as AccountLifecycleStatus)) {
             if (account.status !== quickFilter) {
@@ -291,7 +292,7 @@ export function AccountManagedTable({
 
         return true;
       }),
-    [accounts, customFilter, groupFilter, quickFilter, roleFilter]
+    [customFilter, groupFilter, quickFilter, roleFilter, userAccounts]
   );
 
   const activeFilterCount =
@@ -327,7 +328,7 @@ export function AccountManagedTable({
         <div>
           <h2 id="account-table-title">Tài khoản người dùng</h2>
           <p>
-            {filteredAccounts.length}/{accounts.length} hồ sơ đăng nhập
+            {filteredAccounts.length}/{userAccounts.length} hồ sơ đăng nhập
           </p>
         </div>
         <div className="account-panel-actions account-toolbar" ref={rootRef}>
@@ -354,7 +355,6 @@ export function AccountManagedTable({
                   <h3>Quyền</h3>
                   <div className="account-option-list">
                     <FilterOption isSelected={roleFilter === "all"} label="Tất cả" onClick={() => setRoleFilter("all")} />
-                    <FilterOption isSelected={roleFilter === "system_admin"} label="Admin" onClick={() => setRoleFilter("system_admin")} />
                     <FilterOption isSelected={roleFilter === "user"} label="User" onClick={() => setRoleFilter("user")} />
                   </div>
                 </section>
@@ -428,12 +428,12 @@ export function AccountManagedTable({
       </header>
 
       <div className="account-filter-row" aria-label="Bộ lọc nhanh">
-        <FilterChip isSelected={quickFilter === "all"} label="Tất cả" count={accounts.length} onClick={() => setQuickFilter("all")} />
+        <FilterChip isSelected={quickFilter === "all"} label="Tất cả" count={userAccounts.length} onClick={() => setQuickFilter("all")} />
         {statusFilters.map((status) => (
           <FilterChip
             isSelected={quickFilter === status}
             label={statusLabels[status]}
-            count={countByStatus(accounts, status)}
+            count={countByStatus(userAccounts, status)}
             key={status}
             onClick={() => setQuickFilter(status)}
           />

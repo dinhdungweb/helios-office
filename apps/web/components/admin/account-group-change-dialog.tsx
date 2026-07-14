@@ -21,7 +21,7 @@ function accountLogin(account: ManagedUserAccount) {
 }
 
 function permissionItemsFor(group: PermissionGroup, permissions: AccountPermission[]) {
-  const allowedKeys = group.role === "system_admin" ? permissions.map((permission) => permission.key) : group.permissionKeys;
+  const allowedKeys = group.permissionKeys;
   const allowedKeySet = new Set(allowedKeys);
 
   return permissions.filter((permission) => allowedKeySet.has(permission.key));
@@ -102,7 +102,7 @@ export function AccountGroupChangeDialog({
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const [state, formAction, isPending] = useActionState(updateAccountAction, initialState);
   const assignableGroups = useMemo(
-    () => groups.filter((group) => group.role === "user" && (group.status !== "archived" || group.id === account.groupId)),
+    () => groups.filter((group) => group.status !== "archived" || group.id === account.groupId),
     [account.groupId, groups]
   );
   const [selectedGroupId, setSelectedGroupId] = useState(account.groupId ?? assignableGroups[0]?.id ?? "");

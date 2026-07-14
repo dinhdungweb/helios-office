@@ -1,6 +1,10 @@
 import {
   ArrowSquareOut,
+  BookOpenText,
+  Briefcase,
   CalendarBlank,
+  CaretDown,
+  Certificate,
   Check,
   Clock,
   Columns,
@@ -22,12 +26,14 @@ import {
   ThumbsDown,
   UploadSimple,
   UserCircle,
+  UserStatus,
   Wallet
 } from "@/lib/icons";
 import type { Icon } from "@/lib/icons";
 import type { ReactNode } from "react";
 import { CollapseButton } from "@/components/user/collapse-button";
 import { Badge } from "@/components/ui/badge";
+import type { EmployeeDirectoryRecord } from "@/lib/employee-directory-api";
 
 type ProfileInfoRow = {
   label: string;
@@ -73,16 +79,15 @@ export type ProfileTabKey = "overview" | "resume" | "work" | "benefit" | "allowa
 type ProfileTabItem = {
   key: ProfileTabKey | "compensatory";
   label: string;
-  href?: string;
 };
 
 const profileTabs: ProfileTabItem[] = [
-  { key: "overview", label: "Thông tin chung", href: "/user/profile" },
-  { key: "resume", label: "Sơ yếu lý lịch", href: "/user/profile?tab=resume" },
-  { key: "work", label: "Công việc & Hợp đồng", href: "/user/profile?tab=work" },
-  { key: "benefit", label: "Bảo hiểm & Phúc lợi", href: "/user/profile?tab=benefit" },
-  { key: "allowance", label: "Lương & Phụ cấp", href: "/user/profile?tab=allowance" },
-  { key: "furlough", label: "Thông tin phép", href: "/user/profile?tab=furlough" },
+  { key: "overview", label: "Thông tin chung" },
+  { key: "resume", label: "Sơ yếu lý lịch" },
+  { key: "work", label: "Công việc & Hợp đồng" },
+  { key: "benefit", label: "Bảo hiểm & Phúc lợi" },
+  { key: "allowance", label: "Lương & Phụ cấp" },
+  { key: "furlough", label: "Thông tin phép" },
   { key: "compensatory", label: "Thông tin nghỉ bù" }
 ];
 
@@ -93,8 +98,63 @@ const profileRows: ProfileInfoRow[] = [
   { label: "Nguyên quán", value: "--", icon: HouseLine },
   { label: "Giới tính", value: "Nam", icon: GenderMale },
   { label: "Hôn nhân", value: "Độc thân", icon: Star },
-  { label: "Tài khoản 1Office", value: "dungdd", icon: UserCircle }
+  { label: "Tài khoản HOffice", value: "dungdd", icon: UserCircle }
 ];
+
+function profileStatusLabel(status?: EmployeeDirectoryRecord["status"]) {
+  if (status === "resigned") {
+    return "Nghỉ việc";
+  }
+
+  if (status === "offboarding") {
+    return "Đang offboarding";
+  }
+
+  if (status === "onboarding") {
+    return "Đang onboarding";
+  }
+
+  return "Đang làm việc";
+}
+
+function employeeProfileRows(employee?: EmployeeDirectoryRecord): ProfileInfoRow[] {
+  if (!employee) {
+    return profileRows;
+  }
+
+  const accountName = employee.accountDisplayName ?? employee.accountEmail?.split("@")[0] ?? "--";
+
+  return [
+    { label: "Email", value: employee.accountEmail ?? "--", icon: EnvelopeSimple },
+    { label: "Điện thoại", value: "--", icon: Phone, variant: "phone" },
+    { label: "Ngày sinh", value: "--", icon: Clock },
+    { label: "Nguyên quán", value: "--", icon: HouseLine },
+    { label: "Giới tính", value: "--", icon: GenderMale },
+    { label: "Hôn nhân", value: "--", icon: Star },
+    { label: "Tài khoản HOffice", value: accountName, icon: UserCircle }
+  ];
+}
+
+function profileTabHref(tabKey: ProfileTabItem["key"], employee?: EmployeeDirectoryRecord) {
+  if (tabKey === "compensatory") {
+    return undefined;
+  }
+
+  const params = new URLSearchParams();
+
+  if (employee) {
+    params.set("customMenu", "employee-profile");
+    params.set("employeeId", employee.id);
+  } else {
+    params.set("customMenu", "user-board-profile");
+  }
+
+  if (tabKey !== "overview") {
+    params.set("tab", tabKey);
+  }
+
+  return `/user?${params.toString()}`;
+}
 
 const checklistItems: ChecklistItem[] = [
   { label: "Ảnh cá nhân" },
@@ -223,7 +283,7 @@ const workInfoFields: Array<{ label: string; value: string; variant?: "status" }
   { label: "Nơi làm việc", value: "--" },
   { label: "Cấp bậc", value: "--" },
   { label: "Mã đồng bộ", value: "--" },
-  { label: "Tài khoản 1Office", value: "dungdd (26/02/2024)" },
+  { label: "Tài khoản HOffice", value: "dungdd (26/02/2024)" },
   { label: "Nhóm người dùng", value: "Nhóm Nhân viên Basic" }
 ];
 
@@ -457,7 +517,15 @@ function ProfilePanel({
   );
 }
 
-function InfoCard() {
+function InfoCard({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const rows = employeeProfileRows(employee);
+  const fullName = employee?.fullName ?? "Đặng Đình Dũng";
+  const title = employee?.jobTitleName ?? employee?.title ?? "Nhân viên Fulltime";
+  const position = employee?.positionName ?? employee?.title ?? "Web";
+  const department = employee?.department ?? "Phòng MKT";
+  const employeeCode = employee?.code ?? "SRG-035/VP.23";
+  const status = profileStatusLabel(employee?.status);
+
   return (
     <section className="employee-profile-panel employee-profile-info-panel" aria-labelledby="employee-profile-info">
       <h2 className="sr-only" id="employee-profile-info">
@@ -469,19 +537,19 @@ function InfoCard() {
             <UserCircle size={78} weight="duotone" />
           </div>
           <div>
-            <h2>Đặng Đình Dũng</h2>
-            <p>Nhân viên Fulltime</p>
-            <p>Web • Phòng MKT</p>
+            <h2>{fullName}</h2>
+            <p>{title}</p>
+            <p>{position} • {department}</p>
           </div>
         </div>
 
         <div className="employee-profile-meta">
-          <span>SRG-035/VP.23</span>
-          <ProfileStatusBadge>Đang làm việc</ProfileStatusBadge>
+          <span>{employeeCode}</span>
+          <ProfileStatusBadge>{status}</ProfileStatusBadge>
         </div>
 
         <dl className="employee-profile-detail-list">
-          {profileRows.map((row) => (
+          {rows.map((row) => (
             <div key={row.label}>
               <dt>
                 <row.icon size={17} weight="duotone" aria-hidden="true" />
@@ -789,20 +857,33 @@ function AssetPanel() {
   );
 }
 
-function ProfileTabs({ activeTab }: { activeTab: ProfileTabKey }) {
+function ProfileTabs({
+  activeTab,
+  employee,
+  isAdminView
+}: {
+  activeTab: ProfileTabKey;
+  employee?: EmployeeDirectoryRecord;
+  isAdminView?: boolean;
+}) {
+  const visibleTabs = isAdminView
+    ? profileTabs.filter((tab) => tab.key !== "furlough" && tab.key !== "compensatory")
+    : profileTabs;
+
   return (
     <header className="employee-profile-tabs">
       <div className="employee-profile-tab-list" role="tablist" aria-label="Nhóm thông tin hồ sơ">
-        {profileTabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const isActive = tab.key === activeTab;
+          const href = profileTabHref(tab.key, employee);
 
-          if (tab.href) {
+          if (href) {
             return (
               <a
                 aria-current={isActive ? "page" : undefined}
                 aria-selected={isActive ? "true" : "false"}
                 className={isActive ? "is-active" : undefined}
-                href={tab.href}
+                href={href}
                 key={tab.key}
                 role="tab"
               >
@@ -819,16 +900,44 @@ function ProfileTabs({ activeTab }: { activeTab: ProfileTabKey }) {
         })}
       </div>
 
-      <div className="employee-profile-actions">
-        <button type="button" disabled>
-          <PencilSimple size={15} weight="duotone" aria-hidden="true" />
-          Cập nhật
-        </button>
-        <button type="button">
-          <UploadSimple size={15} weight="duotone" aria-hidden="true" />
-          Tải lên
-        </button>
-      </div>
+      {isAdminView ? (
+        <div className="employee-profile-actions employee-profile-actions--admin">
+          <button type="button">
+            <UserStatus size={15} weight="duotone" aria-hidden="true" />
+            Trạng thái
+          </button>
+          <button type="button">
+            <CurrencyDollar size={15} weight="duotone" aria-hidden="true" />
+            Lương
+          </button>
+          <button type="button">
+            <Certificate size={15} weight="duotone" aria-hidden="true" />
+            Ký số
+          </button>
+          <button type="button">
+            <Briefcase size={15} weight="duotone" aria-hidden="true" />
+            Công việc
+          </button>
+          <button type="button">
+            <BookOpenText size={15} weight="duotone" aria-hidden="true" />
+            Học vấn
+          </button>
+          <button className="employee-profile-more-action" type="button" aria-label="Mở thêm thao tác hồ sơ">
+            <CaretDown size={15} weight="duotone" aria-hidden="true" />
+          </button>
+        </div>
+      ) : (
+        <div className="employee-profile-actions">
+          <button type="button" disabled>
+            <PencilSimple size={15} weight="duotone" aria-hidden="true" />
+            Cập nhật
+          </button>
+          <button type="button">
+            <UploadSimple size={15} weight="duotone" aria-hidden="true" />
+            Tải lên
+          </button>
+        </div>
+      )}
     </header>
   );
 }
@@ -1426,11 +1535,11 @@ function LeaveUsageHistoryPanel() {
   );
 }
 
-function ProfileOverviewContent() {
+function ProfileOverviewContent({ employee }: { employee?: EmployeeDirectoryRecord }) {
   return (
     <section className="employee-profile-grid" aria-label="Tổng quan hồ sơ nhân sự">
       <div className="employee-profile-column">
-        <InfoCard />
+        <InfoCard employee={employee} />
         <WorkHistoryPanel />
       </div>
 
@@ -1451,7 +1560,7 @@ function ProfileOverviewContent() {
   );
 }
 
-function ProfileResumeContent() {
+function ProfileResumeContent({ employee }: { employee?: EmployeeDirectoryRecord }) {
   return (
     <section className="employee-profile-resume-grid" aria-label="Sơ yếu lý lịch">
       <div className="employee-profile-column">
@@ -1461,7 +1570,7 @@ function ProfileResumeContent() {
       </div>
 
       <aside className="employee-profile-column" aria-label="Hồ sơ và ảnh giấy tờ">
-        <InfoCard />
+        <InfoCard employee={employee} />
         <DocumentImagesPanel />
       </aside>
     </section>
@@ -1531,16 +1640,26 @@ function ProfileFurloughContent() {
   );
 }
 
-export function ProfileBoard({ activeTab = "overview" }: { activeTab?: ProfileTabKey }) {
+export function ProfileBoard({
+  activeTab = "overview",
+  employee,
+  isAdminView
+}: {
+  activeTab?: ProfileTabKey;
+  employee?: EmployeeDirectoryRecord;
+  isAdminView?: boolean;
+}) {
+  const resolvedActiveTab = isAdminView && activeTab === "furlough" ? "overview" : activeTab;
+
   return (
     <main className="employee-profile-page" aria-label="Hồ sơ cá nhân">
-      <ProfileTabs activeTab={activeTab} />
-      {activeTab === "resume" ? <ProfileResumeContent /> : null}
-      {activeTab === "work" ? <ProfileWorkContent /> : null}
-      {activeTab === "benefit" ? <ProfileBenefitContent /> : null}
-      {activeTab === "allowance" ? <ProfileAllowanceContent /> : null}
-      {activeTab === "furlough" ? <ProfileFurloughContent /> : null}
-      {activeTab === "overview" ? <ProfileOverviewContent /> : null}
+      <ProfileTabs activeTab={resolvedActiveTab} employee={employee} isAdminView={isAdminView} />
+      {resolvedActiveTab === "resume" ? <ProfileResumeContent employee={employee} /> : null}
+      {resolvedActiveTab === "work" ? <ProfileWorkContent /> : null}
+      {resolvedActiveTab === "benefit" ? <ProfileBenefitContent /> : null}
+      {resolvedActiveTab === "allowance" ? <ProfileAllowanceContent /> : null}
+      {resolvedActiveTab === "furlough" ? <ProfileFurloughContent /> : null}
+      {resolvedActiveTab === "overview" ? <ProfileOverviewContent employee={employee} /> : null}
     </main>
   );
 }

@@ -40,8 +40,7 @@ const accountStatusOptions: FormSelectOption[] = [
 ];
 
 const adminRoleOptions: FormSelectOption[] = [
-  { value: "user", label: "User" },
-  { value: "system_admin", label: "Admin hệ thống" }
+  { value: "user", label: "User" }
 ];
 
 const attendanceModeOptions: FormSelectOption[] = [

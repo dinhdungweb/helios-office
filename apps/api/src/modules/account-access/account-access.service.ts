@@ -46,12 +46,9 @@ type PermissionCatalogItem = {
   sortOrder: number;
 };
 
-const protectedPermissionGroupIds = new Set([
-  "grp-system-admin",
-  "grp-directors",
-  "grp-employees",
-  "grp-managers"
-]);
+const internalPermissionGroupIds = new Set(["grp-system-admin"]);
+
+const protectedPermissionGroupIds = new Set(["grp-directors", "grp-employees", "grp-managers"]);
 
 @Injectable()
 export class AccountAccessService {
@@ -132,7 +129,9 @@ export class AccountAccessService {
       this.findPermissionCatalog()
     ]);
 
-    return groups.map((group) => this.resolvePermissionGroup(group, permissionCatalog));
+    return groups
+      .filter((group) => !internalPermissionGroupIds.has(group.id))
+      .map((group) => this.resolvePermissionGroup(group, permissionCatalog));
   }
 
   async findPermissions() {
@@ -503,7 +502,7 @@ export class AccountAccessService {
 
   async createGroup(dto: CreatePermissionGroupDto, actorId?: string) {
     const baseId = buildPermissionGroupIdBase(dto.name);
-    const permissionKeys = await this.assertKnownPermissionKeys(dto.permissionKeys ?? []);
+    const permissionKeys = await this.assertKnownPermissionKeys(this.resolvePermissionGroupKeys(dto.permissionKeys ?? []));
 
     for (let attempt = 1; attempt <= 20; attempt += 1) {
       const id = buildPermissionGroupIdCandidate(baseId, attempt);
@@ -514,7 +513,7 @@ export class AccountAccessService {
             id,
             name: dto.name,
             description: dto.description,
-            roleScope: dto.roleScope ?? "user",
+            roleScope: "user",
             permissions: permissionKeys,
             status: PermissionGroupStatus.active
           }
@@ -548,9 +547,6 @@ export class AccountAccessService {
   }
 
   async updateGroup(id: string, dto: UpdatePermissionGroupDto, actorId?: string) {
-    const permissionKeys = dto.permissionKeys
-      ? await this.assertKnownPermissionKeys(dto.permissionKeys)
-      : dto.permissionKeys;
     const before = await this.prisma.permissionGroup.findUnique({
       where: { id }
     });
@@ -563,12 +559,17 @@ export class AccountAccessService {
       throw new ConflictException("Archived permission groups cannot be updated");
     }
 
+    const rawPermissionKeys = dto.permissionKeys;
+    const permissionKeys = rawPermissionKeys !== undefined
+      ? await this.assertKnownPermissionKeys(this.resolvePermissionGroupKeys(rawPermissionKeys))
+      : undefined;
+
     const group = await this.prisma.permissionGroup.update({
       where: { id },
       data: {
         name: dto.name,
         description: dto.description,
-        roleScope: dto.roleScope,
+        roleScope: "user",
         permissions: permissionKeys
       },
       include: {
@@ -800,6 +801,10 @@ export class AccountAccessService {
     };
   }
 
+  private resolvePermissionGroupKeys(permissionKeys: string[]) {
+    return Array.from(new Set(permissionKeys));
+  }
+
   private async assertKnownPermissionKeys(permissionKeys: string[]) {
     if (permissionKeys.length === 0) {
       return permissionKeys;
@@ -831,6 +836,10 @@ export class AccountAccessService {
 
     if (!group) {
       throw new NotFoundException(`Permission group ${groupId} was not found`);
+    }
+
+    if (internalPermissionGroupIds.has(group.id)) {
+      throw new ConflictException("System admin account is separated from permission groups");
     }
 
     if (group.status === PermissionGroupStatus.archived) {

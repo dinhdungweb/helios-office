@@ -23,7 +23,7 @@ export const employees = [
     id: "emp-003",
     code: "HL-003",
     name: "Lê Minh Khang",
-    department: "Sales",
+    department: "Kinh doanh Miền Nam",
     title: "Sales Specialist",
     managerId: "emp-012",
     status: "active",
@@ -32,6 +32,216 @@ export const employees = [
 ];
 
 export const accountPermissionCatalog = [
+  {
+    key: "module.hrm.employees",
+    category: "Module",
+    label: "Hồ sơ nhân sự",
+    adminOnly: false
+  },
+  {
+    key: "module.hrm.contracts",
+    category: "Module",
+    label: "Hợp đồng",
+    adminOnly: false
+  },
+  {
+    key: "module.hrm.decisions",
+    category: "Module",
+    label: "Quyết định",
+    adminOnly: false
+  },
+  {
+    key: "module.recruitment.proposals",
+    category: "Module",
+    label: "Đề xuất tuyển",
+    adminOnly: false
+  },
+  {
+    key: "module.recruitment.pipeline",
+    category: "Module",
+    label: "Tuyển dụng",
+    adminOnly: false
+  },
+  {
+    key: "module.recruitment.care",
+    category: "Module",
+    label: "Chăm sóc",
+    adminOnly: false
+  },
+  {
+    key: "module.attendance",
+    category: "Module",
+    label: "Chấm công",
+    adminOnly: false
+  },
+  {
+    key: "module.attendance.timesheets",
+    category: "Module",
+    label: "Bảng chấm công",
+    adminOnly: false
+  },
+  {
+    key: "module.payroll.tables",
+    category: "Module",
+    label: "Bảng lương",
+    adminOnly: false
+  },
+  {
+    key: "module.payroll.types",
+    category: "Module",
+    label: "Loại bảng lương",
+    adminOnly: false
+  },
+  {
+    key: "module.requests",
+    category: "Module",
+    label: "Đơn từ",
+    adminOnly: false
+  },
+  {
+    key: "module.assets",
+    category: "Module",
+    label: "Tài sản",
+    adminOnly: false
+  },
+  {
+    key: "module.insurance",
+    category: "Module",
+    label: "IVAN",
+    adminOnly: false
+  },
+  {
+    key: "module.calendar.events",
+    category: "Module",
+    label: "Sự kiện",
+    adminOnly: false
+  },
+  {
+    key: "module.documents.company",
+    category: "Module",
+    label: "Tài liệu công ty",
+    adminOnly: false
+  },
+  {
+    key: "module.documents.personal",
+    category: "Module",
+    label: "Tài liệu cá nhân",
+    adminOnly: false
+  },
+  {
+    key: "module.kpi.evaluation",
+    category: "Module",
+    label: "Đánh giá KPI",
+    adminOnly: false
+  },
+  {
+    key: "module.kpi.goals",
+    category: "Module",
+    label: "Quản lý mục tiêu",
+    adminOnly: false
+  },
+  {
+    key: "module.work.tasks",
+    category: "Module",
+    label: "Công việc",
+    adminOnly: false
+  },
+  {
+    key: "module.work.timesheet",
+    category: "Module",
+    label: "Timesheet",
+    adminOnly: false
+  },
+  {
+    key: "module.work.projects",
+    category: "Module",
+    label: "Dự án",
+    adminOnly: false
+  },
+  {
+    key: "module.performance.reviews",
+    category: "Module",
+    label: "Đánh giá",
+    adminOnly: false
+  },
+  {
+    key: "module.digital_signature.signatures",
+    category: "Module",
+    label: "Chữ ký số",
+    adminOnly: false
+  },
+  {
+    key: "module.digital_signature.records",
+    category: "Module",
+    label: "Hồ sơ ký số",
+    adminOnly: false
+  },
+  {
+    key: "module.reports",
+    category: "Module",
+    label: "Báo cáo",
+    adminOnly: false
+  },
+  {
+    key: "module.reports.dashboard",
+    category: "Module",
+    label: "Dashboard",
+    adminOnly: false
+  },
+  {
+    key: "module.social.groups",
+    category: "Module",
+    label: "Nhóm",
+    adminOnly: false
+  },
+  {
+    key: "module.social.posts",
+    category: "Module",
+    label: "Bài viết",
+    adminOnly: false
+  },
+  {
+    key: "module.social.wall",
+    category: "Module",
+    label: "Tường công ty",
+    adminOnly: false
+  },
+  {
+    key: "module.support.tickets",
+    category: "Module",
+    label: "Ticket",
+    adminOnly: false
+  },
+  {
+    key: "module.training",
+    category: "Module",
+    label: "Đào tạo",
+    adminOnly: false
+  },
+  {
+    key: "module.automation.rules",
+    category: "Module",
+    label: "Tự động",
+    adminOnly: false
+  },
+  {
+    key: "module.automation.alerts",
+    category: "Module",
+    label: "Cảnh báo",
+    adminOnly: false
+  },
+  {
+    key: "module.automation.approvals",
+    category: "Module",
+    label: "Quy trình duyệt",
+    adminOnly: false
+  },
+  {
+    key: "module.assistant.knowledge",
+    category: "Module",
+    label: "Tri thức",
+    adminOnly: false
+  },
   {
     key: "system.organization.manage",
     category: "Quản trị hệ thống",
@@ -263,23 +473,6 @@ export const accountPermissionCatalog = [
 ];
 
 export const permissionGroups = [
-  {
-    id: "grp-system-admin",
-    name: "Admin hệ thống",
-    description: "Chủ doanh nghiệp, IT hoặc HCNS có quyền cao nhất.",
-    roleScope: "system_admin",
-    memberCount: 2,
-    permissionKeys: [
-      "system.organization.manage",
-      "system.accounts.manage",
-      "system.approval_flow.manage",
-      "system.open_api.manage",
-      "system.branding.manage",
-      "attendance.device.manage",
-      "reports.company.view",
-      "approvals.critical.approve"
-    ]
-  },
   {
     id: "grp-directors",
     name: "Ban giám đốc",
@@ -757,10 +950,30 @@ export const adminOperationEvents = [
 ];
 
 export const departments = [
-  { id: "dep-001", code: "DEP-001", name: "Technology", headId: "emp-001", parentId: null, headcount: 24 },
-  { id: "dep-002", code: "DEP-002", name: "People Operations", headId: "emp-002", parentId: null, headcount: 8 },
-  { id: "dep-003", code: "DEP-003", name: "Sales", headId: "emp-003", parentId: null, headcount: 65 },
-  { id: "dep-004", code: "DEP-004", name: "Operations", headId: "emp-010", parentId: null, headcount: 42 }
+  { id: "dep-001", code: "DEP-001", name: "Ban Giám Đốc", headId: "emp-001", parentId: null, headcount: 3 },
+  { id: "dep-002", code: "DEP-002", name: "Chi nhánh Miền Bắc", headId: "emp-010", parentId: null, headcount: 62 },
+  { id: "dep-003", code: "DEP-003", name: "Kinh doanh Miền Bắc", headId: "emp-011", parentId: "dep-002", headcount: 34 },
+  { id: "dep-004", code: "DEP-004", name: "Cửa hàng Hà Nội - Cầu Giấy", headId: "emp-012", parentId: "dep-003", headcount: 10 },
+  { id: "dep-005", code: "DEP-005", name: "Cửa hàng Hà Nội - Long Biên", headId: "emp-013", parentId: "dep-003", headcount: 9 },
+  { id: "dep-006", code: "DEP-006", name: "Cửa hàng Hải Phòng", headId: "emp-014", parentId: "dep-003", headcount: 8 },
+  { id: "dep-007", code: "DEP-007", name: "Kho vận Miền Bắc", headId: "emp-015", parentId: "dep-002", headcount: 18 },
+  { id: "dep-008", code: "DEP-008", name: "Chi nhánh Miền Nam", headId: "emp-003", parentId: null, headcount: 74 },
+  { id: "dep-009", code: "DEP-009", name: "Kinh doanh Miền Nam", headId: "emp-003", parentId: "dep-008", headcount: 42 },
+  { id: "dep-010", code: "DEP-010", name: "Cửa hàng TP.HCM - Quận 1", headId: "emp-016", parentId: "dep-009", headcount: 11 },
+  { id: "dep-011", code: "DEP-011", name: "Cửa hàng TP.HCM - Thủ Đức", headId: "emp-017", parentId: "dep-009", headcount: 10 },
+  { id: "dep-012", code: "DEP-012", name: "Cửa hàng Bình Dương", headId: "emp-018", parentId: "dep-009", headcount: 8 },
+  { id: "dep-013", code: "DEP-013", name: "Kho vận Miền Nam", headId: "emp-019", parentId: "dep-008", headcount: 20 },
+  { id: "dep-014", code: "DEP-014", name: "Kinh doanh toàn quốc", headId: "emp-020", parentId: null, headcount: 38 },
+  { id: "dep-015", code: "DEP-015", name: "Telesales & Online", headId: "emp-021", parentId: "dep-014", headcount: 16 },
+  { id: "dep-016", code: "DEP-016", name: "Key Account / B2B", headId: "emp-022", parentId: "dep-014", headcount: 12 },
+  { id: "dep-017", code: "DEP-017", name: "CSKH & Chăm sóc sau bán", headId: "emp-023", parentId: "dep-014", headcount: 10 },
+  { id: "dep-018", code: "DEP-018", name: "Marketing & Thương hiệu", headId: "emp-024", parentId: null, headcount: 18 },
+  { id: "dep-019", code: "DEP-019", name: "Digital Marketing", headId: "emp-025", parentId: "dep-018", headcount: 9 },
+  { id: "dep-020", code: "DEP-020", name: "Trade Marketing", headId: "emp-026", parentId: "dep-018", headcount: 7 },
+  { id: "dep-021", code: "DEP-021", name: "Back Office", headId: "emp-027", parentId: null, headcount: 31 },
+  { id: "dep-022", code: "DEP-022", name: "People Operations", headId: "emp-002", parentId: "dep-021", headcount: 8 },
+  { id: "dep-023", code: "DEP-023", name: "Tài chính - Kế toán", headId: "emp-028", parentId: "dep-021", headcount: 7 },
+  { id: "dep-024", code: "DEP-024", name: "Technology", headId: "emp-001", parentId: "dep-021", headcount: 12 }
 ];
 
 export const contracts = [

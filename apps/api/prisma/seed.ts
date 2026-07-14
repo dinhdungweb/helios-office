@@ -261,11 +261,11 @@ function normalizeEmployeeStatus(value: string) {
 }
 
 function payrollTemplateForDepartment(departmentName: string) {
-  if (departmentName === "Sales") {
+  if (departmentName === "Sales" || departmentName.includes("Kinh doanh")) {
     return "sales";
   }
 
-  if (departmentName === "Operations") {
+  if (departmentName === "Operations" || departmentName.includes("Kho vận")) {
     return "operations";
   }
 

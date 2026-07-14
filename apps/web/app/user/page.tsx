@@ -15,6 +15,7 @@ import { AttendanceBoard } from "@/components/user/attendance-board";
 import { CheckinOutRequestCreateBoard } from "@/components/user/checkin-out-request-create-board";
 import { LeaveRequestCreateBoard } from "@/components/user/leave-request-create-board";
 import { OvertimeRequestCreateBoard } from "@/components/user/overtime-request-create-board";
+import { PersonnelDirectoryBoard } from "@/components/user/personnel-directory-board";
 import { ProfileBoard, type ProfileTabKey } from "@/components/user/profile-board";
 import { ResignationRequestCreateBoard } from "@/components/user/resignation-request-create-board";
 import { RequestsBoard } from "@/components/user/requests-board";
@@ -23,12 +24,15 @@ import { ShiftChangeRequestCreateBoard } from "@/components/user/shift-change-re
 import { Badge } from "@/components/ui/badge";
 import { CollapseButton } from "@/components/user/collapse-button";
 import { UserFrame } from "@/components/user/user-frame";
+import { getCurrentSessionUser } from "@/lib/auth-user";
 import { announcements } from "@/lib/mock-data";
+import { getEmployeeDirectoryData } from "@/lib/employee-directory-api";
 
 type UserPageProps = {
   searchParams?: Promise<{
     customMenu?: string;
     create?: string;
+    employeeId?: string;
     profileTab?: string;
     tab?: string;
   }>;
@@ -155,7 +159,7 @@ function TrainingPanel() {
   return (
     <section className="user-panel" aria-labelledby="training-title">
       <header className="user-panel-header">
-        <h2 id="training-title">Lịch đào tạo phần mềm 1Office</h2>
+        <h2 id="training-title">Lịch đào tạo phần mềm HOffice</h2>
         <CollapseButton label="lịch đào tạo" />
       </header>
 
@@ -325,10 +329,40 @@ function UserResignationCreate() {
   );
 }
 
-function UserProfile({ activeTab = "overview" }: { activeTab?: ProfileTabKey }) {
+async function UserProfile({
+  activeTab = "overview",
+  employeeId
+}: {
+  activeTab?: ProfileTabKey;
+  employeeId?: string;
+}) {
+  const [sessionUser, directoryData] = employeeId
+    ? await Promise.all([getCurrentSessionUser(), getEmployeeDirectoryData()])
+    : [await getCurrentSessionUser(), null] as const;
+  const employee = directoryData?.employees.find((item) => (
+    item.id === employeeId ||
+    item.code === employeeId ||
+    item.accountId === employeeId
+  ));
+  const isAdminView = Boolean(employee && sessionUser?.account?.adminRole === "system_admin");
+
   return (
-    <UserFrame activeModule="profile">
-      <ProfileBoard activeTab={activeTab} />
+    <UserFrame
+      activeModule={employee ? "hcns-employees" : "profile"}
+      showSearch={Boolean(employee)}
+      title={employee?.fullName}
+    >
+      <ProfileBoard activeTab={activeTab} employee={employee} isAdminView={isAdminView} />
+    </UserFrame>
+  );
+}
+
+async function UserPersonnelDirectory() {
+  const data = await getEmployeeDirectoryData();
+
+  return (
+    <UserFrame activeModule="hcns-employees" showSearch title="Danh sách nhân sự">
+      <PersonnelDirectoryBoard data={data} />
     </UserFrame>
   );
 }
@@ -429,6 +463,14 @@ export default async function UserPage({ searchParams }: UserPageProps) {
   }
 
   if (
+    params?.customMenu === "personnel-profile-profile" ||
+    params?.customMenu === "personnel-profile" ||
+    params?.customMenu === "hcns-employees"
+  ) {
+    return <UserPersonnelDirectory />;
+  }
+
+  if (
     params?.customMenu === "user-board-profile" ||
     params?.customMenu === "user-board-profile-resume" ||
     params?.customMenu === "user-board-profile-work" ||
@@ -440,7 +482,7 @@ export default async function UserPage({ searchParams }: UserPageProps) {
     params?.customMenu === "user-profile" ||
     params?.customMenu === "employee-profile"
   ) {
-    return <UserProfile activeTab={resolveProfileTab(params)} />;
+    return <UserProfile activeTab={resolveProfileTab(params)} employeeId={params.employeeId} />;
   }
 
   return <UserHome />;

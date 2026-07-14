@@ -295,7 +295,7 @@ export class EmployeesService {
     const departments = await this.prisma.department.findMany({
       where: includeArchived ? undefined : { status: DepartmentStatus.active },
       include: departmentInclude,
-      orderBy: [{ status: "asc" }, { name: "asc" }]
+      orderBy: [{ status: "asc" }, { code: "asc" }]
     });
 
     return Promise.all(departments.map((department) => this.resolveDepartment(department)));
@@ -1237,6 +1237,7 @@ export class EmployeesService {
       accountStatus: employee.userAccount?.accountStatus ?? null,
       accountDisplayName: employee.userAccount?.displayName ?? null,
       accountRole: employee.userAccount?.adminRole ?? null,
+      accountCreatedAt: employee.userAccount?.createdAt ?? null,
       permissionGroupId: employee.userAccount?.permissionGroupId ?? null,
       currentContract: employee.contracts[0] ?? null
     };

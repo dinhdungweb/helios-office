@@ -14,10 +14,20 @@ import { UserQuickCreateMenu } from "@/components/user/user-quick-create-menu";
 import { UserPersonalNavigation } from "@/components/user/user-personal-navigation";
 import { getCurrentSessionUser, type CurrentSessionUser } from "@/lib/auth-user";
 import { currentUser } from "@/lib/mock-data";
-import { getOrgChartData, type OrgChartData } from "@/lib/org-chart-api";
 import type { UserProfile } from "@/lib/mock-data";
+import { getOrgChartData, type OrgChartData } from "@/lib/org-chart-api";
 
-export type UserModuleKey = "home" | "attendance" | "payroll" | "requests" | "profile" | "loans" | "settings" | "admin" | "hcns";
+export type UserModuleKey =
+  | "home"
+  | "attendance"
+  | "payroll"
+  | "requests"
+  | "profile"
+  | "loans"
+  | "settings"
+  | "admin"
+  | "hcns"
+  | "hcns-employees";
 
 type UserFrameProps = {
   activeModule: UserModuleKey;
@@ -64,16 +74,59 @@ function resolveViewer(user: CurrentSessionUser | null): UserFrameViewer {
   };
 }
 
+function hasAnyPermission(permissionSet: Set<string>, keys: string[]) {
+  return keys.some((key) => permissionSet.has(key));
+}
+
+function getQuickCreateFallbackMenuKeys(viewer: UserFrameViewer, variant: "user" | "admin" | "hcns") {
+  if (variant === "admin") {
+    return [];
+  }
+
+  if (variant === "hcns") {
+    return ["dashboard", "attendance", "requests", "people", "contracts"];
+  }
+
+  if (viewer.isAdmin) {
+    return ["home", "admin-console", "admin-settings"];
+  }
+
+  const permissionSet = new Set(viewer.permissionKeys);
+  const keys = ["home"];
+
+  if (hasAnyPermission(permissionSet, ["menu.user.attendance"])) {
+    keys.push("attendance");
+  }
+
+  if (hasAnyPermission(permissionSet, ["menu.user.requests", "requests.personal.create"])) {
+    keys.push("requests");
+  }
+
+  if (hasAnyPermission(permissionSet, ["menu.user.profile", "reports.personal.view"])) {
+    keys.push("profile");
+  }
+
+  if (hasAnyPermission(permissionSet, ["menu.work.tasks", "tasks.assigned.update"])) {
+    keys.push("work-tasks");
+  }
+
+  return keys;
+}
+
 function UserTopbar({
   activeModule,
   canOpenAdminSettings,
+  quickCreateFallbackMenuKeys,
+  quickCreateMenuStorageKey,
+  orgChartData,
   showSearch,
   title,
-  user,
-  orgChartData
+  user
 }: {
   activeModule: UserModuleKey;
   canOpenAdminSettings: boolean;
+  quickCreateFallbackMenuKeys: string[];
+  quickCreateMenuStorageKey: string;
   orgChartData?: OrgChartData;
   showSearch?: boolean;
   title?: string;
@@ -86,8 +139,10 @@ function UserTopbar({
           <AppLauncher />
         </div>
         <UserQuickCreateMenu
+          fallbackMenuKeys={quickCreateFallbackMenuKeys}
+          menuStorageKey={quickCreateMenuStorageKey}
           mode={activeModule === "admin" ? "admin" : "default"}
-          orgChartData={activeModule === "admin" ? orgChartData : undefined}
+          orgChartData={orgChartData}
         />
         <h1>{title ?? user.name}</h1>
       </div>
@@ -137,11 +192,14 @@ function UserTopbar({
 export async function UserFrame({ activeModule, children, showSearch, title }: UserFrameProps) {
   const isAdminFrame = activeModule === "admin";
   const isHcnsFrame = activeModule === "hcns";
-  const [sessionUser, orgChartData] = await Promise.all([
-    getCurrentSessionUser(),
-    isAdminFrame ? getOrgChartData() : Promise.resolve(undefined)
-  ]);
+  const sidebarVariant = isAdminFrame ? "admin" : isHcnsFrame ? "hcns" : "user";
+  const sessionUser = await getCurrentSessionUser();
+  const quickCreateOrgChartData = isAdminFrame ? await getOrgChartData() : undefined;
   const viewer = resolveViewer(sessionUser);
+  const quickCreateMenuStorageKey = sidebarVariant === "user"
+    ? `helios:user-sidebar:${viewer.id}`
+    : `helios:${sidebarVariant}.sidebar:${viewer.id}`;
+  const quickCreateFallbackMenuKeys = getQuickCreateFallbackMenuKeys(viewer, sidebarVariant);
 
   return (
     <div className="user-shell">
@@ -172,7 +230,9 @@ export async function UserFrame({ activeModule, children, showSearch, title }: U
         <UserTopbar
           activeModule={activeModule}
           canOpenAdminSettings={viewer.isAdmin}
-          orgChartData={orgChartData}
+          quickCreateFallbackMenuKeys={quickCreateFallbackMenuKeys}
+          quickCreateMenuStorageKey={quickCreateMenuStorageKey}
+          orgChartData={quickCreateOrgChartData}
           showSearch={showSearch}
           title={title}
           user={viewer.profile}

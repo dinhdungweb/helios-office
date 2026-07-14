@@ -197,7 +197,7 @@ export function DepartmentDialog({
         className="org-department-dialog org-department-dialog--quick"
         onCloseRequest={onClose}
         ref={dialogRef}
-        title="Tạo mới phòng ban"
+        title="Tạo mới phòng ban, chi nhánh"
       >
         <form className="account-dialog-form org-department-form" action={formAction} autoComplete="off">
           <div className="account-dialog-grid org-department-form-grid">

@@ -34,7 +34,10 @@ export type EmployeeDirectoryRecord = {
   accountStatus?: "pending_activation" | "active" | "closed" | null;
   accountDisplayName?: string | null;
   accountRole?: "system_admin" | "user" | null;
+  accountCreatedAt?: string | null;
   permissionGroupId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type EmployeeDirectoryOption = {

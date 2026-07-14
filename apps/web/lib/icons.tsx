@@ -25,6 +25,7 @@ import {
   CalendarCheckIcon,
   Call02Icon,
   Cancel01Icon,
+  Certificate01Icon,
   ChartLineData01Icon,
   ChartNetworkIcon,
   Chatting01Icon,
@@ -40,6 +41,7 @@ import {
   EyeIcon,
   File02Icon,
   FileClockIcon,
+  FileDownloadIcon,
   FileExportIcon,
   Flag02Icon,
   FunnelIcon,
@@ -56,7 +58,6 @@ import {
   Key01Icon,
   LanguageCircleIcon,
   Link02Icon,
-  LockIcon,
   Logout01Icon,
   MagicWand02Icon,
   Mail01Icon,
@@ -64,10 +65,11 @@ import {
   Medal03Icon,
   Megaphone02Icon,
   Menu01Icon,
-  MenuCircleIcon,
   Mic01Icon,
   MinusSignIcon,
   Money03Icon,
+  MoreHorizontalIcon,
+  MoreVerticalIcon,
   News01Icon,
   PackageIcon,
   PencilEdit02Icon,
@@ -81,6 +83,7 @@ import {
   SlidersHorizontalIcon,
   SmileIcon,
   Speaker01Icon,
+  SquareLock01Icon,
   StarIcon,
   Tag01Icon,
   Target02Icon,
@@ -96,6 +99,7 @@ import {
   UserGroupIcon,
   UserIcon,
   UserMultiple02Icon,
+  UserStatusIcon,
   Wallet02Icon
 } from "@hugeicons/core-free-icons";
 
@@ -137,6 +141,7 @@ export const CaretDown = createIcon(ArrowDown01Icon);
 export const CaretLeft = createIcon(ArrowLeft01Icon);
 export const CaretRight = createIcon(ArrowRight01Icon);
 export const CaretUp = createIcon(ArrowUp01Icon);
+export const Certificate = createIcon(Certificate01Icon);
 export const ChartLineUp = createIcon(ChartLineData01Icon);
 export const ChatCircle = createIcon(BubbleChatIcon);
 export const ChatCircleText = createIcon(Chatting01Icon);
@@ -147,12 +152,14 @@ export const ClipboardText = createIcon(ClipboardListIcon);
 export const Clock = createIcon(Clock01Icon);
 export const Columns = createIcon(LayoutTwoColumnIcon);
 export const CurrencyDollar = createIcon(DollarCircleIcon);
-export const DotsThree = createIcon(MenuCircleIcon);
+export const DotsThree = createIcon(MoreHorizontalIcon);
+export const DotsThreeVertical = createIcon(MoreVerticalIcon);
 export const EnvelopeSimple = createIcon(Mail01Icon);
 export const Eye = createIcon(EyeIcon);
 export const Export = createIcon(FileExportIcon);
 export const FileText = createIcon(File02Icon);
 export const FileClock = createIcon(FileClockIcon);
+export const FileDownload = createIcon(FileDownloadIcon);
 export const Flag = createIcon(Flag02Icon);
 export const FlowArrow = createIcon(ChartNetworkIcon);
 export const FunnelSimple = createIcon(FunnelIcon);
@@ -168,7 +175,7 @@ export const ImageBroken = createIcon(ImageNotFound01Icon);
 export const Key = createIcon(Key01Icon);
 export const Language = createIcon(LanguageCircleIcon);
 export const LinkSimple = createIcon(Link02Icon);
-export const Lock = createIcon(LockIcon);
+export const Lock = createIcon(SquareLock01Icon);
 export const Logout = createIcon(Logout01Icon);
 export const List = createIcon(Menu01Icon);
 export const ListBullets = createIcon(LeftToRightListBulletIcon);
@@ -211,6 +218,7 @@ export const Umbrella = createIcon(UmbrellaIcon);
 export const UploadSimple = createIcon(Upload01Icon);
 export const User = createIcon(UserIcon);
 export const UserCircle = createIcon(UserCircleIcon);
+export const UserStatus = createIcon(UserStatusIcon);
 export const Users = createIcon(UserGroupIcon);
 export const UsersThree = createIcon(UserMultiple02Icon);
 export const Wallet = createIcon(Wallet02Icon);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ResponsiveToolbarActionMenu } from "@/components/admin/responsive-toolbar-action-menu";
 import { FormCheckbox } from "@/components/ui/form-controls";
 import {
   CaretLeft,
@@ -413,13 +414,15 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
   const [sortColumnKey, setSortColumnKey] = useState<UserColumnKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const filterRef = useRef<HTMLDivElement | null>(null);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<Set<string>>(() => new Set());
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<UserColumnKey>>(
     () => new Set(defaultVisibleColumnKeys)
   );
   const groupsById = useMemo(() => new Map(data.groups.map((group) => [group.id, group])), [data.groups]);
+  const userAccounts = useMemo(() => data.accounts.filter((account) => !isSystemAdminAccount(account)), [data.accounts]);
   const filteredAccounts = useMemo(
-    () => data.accounts.filter((account) => matchesFilter(account, activeFilter)),
-    [activeFilter, data.accounts]
+    () => userAccounts.filter((account) => matchesFilter(account, activeFilter)),
+    [activeFilter, userAccounts]
   );
   const sortedAccounts = useMemo(() => {
     if (!sortColumnKey) {
@@ -435,6 +438,10 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
     });
   }, [filteredAccounts, groupsById, sortColumnKey, sortDirection]);
   const visibleAccounts = sortedAccounts.slice(0, 50);
+  const visibleAccountIds = visibleAccounts.map((account) => account.id);
+  const selectedVisibleCount = visibleAccountIds.filter((id) => selectedAccountIds.has(id)).length;
+  const areAllVisibleAccountsSelected = visibleAccountIds.length > 0 && selectedVisibleCount === visibleAccountIds.length;
+  const isSomeVisibleAccountSelected = selectedVisibleCount > 0 && !areAllVisibleAccountsSelected;
   const visibleColumns = userColumns.filter((column) => visibleColumnKeys.has(column.key));
   const pageCount = Math.max(1, Math.ceil(Math.max(filteredAccounts.length, 1) / 50));
   const chooseSortColumn = (columnKey: UserColumnKey) => {
@@ -498,6 +505,34 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
     });
   };
 
+  const toggleAllVisibleAccounts = () => {
+    setSelectedAccountIds((current) => {
+      const next = new Set(current);
+
+      if (areAllVisibleAccountsSelected) {
+        visibleAccountIds.forEach((id) => next.delete(id));
+      } else {
+        visibleAccountIds.forEach((id) => next.add(id));
+      }
+
+      return next;
+    });
+  };
+
+  const toggleAccount = (accountId: string) => {
+    setSelectedAccountIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(accountId)) {
+        next.delete(accountId);
+      } else {
+        next.add(accountId);
+      }
+
+      return next;
+    });
+  };
+
   return (
     <main className="admin-user-list-page" aria-label="Danh sách người dùng">
       <ApiStatusBanner data={data} />
@@ -510,12 +545,12 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
             type="button"
             onClick={() => setActiveFilter(tab.key)}
           >
-            {tab.label} ({getTabCount(data.accounts, tab.key)})
+            {tab.label} ({getTabCount(userAccounts, tab.key)})
           </button>
         ))}
       </nav>
 
-      <section className="admin-user-toolbar" aria-label="Công cụ danh sách người dùng">
+      <section className="admin-user-toolbar has-responsive-actions" aria-label="Công cụ danh sách người dùng">
         <div className="admin-user-toolbar-left">
           <div className="admin-user-filter-wrap" ref={filterRef}>
             <button
@@ -631,16 +666,22 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
           </button>
         </div>
 
-        <div className="admin-user-toolbar-actions">
-          <button type="button">
-            <Export size={16} weight="duotone" aria-hidden="true" />
-            Export
-          </button>
-          <a href="/admin/settings/accounts/permissions">
-            <GearSix size={16} weight="duotone" aria-hidden="true" />
-            Cài đặt
-          </a>
-        </div>
+        <ResponsiveToolbarActionMenu
+          ariaLabel="Mở menu thao tác người dùng"
+          actions={[
+            {
+              key: "export",
+              icon: <Export size={16} weight="duotone" aria-hidden="true" />,
+              label: "Export"
+            },
+            {
+              key: "settings",
+              href: "/admin/settings/accounts/permissions",
+              icon: <GearSix size={16} weight="duotone" aria-hidden="true" />,
+              label: "Cài đặt"
+            }
+          ]}
+        />
       </section>
 
       <div className="admin-user-table-shell" tabIndex={0} aria-label="Bảng danh sách người dùng có thể cuộn ngang">
@@ -648,7 +689,14 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
           <thead>
             <tr>
               <th scope="col">
-                <span className="sr-only">Chọn</span>
+                <FormCheckbox
+                  checked={areAllVisibleAccountsSelected}
+                  className="admin-user-table-checkbox"
+                  disabled={visibleAccountIds.length === 0}
+                  label={<span className="sr-only">Chọn tất cả người dùng</span>}
+                  aria-checked={isSomeVisibleAccountSelected ? "mixed" : areAllVisibleAccountsSelected}
+                  onChange={toggleAllVisibleAccounts}
+                />
               </th>
               {visibleColumns.map((column) => (
                 <th scope="col" key={column.key}>
@@ -662,7 +710,12 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
             {visibleAccounts.map((account) => (
               <tr key={account.id}>
                 <td>
-                  <FormCheckbox className="admin-user-table-checkbox" label={<span className="sr-only">Chọn {account.name}</span>} />
+                  <FormCheckbox
+                    checked={selectedAccountIds.has(account.id)}
+                    className="admin-user-table-checkbox"
+                    label={<span className="sr-only">Chọn {account.name}</span>}
+                    onChange={() => toggleAccount(account.id)}
+                  />
                 </td>
                 {visibleColumns.map((column) =>
                   column.key === "account" ? (

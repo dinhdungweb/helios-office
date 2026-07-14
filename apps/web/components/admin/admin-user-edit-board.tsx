@@ -119,7 +119,7 @@ export function AdminUserEditBoard({
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(updateAccountAction, initialState);
   const assignableGroups = useMemo(
-    () => data.groups.filter((group) => group.role === "user" && (group.status !== "archived" || group.id === account.groupId)),
+    () => data.groups.filter((group) => group.status !== "archived" || group.id === account.groupId),
     [account.groupId, data.groups]
   );
   const initialGroupId = account.groupId ?? assignableGroups[0]?.id ?? "";

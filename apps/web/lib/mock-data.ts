@@ -398,7 +398,7 @@ export type ManagedUserAccount = {
   title: string;
   department: string;
   role: AccountRole;
-  groupId: string;
+  groupId: string | null;
   status: AccountLifecycleStatus;
   customPermissionKeys: string[];
   customPermissionNote?: string;
@@ -596,6 +596,216 @@ export type OrganizationChangeLog = {
 
 export const accountPermissions: AccountPermission[] = [
   {
+    key: "module.hrm.employees",
+    category: "Module",
+    label: "Hồ sơ nhân sự",
+    adminOnly: false
+  },
+  {
+    key: "module.hrm.contracts",
+    category: "Module",
+    label: "Hợp đồng",
+    adminOnly: false
+  },
+  {
+    key: "module.hrm.decisions",
+    category: "Module",
+    label: "Quyết định",
+    adminOnly: false
+  },
+  {
+    key: "module.recruitment.proposals",
+    category: "Module",
+    label: "Đề xuất tuyển",
+    adminOnly: false
+  },
+  {
+    key: "module.recruitment.pipeline",
+    category: "Module",
+    label: "Tuyển dụng",
+    adminOnly: false
+  },
+  {
+    key: "module.recruitment.care",
+    category: "Module",
+    label: "Chăm sóc",
+    adminOnly: false
+  },
+  {
+    key: "module.attendance",
+    category: "Module",
+    label: "Chấm công",
+    adminOnly: false
+  },
+  {
+    key: "module.attendance.timesheets",
+    category: "Module",
+    label: "Bảng chấm công",
+    adminOnly: false
+  },
+  {
+    key: "module.payroll.tables",
+    category: "Module",
+    label: "Bảng lương",
+    adminOnly: false
+  },
+  {
+    key: "module.payroll.types",
+    category: "Module",
+    label: "Loại bảng lương",
+    adminOnly: false
+  },
+  {
+    key: "module.requests",
+    category: "Module",
+    label: "Đơn từ",
+    adminOnly: false
+  },
+  {
+    key: "module.assets",
+    category: "Module",
+    label: "Tài sản",
+    adminOnly: false
+  },
+  {
+    key: "module.insurance",
+    category: "Module",
+    label: "IVAN",
+    adminOnly: false
+  },
+  {
+    key: "module.calendar.events",
+    category: "Module",
+    label: "Sự kiện",
+    adminOnly: false
+  },
+  {
+    key: "module.documents.company",
+    category: "Module",
+    label: "Tài liệu công ty",
+    adminOnly: false
+  },
+  {
+    key: "module.documents.personal",
+    category: "Module",
+    label: "Tài liệu cá nhân",
+    adminOnly: false
+  },
+  {
+    key: "module.kpi.evaluation",
+    category: "Module",
+    label: "Đánh giá KPI",
+    adminOnly: false
+  },
+  {
+    key: "module.kpi.goals",
+    category: "Module",
+    label: "Quản lý mục tiêu",
+    adminOnly: false
+  },
+  {
+    key: "module.work.tasks",
+    category: "Module",
+    label: "Công việc",
+    adminOnly: false
+  },
+  {
+    key: "module.work.timesheet",
+    category: "Module",
+    label: "Timesheet",
+    adminOnly: false
+  },
+  {
+    key: "module.work.projects",
+    category: "Module",
+    label: "Dự án",
+    adminOnly: false
+  },
+  {
+    key: "module.performance.reviews",
+    category: "Module",
+    label: "Đánh giá",
+    adminOnly: false
+  },
+  {
+    key: "module.digital_signature.signatures",
+    category: "Module",
+    label: "Chữ ký số",
+    adminOnly: false
+  },
+  {
+    key: "module.digital_signature.records",
+    category: "Module",
+    label: "Hồ sơ ký số",
+    adminOnly: false
+  },
+  {
+    key: "module.reports",
+    category: "Module",
+    label: "Báo cáo",
+    adminOnly: false
+  },
+  {
+    key: "module.reports.dashboard",
+    category: "Module",
+    label: "Dashboard",
+    adminOnly: false
+  },
+  {
+    key: "module.social.groups",
+    category: "Module",
+    label: "Nhóm",
+    adminOnly: false
+  },
+  {
+    key: "module.social.posts",
+    category: "Module",
+    label: "Bài viết",
+    adminOnly: false
+  },
+  {
+    key: "module.social.wall",
+    category: "Module",
+    label: "Tường công ty",
+    adminOnly: false
+  },
+  {
+    key: "module.support.tickets",
+    category: "Module",
+    label: "Ticket",
+    adminOnly: false
+  },
+  {
+    key: "module.training",
+    category: "Module",
+    label: "Đào tạo",
+    adminOnly: false
+  },
+  {
+    key: "module.automation.rules",
+    category: "Module",
+    label: "Tự động",
+    adminOnly: false
+  },
+  {
+    key: "module.automation.alerts",
+    category: "Module",
+    label: "Cảnh báo",
+    adminOnly: false
+  },
+  {
+    key: "module.automation.approvals",
+    category: "Module",
+    label: "Quy trình duyệt",
+    adminOnly: false
+  },
+  {
+    key: "module.assistant.knowledge",
+    category: "Module",
+    label: "Tri thức",
+    adminOnly: false
+  },
+  {
     key: "system.organization.manage",
     category: "Quản trị hệ thống",
     label: "Cài đặt sơ đồ tổ chức",
@@ -724,39 +934,6 @@ export const accountPermissions: AccountPermission[] = [
 ];
 
 export const permissionGroups: PermissionGroup[] = [
-  {
-    id: "grp-system-admin",
-    code: "ROLE_ADMIN",
-    name: "Admin hệ thống",
-    summary: "Chủ doanh nghiệp, IT hoặc HCNS có quyền cao nhất.",
-    role: "system_admin",
-    memberCount: 2,
-    status: "active",
-    memberSources: [
-      { type: "person", label: "Đặng Đình Dũng", count: 1 },
-      { type: "title", label: "System Admin", count: 1 }
-    ],
-    dataScope: "company",
-    visibleDepartments: ["Tất cả phòng ban"],
-    visibleMenus: ["Hệ thống", "Nhân sự", "Công việc", "Báo cáo", "Open API"],
-    hiddenMenus: [],
-    permissionRules: [
-      { object: "Sơ đồ tổ chức", module: "Hệ thống", actions: ["view", "create", "edit", "delete", "manage"], scope: "company" },
-      { object: "Tài khoản người dùng", module: "Hệ thống", actions: ["view", "create", "edit", "delete", "manage"], scope: "company" },
-      { object: "Báo cáo tổng thể", module: "Báo cáo", actions: ["view", "manage"], scope: "company" },
-      { object: "Open API", module: "Tích hợp", actions: ["view", "create", "edit", "delete", "manage"], scope: "company" }
-    ],
-    permissionKeys: [
-      "system.organization.manage",
-      "system.accounts.manage",
-      "system.approval_flow.manage",
-      "system.open_api.manage",
-      "system.branding.manage",
-      "attendance.device.manage",
-      "reports.company.view",
-      "approvals.critical.approve"
-    ]
-  },
   {
     id: "grp-directors",
     code: "ROLE_DIRECTOR",
@@ -968,7 +1145,7 @@ export const detailedPermissionObjects: DetailedPermissionObject[] = [
   },
   {
     id: "perm-payroll",
-    groupId: "grp-system-admin",
+    groupId: "grp-managers",
     module: "HRM",
     object: "Bảng lương",
     objectCode: "HRM_PAYROLL",
@@ -1033,9 +1210,9 @@ export const permissionMergeExamples: PermissionMergeExample[] = [
   },
   {
     id: "merge-002",
-    employee: "Đặng Đình Dũng",
-    groups: ["Admin hệ thống", "Quản lý dự án"],
-    result: "Lấy quyền cao nhất: scope Toàn công ty và quyền Manage trên các đối tượng hệ thống."
+    employee: "Ban điều hành",
+    groups: ["Ban giám đốc", "Quản lý dự án"],
+    result: "Kết hợp quyền điều hành công ty với quyền quản lý dự án theo nhóm người dùng."
   }
 ];
 
@@ -1049,10 +1226,9 @@ export const managedUserAccounts: ManagedUserAccount[] = [
     title: "Web Lead",
     department: "Helios",
     role: "system_admin",
-    groupId: "grp-system-admin",
+    groupId: null,
     status: "active",
-    customPermissionKeys: ["system.open_api.manage"],
-    customPermissionNote: "Quyền Open API cấp riêng cho tích hợp web.",
+    customPermissionKeys: [],
     activatedAt: "26/02/2024"
   },
   {

@@ -44,6 +44,7 @@ import type { Icon } from "@/lib/icons";
 
 const maxMenuItems = 10;
 const requiredMenuKeys = new Set(["home"]);
+const sidebarMenuChangedEvent = "helios:sidebar-menu-changed";
 
 type PersonalModule = {
   key: string;
@@ -168,8 +169,8 @@ const moduleCatalog: PersonalModule[] = [
   },
   {
     key: "hcns-employees",
-    label: "Hồ sơ nhân sự",
-    href: "/hcns/employees",
+    label: "Nhân sự",
+    href: "/user?customMenu=personnel-profile-profile",
     group: "HRM",
     icon: IdentificationBadge,
     permissionKey: "menu.hrm.employees",
@@ -256,7 +257,7 @@ const adminModuleCatalog: PersonalModule[] = [
   {
     key: "admin-currency",
     label: "Tiền tệ",
-    href: "/admin/settings/company-info",
+    href: "/admin/settings/currency",
     group: "Quản trị",
     icon: CurrencyDollar
   },
@@ -379,6 +380,13 @@ function writeStoredMenu(storageKey: string, menuKeys: string[]) {
   } catch {
     // Local storage is best-effort; the current session still updates immediately.
   }
+
+  window.dispatchEvent(new CustomEvent(sidebarMenuChangedEvent, {
+    detail: {
+      menuKeys,
+      storageKey
+    }
+  }));
 }
 
 function readPreferenceMenuKeys(value: unknown) {
@@ -477,7 +485,15 @@ function useCurrentHash() {
 }
 
 function isActiveItem(pathname: string, currentHash: string, item: PersonalModule) {
+  if (item.href === "#") {
+    return false;
+  }
+
   const itemHref = splitHref(item.href);
+
+  if (!itemHref.path) {
+    return false;
+  }
 
   if (item.activeHashes) {
     const normalizedHash = currentHash || itemHref.hash;
