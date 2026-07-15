@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { buildRequestUrl } from "@/lib/request-origin";
 
 const accessTokenCookieName = "helios_access_token";
 const refreshTokenCookieName = "helios_refresh_token";
@@ -33,14 +34,14 @@ function isAccessTokenFresh(token: string) {
 }
 
 function redirectToLogin(request: NextRequest) {
-  const redirectUrl = new URL("/login", request.url);
+  const redirectUrl = buildRequestUrl(request, "/login");
   redirectUrl.searchParams.set("redirectTo", `${request.nextUrl.pathname}${request.nextUrl.search}`);
 
   return NextResponse.redirect(redirectUrl);
 }
 
 function redirectToRefresh(request: NextRequest) {
-  const refreshUrl = new URL("/api/auth/refresh", request.url);
+  const refreshUrl = buildRequestUrl(request, "/api/auth/refresh");
   refreshUrl.searchParams.set("redirectTo", `${request.nextUrl.pathname}${request.nextUrl.search}`);
 
   return NextResponse.redirect(refreshUrl);

@@ -1,11 +1,13 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { getWebAuthConfig } from "@/lib/auth-config";
 import {
   AUTH_COOKIE_NAMES,
   clearSessionCookies,
   refreshSessionTokenSet,
   setSessionCookies
 } from "@/lib/auth-session";
+import { buildRequestUrl, getRequestOrigin } from "@/lib/request-origin";
 
 export const runtime = "nodejs";
 
@@ -18,7 +20,7 @@ function sanitizeRedirectTo(value: string | null) {
 }
 
 function loginRedirect(request: NextRequest, redirectTo: string, error: string) {
-  const url = new URL("/login", request.url);
+  const url = buildRequestUrl(request, "/login");
   url.searchParams.set("redirectTo", redirectTo);
   url.searchParams.set("error", error);
 
@@ -37,8 +39,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const tokenSet = await refreshSessionTokenSet(refreshToken);
-    const response = NextResponse.redirect(new URL(redirectTo, request.url), 303);
+    const origin = getRequestOrigin(request);
+    const tokenSet = await refreshSessionTokenSet(refreshToken, getWebAuthConfig(origin).issuer);
+    const response = NextResponse.redirect(new URL(redirectTo, origin), 303);
     setSessionCookies(response, tokenSet);
 
     return response;

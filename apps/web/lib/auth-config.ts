@@ -22,9 +22,45 @@ function normalizeIssuer(value: string) {
   return value.replace(/\/+$/, "");
 }
 
+function splitEnvList(value: string | undefined) {
+  return (value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function isLoopbackHostname(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";
+}
+
+function configuredIssuers() {
+  return Array.from(
+    new Set([requiredEnv("KEYCLOAK_ISSUER"), ...splitEnvList(getServerEnv("KEYCLOAK_ISSUERS"))].map(normalizeIssuer))
+  );
+}
+
+export function resolveKeycloakIssuer(origin: string) {
+  const requestHostname = new URL(origin).hostname;
+  const issuers = configuredIssuers();
+  const matchingIssuer = issuers.find((issuer) => new URL(issuer).hostname === requestHostname);
+
+  if (matchingIssuer) {
+    return matchingIssuer;
+  }
+
+  const primaryIssuer = new URL(issuers[0]);
+
+  if (!isLoopbackHostname(requestHostname) && isLoopbackHostname(primaryIssuer.hostname)) {
+    primaryIssuer.hostname = requestHostname;
+    return normalizeIssuer(primaryIssuer.toString());
+  }
+
+  return issuers[0];
+}
+
 export function getWebAuthConfig(origin: string): WebAuthConfig {
   return {
-    issuer: normalizeIssuer(requiredEnv("KEYCLOAK_ISSUER")),
+    issuer: resolveKeycloakIssuer(origin),
     clientId: requiredEnv("KEYCLOAK_CLIENT_ID"),
     clientSecret: getServerEnv("KEYCLOAK_CLIENT_SECRET") || undefined,
     redirectUri: new URL("/api/auth/callback", origin).toString(),

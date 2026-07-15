@@ -27,7 +27,8 @@ export type UserModuleKey =
   | "settings"
   | "admin"
   | "hcns"
-  | "hcns-employees";
+  | "hcns-employees"
+  | "hcns-contracts";
 
 type UserFrameProps = {
   activeModule: UserModuleKey;

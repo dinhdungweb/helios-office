@@ -60,14 +60,14 @@ type UserQuickCreateMenuProps = {
 
 const dynamicQuickCreateItems: DynamicQuickCreateItem[] = [
   {
-    href: "/hcns/employees/new",
+    href: "/apps/personnel-profile-profile/add",
     key: "employee-profile",
     label: "Hồ sơ nhân sự",
     moduleKeys: ["hcns-employees", "people"],
     type: "link"
   },
   {
-    href: "/hcns#contracts",
+    href: "/apps/personnel-contract-contract/add",
     key: "labor-contract",
     label: "Hợp đồng lao động",
     moduleKeys: ["hcns-contracts", "contracts"],

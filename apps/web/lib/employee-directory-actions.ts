@@ -84,6 +84,10 @@ function revalidateEmployeeDirectory() {
   revalidatePath("/admin/settings/accounts/groups");
   revalidatePath("/admin/hr/employees/new");
   revalidatePath("/hcns/employees/new");
+  revalidatePath("/apps/personnel-profile-profile");
+  revalidatePath("/apps/personnel-profile-profile/add");
+  revalidatePath("/personnel-profile-profile");
+  revalidatePath("/personnel-profile-profile/add");
   revalidatePath("/user/profile");
 }
 

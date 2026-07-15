@@ -20,11 +20,11 @@ export class AuthService {
 
   async verifyAuthorizationHeader(header: string | string[] | undefined): Promise<AuthenticatedUser> {
     const token = this.extractBearerToken(header);
-    const issuer = this.getIssuer();
+    const issuers = this.getAcceptedIssuers();
     const audience = this.config.get<string>("JWT_AUDIENCE") || undefined;
 
     const { payload } = await jwtVerify(token, this.getJwks(), {
-      issuer,
+      issuer: issuers,
       audience
     });
 
@@ -66,19 +66,40 @@ export class AuthService {
     return match[1];
   }
 
-  private getIssuer() {
+  private splitList(value: string | undefined) {
+    return (value ?? "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  private normalizeIssuer(value: string) {
+    return value.replace(/\/$/, "");
+  }
+
+  private getPrimaryIssuer() {
     const issuer = this.config.get<string>("KEYCLOAK_ISSUER");
 
     if (!issuer) {
       throw new UnauthorizedException("KEYCLOAK_ISSUER is not configured");
     }
 
-    return issuer.replace(/\/$/, "");
+    return this.normalizeIssuer(issuer);
+  }
+
+  private getAcceptedIssuers() {
+    return Array.from(
+      new Set(
+        [this.getPrimaryIssuer(), ...this.splitList(this.config.get<string>("KEYCLOAK_ISSUERS"))].map((issuer) =>
+          this.normalizeIssuer(issuer)
+        )
+      )
+    );
   }
 
   private getJwks() {
     if (!this.jwks) {
-      this.jwks = createRemoteJWKSet(new URL(`${this.getIssuer()}/protocol/openid-connect/certs`));
+      this.jwks = createRemoteJWKSet(new URL(`${this.getPrimaryIssuer()}/protocol/openid-connect/certs`));
     }
 
     return this.jwks;

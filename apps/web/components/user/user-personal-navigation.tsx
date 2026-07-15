@@ -170,7 +170,7 @@ const moduleCatalog: PersonalModule[] = [
   {
     key: "hcns-employees",
     label: "Nhân sự",
-    href: "/user?customMenu=personnel-profile-profile",
+    href: "/apps/personnel-profile-profile",
     group: "HRM",
     icon: IdentificationBadge,
     permissionKey: "menu.hrm.employees",
@@ -179,7 +179,7 @@ const moduleCatalog: PersonalModule[] = [
   {
     key: "hcns-contracts",
     label: "Hợp đồng lao động",
-    href: "/hcns#contracts",
+    href: "/apps/personnel-contract-contract",
     group: "HRM",
     icon: Briefcase,
     permissionKey: "menu.hrm.contracts",
@@ -298,8 +298,8 @@ const hcnsModuleCatalog: PersonalModule[] = [
   { key: "dashboard", label: "Trang chủ", href: "/hcns", group: "HRM", icon: House, exact: true },
   { key: "attendance", label: "Công", href: "/hcns#attendance", group: "HRM", icon: CalendarCheck },
   { key: "requests", label: "Đơn từ", href: "/hcns#requests", group: "HRM", icon: ClipboardText },
-  { key: "people", label: "Hồ sơ", href: "/hcns/employees", group: "HRM", icon: Users },
-  { key: "contracts", label: "Hợp đồng", href: "/hcns#contracts", group: "HRM", icon: Briefcase },
+  { key: "people", label: "Hồ sơ", href: "/apps/personnel-profile-profile", group: "HRM", icon: Users },
+  { key: "contracts", label: "Hợp đồng", href: "/apps/personnel-contract-contract", group: "HRM", icon: Briefcase },
   { key: "analytics", label: "BI HRM", href: "/hcns#analytics", group: "HRM", icon: ChartLineUp }
 ];
 

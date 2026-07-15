@@ -130,6 +130,10 @@ export async function createEmployeeProfileAction(
   revalidatePath("/admin/hr/employees/new");
   revalidatePath("/hcns/employees");
   revalidatePath("/hcns/employees/new");
+  revalidatePath("/apps/personnel-profile-profile");
+  revalidatePath("/apps/personnel-profile-profile/add");
+  revalidatePath("/personnel-profile-profile");
+  revalidatePath("/personnel-profile-profile/add");
 
   return { ok: true };
 }

@@ -10,7 +10,7 @@ import { NotificationsService } from "./notifications.service";
 @WebSocketGateway({
   namespace: "notifications",
   cors: {
-    origin: "http://localhost:3000",
+    origin: true,
     credentials: true
   }
 })

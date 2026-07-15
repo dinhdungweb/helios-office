@@ -38,6 +38,7 @@ const adminUsername = process.env.KEYCLOAK_ADMIN_USERNAME || "admin";
 const adminPassword = process.env.KEYCLOAK_ADMIN_PASSWORD || "admin";
 const webClientId = requiredEnv("KEYCLOAK_CLIENT_ID");
 const webClientSecret = process.env.KEYCLOAK_CLIENT_SECRET || "change-me";
+const webOrigins = resolveWebOrigins();
 const seedPassword = process.env.KEYCLOAK_SEED_PASSWORD || "Welcome@123";
 const databaseUrl =
   process.env.DATABASE_URL ?? "postgresql://helios:helios@localhost:5432/helios_office?schema=public";
@@ -63,6 +64,27 @@ function resolveRealmName(url: URL) {
   }
 
   return decodeURIComponent(match[1]);
+}
+
+function splitEnvList(value: string | undefined) {
+  return (value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeOrigin(value: string) {
+  return new URL(value).origin;
+}
+
+function resolveWebOrigins() {
+  const defaults = ["http://localhost:3000", "http://127.0.0.1:3000"];
+  const configuredOrigins = [
+    ...splitEnvList(process.env.WEB_ORIGIN),
+    ...splitEnvList(process.env.WEB_ORIGINS)
+  ];
+
+  return Array.from(new Set([...defaults, ...configuredOrigins].map(normalizeOrigin)));
 }
 
 function splitDisplayName(displayName: string) {
@@ -200,13 +222,10 @@ async function ensureClient() {
     secret: webClientSecret,
     standardFlowEnabled: true,
     directAccessGrantsEnabled: true,
-    redirectUris: [
-      "http://localhost:3000/api/auth/callback",
-      "http://127.0.0.1:3000/api/auth/callback"
-    ],
-    webOrigins: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    redirectUris: webOrigins.map((origin) => `${origin}/api/auth/callback`),
+    webOrigins,
     attributes: {
-      "post.logout.redirect.uris": "http://localhost:3000/login##http://127.0.0.1:3000/login"
+      "post.logout.redirect.uris": webOrigins.map((origin) => `${origin}/login`).join("##")
     }
   };
 

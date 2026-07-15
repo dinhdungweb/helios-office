@@ -95,7 +95,7 @@
 .admin-settings-center-page {
   min-height: calc(100vh - 57px);
   padding: 56px 24px 96px;
-  background: var(--color-surface-muted);
+  background: var(--color-app-background);
 }
 
 .admin-settings-center-grid {
@@ -189,7 +189,7 @@
 .admin-settings-page {
   display: grid;
   gap: var(--space-8);
-  padding: var(--space-8);
+  padding: var(--space-8) var(--space-8) calc(var(--space-8) + 68px);
 }
 
 .admin-setting-summary-grid {
@@ -1535,7 +1535,7 @@
 
 .user-shell:has(.admin-user-list-page),
 .user-workspace:has(.admin-user-list-page) {
-  background: var(--color-surface-muted);
+  background: var(--color-app-background);
 }
 
 .admin-user-api-banner {
@@ -2409,6 +2409,689 @@
 
 .personnel-directory-table-shell .account-empty-state {
   font-size: 12px;
+}
+
+.personnel-contract-directory-page {
+  grid-template-rows: auto auto minmax(0, 1fr);
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-app-background);
+}
+
+.personnel-contract-directory-page > * {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.user-shell:has(.personnel-contract-directory-page),
+.user-workspace:has(.personnel-contract-directory-page) {
+  background: var(--color-app-background);
+}
+
+.personnel-contract-list-strip {
+  gap: var(--space-8);
+}
+
+.personnel-contract-list-strip button {
+  position: relative;
+  align-self: stretch;
+  padding: 0;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-strong);
+  line-height: var(--line-height-base);
+  white-space: nowrap;
+}
+
+.personnel-contract-list-strip .personnel-contract-strip-icon-button {
+  display: inline-grid;
+  align-self: center;
+  width: 32px;
+  min-height: 32px;
+  place-items: center;
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-xs);
+}
+
+.personnel-contract-list-strip .personnel-contract-strip-icon-button:hover,
+.personnel-contract-list-strip .personnel-contract-strip-icon-button:focus-visible {
+  color: var(--color-text-primary);
+  background: var(--color-surface-strong);
+}
+
+.personnel-contract-list-strip button.is-active::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--color-text-primary);
+  content: "";
+}
+
+.personnel-contract-bulk-actions {
+  justify-content: flex-start;
+  gap: var(--space-7);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.personnel-contract-bulk-actions button {
+  min-height: 32px;
+  padding: 0 var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.personnel-contract-bulk-actions button:hover,
+.personnel-contract-bulk-actions button:focus-visible {
+  background: var(--color-surface-strong);
+  border-color: var(--color-border-subtle);
+}
+
+.personnel-contract-toolbar {
+  position: relative;
+  z-index: 70;
+  min-height: 48px;
+  overflow: visible;
+}
+
+.personnel-contract-filter-popover .admin-user-submenu {
+  max-height: min(400px, calc(100vh - 168px));
+  overflow-y: auto;
+}
+
+.personnel-contract-filter-submenu button {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.personnel-contract-page-picker {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.personnel-contract-page-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 32px;
+  padding: 0 var(--space-5);
+  color: var(--color-text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+
+.personnel-contract-page-trigger:hover,
+.personnel-contract-page-trigger:focus-visible,
+.personnel-contract-page-trigger.is-active {
+  background: var(--color-surface-strong);
+}
+
+.personnel-contract-page-trigger span {
+  font-size: var(--font-size-md);
+}
+
+.personnel-contract-page-menu {
+  position: absolute;
+  top: calc(100% + var(--space-3));
+  left: 0;
+  z-index: 90;
+  display: grid;
+  width: 118px;
+  max-height: min(360px, calc(100vh - 160px));
+  overflow-y: auto;
+  padding: var(--space-5);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.personnel-contract-page-menu button {
+  min-height: 38px;
+  padding: 0 var(--space-7);
+  color: var(--color-text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--font-size-md);
+  text-align: left;
+}
+
+.personnel-contract-page-menu button:hover,
+.personnel-contract-page-menu button:focus-visible,
+.personnel-contract-page-menu button.is-active {
+  background: var(--color-surface-strong);
+}
+
+.personnel-contract-page-menu button.is-active {
+  color: var(--color-text-secondary);
+}
+
+.personnel-contract-column-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: var(--space-6);
+  min-height: 40px;
+  padding: 0 var(--space-7);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-base);
+}
+
+.personnel-contract-column-toggle:hover,
+.personnel-contract-column-toggle:focus-within {
+  background: var(--color-surface-strong);
+}
+
+.personnel-contract-column-toggle > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.personnel-contract-column-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.personnel-contract-table {
+  min-width: 1780px;
+}
+
+.personnel-contract-table th,
+.personnel-contract-table td {
+  height: 45px;
+}
+
+.personnel-contract-table th:nth-child(4),
+.personnel-contract-table td:nth-child(4) {
+  min-width: 190px;
+}
+
+.personnel-contract-table th:nth-child(5),
+.personnel-contract-table td:nth-child(5) {
+  min-width: 170px;
+}
+
+.personnel-contract-table th:nth-child(6),
+.personnel-contract-table td:nth-child(6) {
+  min-width: 180px;
+}
+
+.personnel-contract-table th:nth-child(11),
+.personnel-contract-table td:nth-child(11) {
+  min-width: 135px;
+}
+
+.personnel-contract-table th:nth-child(13),
+.personnel-contract-table td:nth-child(13) {
+  min-width: 130px;
+}
+
+.personnel-contract-table td .personnel-contract-avatar {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  margin-left: 0;
+  place-items: center;
+  overflow: hidden;
+  color: var(--color-text-inverse);
+  background:
+    radial-gradient(circle at 65% 28%, rgba(255, 237, 206, 0.92) 0 18%, transparent 19%),
+    radial-gradient(circle at 38% 37%, #46302c 0 16%, transparent 17%),
+    linear-gradient(135deg, #f7b66b 0%, #8f4b2d 55%, #2d2f33 100%);
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-strong);
+}
+
+.personnel-contract-table td .personnel-contract-employee-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  margin-left: 0;
+  padding: 0 var(--space-6);
+  color: var(--color-text-primary);
+  background: #d9dcdd;
+  border: 1px solid #caced1;
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-base);
+}
+
+.personnel-contract-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  margin-left: 0;
+  padding: 0 var(--space-7);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-strong);
+  line-height: var(--line-height-base);
+}
+
+.personnel-contract-status.is-active {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.personnel-contract-status.is-ended {
+  color: var(--color-text-secondary);
+  background: var(--color-surface-strong);
+}
+
+.personnel-contract-status.is-warning {
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+}
+
+.personnel-contract-table-shell .account-empty-state {
+  font-size: 12px;
+}
+
+.personnel-contract-clickable-row {
+  cursor: pointer;
+}
+
+.personnel-contract-clickable-row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.personnel-contract-code-link {
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.personnel-contract-code-link:hover,
+.personnel-contract-code-link:focus-visible {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.personnel-contract-employee-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 26px;
+  margin-left: 0;
+  padding: 0 var(--space-6);
+  color: var(--color-text-primary);
+  background: #d9dcdd;
+  border: 1px solid #caced1;
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-base);
+  text-decoration: none;
+}
+
+.personnel-contract-employee-chip:hover,
+.personnel-contract-employee-chip:focus-visible {
+  color: var(--color-text-primary);
+  background: #ced2d4;
+}
+
+.personnel-contract-detail-page {
+  min-height: calc(100vh - 62px);
+  background: var(--color-app-background);
+}
+
+.user-shell:has(.personnel-contract-detail-page),
+.user-workspace:has(.personnel-contract-detail-page) {
+  background: var(--color-app-background);
+}
+
+.personnel-contract-detail-tabbar {
+  min-height: 52px;
+}
+
+.personnel-contract-detail-actions .admin-account-detail-more {
+  width: 30px;
+  height: 30px;
+  border-color: var(--color-border-subtle) !important;
+}
+
+.personnel-contract-detail-layout {
+  align-items: start;
+}
+
+.personnel-contract-detail-panel {
+  border-radius: var(--radius-sm);
+}
+
+.personnel-contract-panel-collapse {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-xs);
+}
+
+.personnel-contract-panel-collapse:hover,
+.personnel-contract-panel-collapse:focus-visible {
+  color: var(--color-text-primary);
+  background: var(--color-surface-strong);
+}
+
+.personnel-contract-detail-field-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-9) clamp(64px, 12vw, 160px);
+}
+
+.personnel-contract-detail-field-grid dd {
+  min-height: 26px;
+}
+
+.personnel-contract-detail-table-shell {
+  overflow-x: auto;
+}
+
+.personnel-contract-detail-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.personnel-contract-detail-table th,
+.personnel-contract-detail-table td {
+  height: 44px;
+  padding: 0 var(--space-8);
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-base);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.personnel-contract-detail-table th {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-regular);
+}
+
+.personnel-contract-detail-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.personnel-contract-related-card {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: var(--space-6);
+  margin: var(--space-8);
+  padding: var(--space-7);
+  color: inherit;
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-soft);
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.personnel-contract-related-card:hover,
+.personnel-contract-related-card:focus-visible {
+  border-color: color-mix(in srgb, var(--color-accent-primary) 36%, var(--color-border-subtle));
+  box-shadow: var(--shadow-elevated);
+  outline: 0;
+  transform: translateY(-1px);
+}
+
+.personnel-contract-related-avatar {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+}
+
+.personnel-contract-related-content {
+  display: grid;
+  gap: var(--space-7);
+  min-width: 0;
+}
+
+.personnel-contract-related-content header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.personnel-contract-related-content h3 {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-strong);
+  line-height: var(--line-height-base);
+}
+
+.personnel-contract-related-content header span,
+.personnel-contract-related-content dt {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.personnel-contract-related-content dl {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: var(--space-5) var(--space-8);
+  margin: 0;
+}
+
+.personnel-contract-related-content div {
+  display: contents;
+}
+
+.personnel-contract-related-content dd {
+  margin: 0;
+}
+
+.personnel-contract-related-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 var(--space-5);
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-strong);
+}
+
+.personnel-contract-detail-empty {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
+}
+
+.personnel-contract-discussion-panel {
+  min-height: 216px;
+}
+
+.personnel-contract-discussion-header {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 0 var(--space-8);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.personnel-contract-discussion-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.personnel-contract-discussion-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.personnel-contract-discussion-tabs button {
+  position: relative;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-strong);
+  line-height: var(--line-height-base);
+  white-space: nowrap;
+}
+
+.personnel-contract-discussion-tabs button:hover,
+.personnel-contract-discussion-tabs button:focus-visible,
+.personnel-contract-discussion-tabs button.is-active {
+  color: var(--color-text-primary);
+}
+
+.personnel-contract-discussion-tabs button.is-active::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--color-text-primary);
+  content: "";
+}
+
+.personnel-contract-discussion-body {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-8);
+}
+
+.personnel-contract-discussion-empty {
+  display: grid;
+  min-height: 72px;
+  place-items: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
+  text-align: center;
+}
+
+.personnel-contract-discussion-empty svg {
+  color: var(--color-border-strong);
+}
+
+.personnel-contract-discussion-input {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px 32px;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 48px;
+  padding: 0 var(--space-5);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.personnel-contract-discussion-input input {
+  min-width: 0;
+  height: 34px;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  outline: 0;
+}
+
+.personnel-contract-discussion-input button {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-xs);
+}
+
+.personnel-contract-discussion-input button:hover,
+.personnel-contract-discussion-input button:focus-visible {
+  color: var(--color-text-primary);
+  background: var(--color-surface-strong);
+}
+
+@media (max-width: 820px) {
+  .personnel-contract-detail-field-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-8);
+  }
+
+  .personnel-contract-detail-actions {
+    min-height: 44px;
+  }
+
+  .personnel-contract-detail-table {
+    min-width: 680px;
+  }
+
+  .personnel-contract-related-card {
+    margin: var(--space-7);
+  }
+
+  .personnel-contract-discussion-header,
+  .personnel-contract-discussion-body {
+    padding-right: var(--space-7);
+    padding-left: var(--space-7);
+  }
+}
+
+@media (max-width: 540px) {
+  .personnel-contract-detail-table {
+    min-width: 620px;
+  }
+
+  .personnel-contract-related-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .personnel-contract-related-content dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .personnel-contract-discussion-tabs button {
+    font-size: var(--font-size-md);
+  }
+
+  .personnel-contract-discussion-input {
+    grid-template-columns: 28px minmax(0, 1fr) 28px 28px;
+    padding: 0 var(--space-4);
+  }
 }
 
 .department-directory-title.is-company-root svg {
@@ -3585,7 +4268,7 @@
 
 .user-shell:has(.admin-user-edit-page),
 .user-workspace:has(.admin-user-edit-page) {
-  background: var(--color-surface-muted);
+  background: var(--color-app-background);
 }
 
 .admin-user-edit-form {
@@ -3903,7 +4586,7 @@
 
 @media (max-width: 820px) {
   .admin-user-edit-page {
-    padding: 20px var(--space-7) 142px;
+    padding: 20px var(--space-7) calc(56px + var(--space-7));
   }
 
   .admin-user-edit-form {
@@ -3943,7 +4626,7 @@
 
 .user-shell:has(.group-create-page),
 .user-workspace:has(.group-create-page) {
-  background: var(--color-surface-muted);
+  background: var(--color-app-background);
 }
 
 .group-create-form {
@@ -4183,7 +4866,7 @@
 
 @media (max-width: 820px) {
   .group-create-page {
-    padding: 20px var(--space-7) 142px;
+    padding: 20px var(--space-7) calc(56px + var(--space-7));
   }
 
   .group-create-form,
@@ -4547,7 +5230,7 @@
 
 @media (max-width: 820px) {
   .currency-create-page {
-    padding: 20px var(--space-7) 142px;
+    padding: 20px var(--space-7) calc(56px + var(--space-7));
   }
 
   .currency-create-form,
@@ -6037,6 +6720,772 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-5);
+}
+
+.personnel-profile-create-page {
+  display: grid;
+  align-content: start;
+  min-height: calc(100vh - 62px);
+  padding: 0 var(--space-8) 74px;
+  overflow: auto;
+  background: var(--color-app-background);
+}
+
+.user-shell:has(.personnel-profile-create-page),
+.user-workspace:has(.personnel-profile-create-page) {
+  background: var(--color-app-background);
+}
+
+.personnel-create-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-8);
+  box-sizing: border-box;
+  width: calc(100% + (var(--space-8) * 2));
+  min-height: 52px;
+  max-height: 52px;
+  margin-inline: calc(var(--space-8) * -1);
+  padding: 0 var(--space-8);
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border-subtle);
+  scrollbar-width: none;
+}
+
+.personnel-create-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.personnel-create-tabs button {
+  position: relative;
+  flex: 0 0 auto;
+  min-height: 52px;
+  padding: 0;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-strong);
+  line-height: var(--line-height-base);
+  white-space: nowrap;
+}
+
+.personnel-create-tabs button:hover,
+.personnel-create-tabs button:focus-visible,
+.personnel-create-tabs button.is-active {
+  color: var(--color-text-primary);
+}
+
+.personnel-create-tabs button.is-active::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--color-text-primary);
+  content: "";
+}
+
+.personnel-create-form {
+  display: grid;
+  align-content: start;
+  gap: var(--space-8);
+  box-sizing: border-box;
+  width: auto;
+  min-height: 0;
+  min-width: 0;
+  margin: var(--space-8) 0 0;
+  padding: var(--space-8);
+  overflow: visible;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.personnel-create-tabs + .personnel-create-form {
+  min-height: 0;
+}
+
+.personnel-create-form *,
+.personnel-create-form *::before,
+.personnel-create-form *::after {
+  box-sizing: border-box;
+}
+
+.personnel-create-tab-panel {
+  display: grid;
+  gap: var(--space-8);
+  min-height: max(320px, calc(100dvh - 236px));
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.personnel-create-tab-panel[hidden] {
+  display: none !important;
+}
+
+.personnel-create-empty-tab {
+  width: min(100%, 550px);
+  padding: var(--space-8);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-md);
+}
+
+.personnel-create-section {
+  display: grid;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.personnel-create-section h2 {
+  margin: 0;
+}
+
+.personnel-create-section-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 28px;
+  padding: 0;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-strong);
+  line-height: var(--line-height-base);
+}
+
+.personnel-create-section-toggle:focus-visible {
+  border-radius: var(--radius-xs);
+  outline: 2px solid color-mix(in srgb, var(--color-text-primary) 25%, transparent);
+  outline-offset: 3px;
+}
+
+.personnel-create-section-toggle svg {
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+
+.personnel-create-section.is-collapsed .personnel-create-section-toggle svg {
+  transform: rotate(-90deg);
+}
+
+.personnel-create-section-body {
+  display: grid;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.personnel-create-section-body[hidden] {
+  display: none !important;
+}
+
+.personnel-create-grid,
+.personnel-create-wide-row {
+  display: grid;
+  align-items: end;
+  gap: var(--space-6);
+}
+
+.personnel-create-grid {
+  grid-template-columns: repeat(3, 178px);
+  max-width: 550px;
+}
+
+.personnel-create-grid--bank {
+  grid-template-columns: 180px 360px 272px 272px 28px;
+  max-width: none;
+}
+
+.personnel-create-grid--permit {
+  grid-template-columns: 272px 132px 132px 28px;
+  max-width: none;
+}
+
+.personnel-create-grid--contact {
+  grid-template-columns: repeat(2, 272px);
+  max-width: 550px;
+}
+
+.personnel-create-grid--contract {
+  grid-template-columns: 178px 364px;
+  max-width: 552px;
+}
+
+.personnel-create-grid--labor-contract {
+  grid-template-columns: repeat(3, 178px);
+  max-width: 550px;
+}
+
+.personnel-create-grid--health {
+  grid-template-columns: repeat(2, 244px);
+  max-width: 494px;
+}
+
+.personnel-create-grid--health .personnel-create-field.is-wide {
+  grid-column: 1 / -1;
+}
+
+.personnel-create-grid--compensation-top {
+  grid-template-columns: 166px minmax(0, 1fr);
+  max-width: none;
+}
+
+.personnel-create-grid--compensation-pay {
+  grid-template-columns: minmax(0, 270px) minmax(0, 170px) 100px 28px;
+  max-width: none;
+}
+
+.personnel-create-wide-row {
+  position: relative;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+
+.personnel-create-wide-row:has(.leave-control.is-open) {
+  z-index: 35;
+  overflow: visible;
+}
+
+.personnel-create-wide-row .personnel-create-field,
+.personnel-create-wide-row .personnel-create-search-field {
+  width: 152px;
+}
+
+.personnel-create-wide-row--study .personnel-create-field:nth-child(3),
+.personnel-create-wide-row--study .personnel-create-field:nth-child(4),
+.personnel-create-wide-row--study .personnel-create-field:nth-child(5),
+.personnel-create-wide-row--party .personnel-create-field:nth-child(2),
+.personnel-create-wide-row--certificate .personnel-create-field:nth-child(2),
+.personnel-create-wide-row--certificate .personnel-create-field:nth-child(3) {
+  width: 210px;
+}
+
+.personnel-create-wide-row--study .personnel-create-field:nth-child(6),
+.personnel-create-wide-row--party .personnel-create-field:nth-child(5),
+.personnel-create-wide-row--party .personnel-create-field:nth-child(6),
+.personnel-create-wide-row--experience .personnel-create-field:nth-child(3),
+.personnel-create-wide-row--experience .personnel-create-field:nth-child(7) {
+  width: 292px;
+}
+
+.personnel-create-wide-row--experience .personnel-create-field:nth-child(4),
+.personnel-create-wide-row--experience .personnel-create-field:nth-child(5) {
+  width: 202px;
+}
+
+.personnel-create-wide-row--certificate .personnel-create-field:nth-child(1),
+.personnel-create-wide-row--certificate .personnel-create-field:nth-child(4),
+.personnel-create-wide-row--certificate .personnel-create-field:nth-child(5) {
+  width: 112px;
+}
+
+.personnel-create-field {
+  position: relative;
+  display: grid;
+  align-content: end;
+  min-width: 0;
+}
+
+.personnel-create-field.is-wide,
+.personnel-create-search-field:has(.personnel-create-field.is-wide) {
+  grid-column: span 3;
+}
+
+.personnel-create-field.is-span-2,
+.personnel-create-search-field:has(.personnel-create-field.is-span-2) {
+  grid-column: span 2;
+}
+
+.personnel-create-grid--contract .personnel-create-field.is-wide,
+.personnel-create-grid--contract .personnel-create-search-field:has(.personnel-create-field.is-wide) {
+  grid-column: span 2;
+}
+
+.personnel-create-search-field {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+
+.personnel-create-search-field > svg {
+  position: absolute;
+  right: var(--space-5);
+  bottom: 14px;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+
+.personnel-create-field > span,
+.personnel-create-upload > span {
+  margin-bottom: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-tight);
+}
+
+.personnel-create-field input,
+.personnel-create-field textarea,
+.personnel-create-field .leave-control {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 var(--space-6);
+  color: var(--color-text-primary);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xs);
+  font: inherit;
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-base);
+}
+
+.personnel-create-field textarea {
+  min-height: 48px;
+  padding-top: var(--space-5);
+  resize: vertical;
+}
+
+.personnel-create-field input::placeholder,
+.personnel-create-field textarea::placeholder,
+.personnel-create-field .leave-control {
+  color: var(--color-text-secondary);
+}
+
+.personnel-create-field input:focus,
+.personnel-create-field textarea:focus,
+.personnel-create-field .leave-control:focus-visible {
+  border-color: var(--color-text-primary);
+  outline: 0;
+}
+
+.personnel-create-field--date .form-date-picker,
+.personnel-create-field .form-select {
+  width: 100%;
+  min-width: 0;
+}
+
+.personnel-create-field .leave-control.is-open.is-below,
+.personnel-create-field .leave-control.is-open.is-above {
+  border-radius: var(--radius-xs);
+}
+
+.personnel-create-field .leave-reason-menu {
+  top: calc(100% + var(--space-2));
+  z-index: 90;
+  border-top: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.personnel-create-field .leave-reason-menu.is-above {
+  bottom: calc(100% + var(--space-2));
+  border-bottom: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.personnel-create-field .employee-date-menu {
+  top: calc(100% + var(--space-2));
+  border-radius: var(--radius-sm);
+}
+
+.personnel-create-field .employee-date-menu.is-above {
+  bottom: calc(100% + var(--space-2));
+}
+
+.personnel-create-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 270px);
+  gap: var(--space-6);
+}
+
+.personnel-create-upload {
+  display: grid;
+  gap: var(--space-3);
+  width: 270px;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.personnel-create-upload input,
+.personnel-create-file-button input,
+.personnel-create-source-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip: rect(0, 0, 0, 0);
+}
+
+.personnel-create-upload strong {
+  display: grid;
+  height: 150px;
+  place-items: center;
+  color: var(--color-text-tertiary);
+  background: var(--color-surface-strong);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-regular);
+}
+
+.personnel-create-file-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 202px;
+  min-height: 48px;
+  padding: 0 var(--space-6);
+  color: var(--color-text-primary);
+  background: var(--color-surface-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-md);
+  white-space: nowrap;
+}
+
+.personnel-create-attachment-dropzone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-7);
+  width: min(100%, 550px);
+  min-height: 120px;
+  padding: var(--space-8) var(--space-9);
+  background: var(--color-surface-muted);
+  border: 1px dashed var(--color-border-strong);
+}
+
+.personnel-create-attachment-legend {
+  position: absolute;
+  top: -8px;
+  left: var(--space-4);
+  padding: 0 var(--space-2);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-tight);
+}
+
+.personnel-create-attachment-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  color: var(--color-text-primary);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+}
+
+.personnel-create-attachment-content {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.personnel-create-attachment-content p {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+}
+
+.personnel-create-attachment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.personnel-create-source-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 28px;
+  padding: 0 var(--space-5);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-strong);
+  line-height: var(--line-height-tight);
+}
+
+.personnel-create-source-button.is-primary {
+  color: var(--color-surface-muted);
+  background: var(--color-text-primary);
+  border-color: var(--color-text-primary);
+}
+
+.personnel-create-related-list {
+  display: grid;
+  gap: var(--space-5);
+  width: min(100%, 580px);
+}
+
+.personnel-create-related-row {
+  display: grid;
+  grid-template-columns: minmax(0, 550px) 28px;
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.personnel-create-related-row:has(.leave-control.is-open) {
+  z-index: 35;
+}
+
+.personnel-create-related-select {
+  width: 100%;
+}
+
+.personnel-create-row-remove {
+  display: inline-grid;
+  width: 28px;
+  height: 48px;
+  place-items: center;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: 0;
+}
+
+.personnel-create-contract-check {
+  width: fit-content;
+}
+
+.personnel-create-compensation-card {
+  position: relative;
+  display: grid;
+  gap: var(--space-8);
+  width: min(100%, 550px);
+  padding: var(--space-8) 42px var(--space-8) var(--space-8);
+  background: var(--color-surface-strong);
+  border-radius: var(--radius-xs);
+}
+
+.personnel-create-compensation-remove {
+  position: absolute;
+  top: var(--space-7);
+  right: var(--space-4);
+}
+
+.personnel-create-compensation-card .personnel-create-add-row {
+  justify-self: start;
+}
+
+.personnel-create-onboarding-list {
+  display: grid;
+  gap: 30px;
+  width: min(100%, 560px);
+  padding: var(--space-6) 0 calc(var(--space-6) + 24px);
+}
+
+.personnel-create-onboarding-list .form-checkbox {
+  align-items: center;
+  width: fit-content;
+  min-height: 30px;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+}
+
+.personnel-create-add-row {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  color: var(--color-text-primary);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+}
+
+.personnel-create-note {
+  width: 550px;
+}
+
+.personnel-create-message {
+  max-width: 550px;
+}
+
+.personnel-create-actionbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 70px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  min-height: 58px;
+  padding: 0 var(--space-8);
+  background: var(--color-surface-muted);
+  border-top: 1px solid var(--color-border-subtle);
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--color-border-subtle) 70%, transparent);
+}
+
+.personnel-create-actionbar .primary-button,
+.personnel-create-actionbar .secondary-button {
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-strong);
+}
+
+.personnel-create-actionbar .secondary-button {
+  color: var(--color-text-secondary);
+  background: var(--color-surface-muted);
+  text-decoration: none;
+}
+
+@media (max-width: 820px) {
+  .personnel-profile-create-page {
+    padding: 0 var(--space-7) calc(56px + var(--space-7));
+  }
+
+  .personnel-create-tabs {
+    top: 0;
+    width: calc(100% + (var(--space-7) * 2));
+    margin-inline: calc(var(--space-7) * -1);
+    padding: 0 var(--space-7);
+  }
+
+  .personnel-create-form {
+    margin: var(--space-7) 0 0;
+    padding: var(--space-7);
+    overflow: visible;
+  }
+
+  .personnel-create-tab-panel {
+    min-height: max(320px, calc(100dvh - 292px));
+  }
+
+  .personnel-create-grid,
+  .personnel-create-grid--bank,
+  .personnel-create-grid--permit,
+  .personnel-create-grid--contact,
+  .personnel-create-grid--labor-contract,
+  .personnel-create-grid--contract,
+  .personnel-create-grid--health,
+  .personnel-create-grid--compensation-top,
+  .personnel-create-grid--compensation-pay {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: none;
+  }
+
+  .personnel-create-compensation-card {
+    width: 100%;
+    max-width: 100%;
+    padding: var(--space-7);
+    padding-right: 42px;
+  }
+
+  .personnel-create-wide-row {
+    grid-auto-flow: row;
+    grid-auto-columns: unset;
+    grid-template-columns: minmax(0, 1fr);
+    overflow-x: visible;
+    padding-bottom: 0;
+  }
+
+  .personnel-create-field.is-wide,
+  .personnel-create-field.is-span-2,
+  .personnel-create-search-field:has(.personnel-create-field.is-wide),
+  .personnel-create-search-field:has(.personnel-create-field.is-span-2) {
+    grid-column: auto;
+  }
+
+  .personnel-create-wide-row .personnel-create-field,
+  .personnel-create-wide-row .personnel-create-search-field,
+  .personnel-create-wide-row--study .personnel-create-field:nth-child(3),
+  .personnel-create-wide-row--study .personnel-create-field:nth-child(4),
+  .personnel-create-wide-row--study .personnel-create-field:nth-child(5),
+  .personnel-create-wide-row--study .personnel-create-field:nth-child(6),
+  .personnel-create-wide-row--party .personnel-create-field:nth-child(2),
+  .personnel-create-wide-row--party .personnel-create-field:nth-child(5),
+  .personnel-create-wide-row--party .personnel-create-field:nth-child(6),
+  .personnel-create-wide-row--experience .personnel-create-field:nth-child(3),
+  .personnel-create-wide-row--experience .personnel-create-field:nth-child(4),
+  .personnel-create-wide-row--experience .personnel-create-field:nth-child(5),
+  .personnel-create-wide-row--experience .personnel-create-field:nth-child(7),
+  .personnel-create-wide-row--certificate .personnel-create-field:nth-child(1),
+  .personnel-create-wide-row--certificate .personnel-create-field:nth-child(2),
+  .personnel-create-wide-row--certificate .personnel-create-field:nth-child(3),
+  .personnel-create-wide-row--certificate .personnel-create-field:nth-child(4),
+  .personnel-create-wide-row--certificate .personnel-create-field:nth-child(5),
+  .personnel-create-note,
+  .personnel-create-message {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .personnel-create-upload-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .personnel-create-upload,
+  .personnel-create-file-button {
+    width: 100%;
+  }
+
+  .personnel-create-attachment-dropzone {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--space-8) var(--space-7);
+  }
+
+  .personnel-create-attachment-icon {
+    margin-left: 0;
+  }
+
+  .personnel-create-attachment-actions,
+  .personnel-create-related-list {
+    width: 100%;
+  }
+
+  .personnel-create-related-row {
+    grid-template-columns: minmax(0, 1fr) 28px;
+    gap: var(--space-3);
+  }
+
+  .personnel-create-row-remove {
+    justify-self: start;
+  }
+
+  .personnel-create-actionbar {
+    right: var(--space-7);
+    bottom: calc(var(--space-7) + 78px + env(safe-area-inset-bottom));
+    left: var(--space-7);
+    min-height: 56px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-popover);
+  }
+
+  .personnel-create-actionbar .primary-button,
+  .personnel-create-actionbar .secondary-button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
 }
 
 .employee-directory-page {
@@ -9396,7 +10845,7 @@
   }
 
   .employee-create-page {
-    padding: var(--space-7) var(--space-7) 142px;
+    padding: var(--space-7) var(--space-7) calc(56px + var(--space-7));
   }
 
   .employee-create-section > header {
@@ -16933,6 +18382,35 @@ small {
   line-height: var(--table-section-subtitle-line-height);
 }
 
+.admin-settings-center-page,
+.admin-settings-page,
+.account-access-page,
+.org-chart-settings-page,
+.org-page,
+.admin-user-list-page,
+.department-directory-page,
+.department-canvas-page,
+.admin-group-list-page,
+.admin-account-detail-page,
+.admin-user-edit-page,
+.group-create-page,
+.currency-create-page,
+.employee-create-page,
+.personnel-profile-create-page,
+.employee-directory-page,
+.personnel-directory-page,
+.admin-dashboard-page,
+.admin-approval-page,
+.leave-create-page,
+.attendance-board-page,
+.salary-board-page,
+.requests-board-page,
+.request-detail-page,
+.employee-profile-page,
+.admin-group-detail-page {
+  background: var(--color-app-background);
+}
+
 .bottom-nav {
   display: none;
 }
@@ -16996,7 +18474,7 @@ small {
 
 @media (max-width: 820px) {
   body {
-    padding-bottom: 72px;
+    padding-bottom: 0;
   }
 
   .top-nav {
@@ -17053,9 +18531,15 @@ small {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .office-shell {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    background: var(--color-app-background);
+  }
+
   .user-shell {
     grid-template-columns: minmax(0, 1fr);
     overflow-x: clip;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
   }
 
   .user-workspace {
@@ -17256,7 +18740,7 @@ small {
   }
 
   .leave-create-page {
-    padding: var(--space-7) var(--space-7) 142px;
+    padding: var(--space-7) var(--space-7) calc(56px + var(--space-7));
   }
 
   .leave-create-form {
@@ -17449,9 +18933,59 @@ small {
     max-width: 100vw;
     max-width: 100dvw;
   }
+
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-list-strip,
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-bulk-actions,
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-toolbar {
+    box-sizing: border-box;
+    width: 100vw;
+    width: 100dvw;
+    max-width: 100vw;
+    max-width: 100dvw;
+  }
+
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-toolbar,
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-toolbar .admin-user-toolbar-left,
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-toolbar .admin-user-filter-wrap,
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-toolbar .personnel-contract-page-picker {
+    overflow: visible;
+  }
+
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-toolbar .admin-user-toolbar-left > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-page-menu {
+    right: 0;
+    left: auto;
+    max-height: min(300px, calc(100dvh - 168px));
+  }
 }
 
 @media (max-width: 540px) {
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-filter-popover,
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-filter-popover.has-submenu {
+    grid-template-columns: minmax(0, 1fr);
+    width: min(290px, calc(100dvw - 24px));
+  }
+
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-filter-popover.has-submenu .admin-user-filter-menu {
+    border-radius: var(--radius-md);
+  }
+
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-filter-popover .admin-user-submenu {
+    margin-top: var(--space-3);
+    border-left: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+  }
+
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-filter-popover .admin-user-submenu,
+  .admin-user-list-page.personnel-contract-directory-page .personnel-contract-filter-popover .admin-user-filter-menu {
+    width: 100%;
+  }
+
   .top-nav {
     padding: var(--space-6);
   }

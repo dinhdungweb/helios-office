@@ -33,8 +33,8 @@ function normalizeIssuer(value: string) {
   return value.replace(/\/+$/, "");
 }
 
-function getTokenUrl() {
-  const issuer = getServerEnv("KEYCLOAK_ISSUER");
+function getTokenUrl(issuerOverride?: string) {
+  const issuer = issuerOverride ?? getServerEnv("KEYCLOAK_ISSUER");
 
   if (!issuer) {
     throw new Error("KEYCLOAK_ISSUER is not configured");
@@ -144,7 +144,7 @@ async function clearSessionCookieStore() {
   }
 }
 
-export async function refreshSessionTokenSet(refreshToken: string) {
+export async function refreshSessionTokenSet(refreshToken: string, issuer?: string) {
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     client_id: getClientId(),
@@ -156,7 +156,7 @@ export async function refreshSessionTokenSet(refreshToken: string) {
     body.set("client_secret", clientSecret);
   }
 
-  const response = await fetch(getTokenUrl(), {
+  const response = await fetch(getTokenUrl(issuer), {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded"

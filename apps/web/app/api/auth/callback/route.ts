@@ -11,11 +11,15 @@ import {
   setSessionCookies,
   type KeycloakTokenSet
 } from "@/lib/auth-session";
+import { buildRequestUrl, getRequestOrigin } from "@/lib/request-origin";
 
 export const runtime = "nodejs";
 
 function loginErrorResponse(request: NextRequest, error: string) {
-  return NextResponse.redirect(new URL(`/login?error=${error}`, request.url), 303);
+  const url = buildRequestUrl(request, "/login");
+  url.searchParams.set("error", error);
+
+  return NextResponse.redirect(url, 303);
 }
 
 function sanitizeRedirectTo(value: string | undefined) {
@@ -72,14 +76,15 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const config = getWebAuthConfig(request.nextUrl.origin);
+    const origin = getRequestOrigin(request);
+    const config = getWebAuthConfig(origin);
     const tokenSet = await exchangeCodeForToken(config, code, verifier);
 
     if (!tokenSet.access_token) {
       return loginErrorResponse(request, "token");
     }
 
-    const response = NextResponse.redirect(new URL(redirectTo, request.url), 303);
+    const response = NextResponse.redirect(new URL(redirectTo, origin), 303);
     setSessionCookies(response, tokenSet);
     clearTransientAuthCookies(response);
 

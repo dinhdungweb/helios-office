@@ -10,6 +10,7 @@ import {
   setSessionCookies,
   type KeycloakTokenSet
 } from "@/lib/auth-session";
+import { buildRequestUrl, getRequestOrigin } from "@/lib/request-origin";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,7 @@ function sanitizeRedirectTo(value: FormDataEntryValue | string | null) {
 }
 
 function buildLoginPageUrl(request: NextRequest, redirectTo: string, error?: string) {
-  const url = new URL("/login", request.url);
+  const url = buildRequestUrl(request, "/login");
 
   if (redirectTo !== "/user") {
     url.searchParams.set("redirectTo", redirectTo);
@@ -81,14 +82,15 @@ async function buildLoginResponse(request: NextRequest, formData: FormData) {
     return loginErrorResponse(request, redirectTo, "missing_credentials");
   }
 
-  const config = getWebAuthConfig(request.nextUrl.origin);
+  const origin = getRequestOrigin(request);
+  const config = getWebAuthConfig(origin);
   const tokenSet = await exchangePasswordForToken(config, username, password);
 
   if (!tokenSet.access_token) {
     return loginErrorResponse(request, redirectTo, "token");
   }
 
-  const response = NextResponse.redirect(new URL(redirectTo, request.url), 303);
+  const response = NextResponse.redirect(new URL(redirectTo, origin), 303);
   setSessionCookies(response, tokenSet);
   clearTransientAuthCookies(response);
 

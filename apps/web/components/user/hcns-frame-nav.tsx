@@ -26,8 +26,8 @@ const hcnsRailItems: HcnsNavItem[] = [
   { key: "dashboard", label: "Trang chủ", href: "/hcns", icon: House, exact: true },
   { key: "attendance", label: "Công", href: "/hcns#attendance", icon: CalendarCheck },
   { key: "requests", label: "Đơn từ", href: "/hcns#requests", icon: ClipboardText },
-  { key: "people", label: "Hồ sơ", href: "/hcns/employees", icon: Users },
-  { key: "contracts", label: "Hợp đồng", href: "/hcns#contracts", icon: Briefcase },
+  { key: "people", label: "Hồ sơ", href: "/apps/personnel-profile-profile", icon: Users },
+  { key: "contracts", label: "Hợp đồng", href: "/apps/personnel-contract-contract", icon: Briefcase },
   { key: "analytics", label: "BI HRM", href: "/hcns#analytics", icon: ChartLineUp }
 ];
 

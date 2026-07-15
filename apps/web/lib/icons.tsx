@@ -3,7 +3,6 @@ import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
   Add01Icon,
   AlertCircleIcon,
-  ArrowDown01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ArrowRight02Icon,
@@ -31,6 +30,7 @@ import {
   Chatting01Icon,
   CheckIcon,
   CheckmarkCircle02Icon,
+  ChevronDownIcon,
   CircleIcon,
   ClipboardListIcon,
   Clock01Icon,
@@ -44,6 +44,7 @@ import {
   FileDownloadIcon,
   FileExportIcon,
   Flag02Icon,
+  FormIcon,
   FunnelIcon,
   Globe02Icon,
   GraduationCapIcon,
@@ -137,7 +138,7 @@ export const Buildings = createIcon(Building03Icon);
 export const Cake = createIcon(BirthdayCakeIcon);
 export const CalendarBlank = createIcon(Calendar03Icon);
 export const CalendarCheck = createIcon(CalendarCheckIcon);
-export const CaretDown = createIcon(ArrowDown01Icon);
+export const CaretDown = createIcon(ChevronDownIcon);
 export const CaretLeft = createIcon(ArrowLeft01Icon);
 export const CaretRight = createIcon(ArrowRight01Icon);
 export const CaretUp = createIcon(ArrowUp01Icon);
@@ -158,6 +159,7 @@ export const EnvelopeSimple = createIcon(Mail01Icon);
 export const Eye = createIcon(EyeIcon);
 export const Export = createIcon(FileExportIcon);
 export const FileText = createIcon(File02Icon);
+export const FormTemplate = createIcon(FormIcon);
 export const FileClock = createIcon(FileClockIcon);
 export const FileDownload = createIcon(FileDownloadIcon);
 export const Flag = createIcon(Flag02Icon);

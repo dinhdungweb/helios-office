@@ -2,11 +2,12 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getKeycloakLogoutUrl, getWebAuthConfig } from "@/lib/auth-config";
 import { AUTH_COOKIE_NAMES, clearSessionCookies } from "@/lib/auth-session";
+import { buildRequestUrl, getRequestOrigin } from "@/lib/request-origin";
 
 export const runtime = "nodejs";
 
 function buildLogoutResponse(request: NextRequest) {
-  const config = getWebAuthConfig(request.nextUrl.origin);
+  const config = getWebAuthConfig(getRequestOrigin(request));
   const idToken = request.cookies.get(AUTH_COOKIE_NAMES.idToken)?.value;
   const logoutUrl = getKeycloakLogoutUrl(config);
 
@@ -24,7 +25,7 @@ function buildLogoutResponse(request: NextRequest) {
 }
 
 function localLogoutResponse(request: NextRequest) {
-  const response = NextResponse.redirect(new URL("/login", request.url), 303);
+  const response = NextResponse.redirect(buildRequestUrl(request, "/login"), 303);
   clearSessionCookies(response);
 
   return response;

@@ -4,6 +4,23 @@ import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
 
+function splitOrigins(value: string | undefined) {
+  return (value ?? "")
+    .split(",")
+    .map((item) => item.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+}
+
+function resolveWebOrigins(config: ConfigService) {
+  const defaults = ["http://localhost:3000", "http://127.0.0.1:3000"];
+  const configuredOrigins = [
+    ...splitOrigins(config.get<string>("WEB_ORIGIN")),
+    ...splitOrigins(config.get<string>("WEB_ORIGINS"))
+  ];
+
+  return Array.from(new Set([...defaults, ...configuredOrigins]));
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
@@ -11,7 +28,7 @@ async function bootstrap() {
 
   app.setGlobalPrefix("api/v1");
   app.enableCors({
-    origin: config.get<string>("WEB_ORIGIN", "http://localhost:3000"),
+    origin: resolveWebOrigins(config),
     credentials: true
   });
   app.useGlobalPipes(

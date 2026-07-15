@@ -471,11 +471,11 @@ export function HcnsDashboardBoard({ data }: HcnsDashboardBoardProps) {
           <span>Cập nhật {data.generatedAt}</span>
         </div>
         <div className="admin-dashboard-heading-actions">
-          <a className="secondary-button" href="/hcns/employees">
+          <a className="secondary-button" href="/apps/personnel-profile-profile">
             <Users size={16} weight="duotone" aria-hidden="true" />
             Hồ sơ nhân sự
           </a>
-          <a className="primary-button" href="/hcns/employees/new">
+          <a className="primary-button" href="/apps/personnel-profile-profile/add">
             <CalendarCheck size={16} weight="duotone" aria-hidden="true" />
             Thêm nhân sự
           </a>
@@ -494,7 +494,7 @@ export function HcnsDashboardBoard({ data }: HcnsDashboardBoardProps) {
           {hasWidget(data, "organization") ? (
             <MetricCard
               detail={`${data.organization.activeEmployees} đang hoạt động`}
-              href="/hcns/employees"
+              href="/apps/personnel-profile-profile"
               icon={Users}
               label="Tổng nhân sự"
               value={data.organization.totalEmployees}
@@ -552,7 +552,7 @@ export function HcnsDashboardBoard({ data }: HcnsDashboardBoardProps) {
                   </div>
                 </header>
                 <div className="hcns-dashboard-shortcuts">
-                  <a href="/hcns/employees/new">
+                  <a href="/apps/personnel-profile-profile/add">
                     <Users size={17} weight="duotone" aria-hidden="true" />
                     Tạo hồ sơ nhân sự
                   </a>
