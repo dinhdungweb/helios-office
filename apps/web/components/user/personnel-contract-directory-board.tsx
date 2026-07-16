@@ -12,8 +12,8 @@ import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { ResponsiveToolbarActionMenu } from "@/components/admin/responsive-toolbar-action-menu";
 import { FormCheckbox } from "@/components/ui/form-controls";
+import { ListPagination } from "@/components/ui/list-pagination";
 import {
-  CaretLeft,
   CaretRight,
   CaretDown,
   Certificate,
@@ -29,6 +29,7 @@ import {
   Trash,
   UploadSimple
 } from "@/lib/icons";
+import { datedCsvFilename, exportCsv } from "@/lib/csv-export";
 import type { PersonnelContractDirectoryData, PersonnelContractRecord } from "@/lib/personnel-contract-directory-api";
 
 const pageSize = 50;
@@ -134,30 +135,62 @@ function contractDetailHref(contractId: string) {
 
 export function PersonnelContractDirectoryBoard({ data }: { data: PersonnelContractDirectoryData }) {
   const router = useRouter();
+  const [contracts, setContracts] = useState<PersonnelContractRecord[]>(() => data.contracts);
   const [selectedContractIds, setSelectedContractIds] = useState<Set<string>>(() => new Set());
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeFilterPanel, setActiveFilterPanel] = useState<ActiveContractFilterPanel>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isPageMenuOpen, setIsPageMenuOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement | null>(null);
-  const pageMenuRef = useRef<HTMLDivElement | null>(null);
-  const pageCount = Math.max(1, Math.ceil(Math.max(data.contracts.length, 1) / pageSize));
+  const contractCount = contracts.length;
+  const pageCount = Math.max(1, Math.ceil(Math.max(contractCount, 1) / pageSize));
   const safePage = Math.min(currentPage, pageCount);
   const pageStartIndex = (safePage - 1) * pageSize;
-  const visibleContracts = useMemo(() => data.contracts.slice(pageStartIndex, pageStartIndex + pageSize), [data.contracts, pageStartIndex]);
+  const visibleContracts = useMemo(() => contracts.slice(pageStartIndex, pageStartIndex + pageSize), [contracts, pageStartIndex]);
   const visibleContractIds = visibleContracts.map((contract) => contract.id);
   const selectedVisibleCount = visibleContractIds.filter((id) => selectedContractIds.has(id)).length;
   const areAllVisibleContractsSelected = visibleContractIds.length > 0 && selectedVisibleCount === visibleContractIds.length;
   const isSomeVisibleContractSelected = selectedVisibleCount > 0 && !areAllVisibleContractsSelected;
   const selectedCount = selectedContractIds.size;
   const hasSelectedRows = selectedCount > 0;
+  const selectedContracts = useMemo(
+    () => contracts.filter((contract) => selectedContractIds.has(contract.id)),
+    [contracts, selectedContractIds]
+  );
   const displayStart = visibleContracts.length > 0 ? pageStartIndex + 1 : 0;
   const displayEnd = pageStartIndex + visibleContracts.length;
-  const pageNumbers = useMemo(() => Array.from({ length: pageCount }, (_, index) => index + 1), [pageCount]);
+
+  const exportContracts = (rows: PersonnelContractRecord[]) => {
+    exportCsv({
+      filename: datedCsvFilename("danh-sach-hop-dong"),
+      rows,
+      columns: [
+        { header: "Người tạo", value: (contract) => contract.creatorName },
+        { header: "Mã HĐ", value: (contract) => contract.code },
+        { header: "Mã NS", value: (contract) => contract.employeeCode },
+        { header: "Tên nhân sự", value: (contract) => contract.employeeName },
+        { header: "Phòng ban", value: (contract) => contract.departmentName },
+        { header: "Tên hợp đồng", value: (contract) => contract.contractName },
+        { header: "Đã tạo ký số", value: (contract) => contract.digitalStatus },
+        { header: "Trạng thái hồ sơ ký", value: (contract) => contract.signingProfileStatus },
+        { header: "Ngày hoàn tất ký số", value: (contract) => formatDate(contract.signedCompletedAt) },
+        { header: "Ngày ký", value: (contract) => formatDate(contract.signedDate) },
+        { header: "Hiệu lực từ ngày", value: (contract) => formatDate(contract.startDate) },
+        { header: "Đến ngày", value: (contract) => formatDate(contract.endDate) },
+        { header: "Tình trạng", value: (contract) => statusLabel(contract.status) },
+        { header: "Ngày tạo", value: (contract) => formatDate(contract.createdAt) }
+      ]
+    });
+  };
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(Math.max(page, 1), pageCount));
   }, [pageCount]);
+
+  useEffect(() => {
+    setContracts(data.contracts);
+    setSelectedContractIds(new Set());
+    setCurrentPage(1);
+  }, [data.contracts]);
 
   useEffect(() => {
     if (!isFilterOpen) {
@@ -185,32 +218,6 @@ export function PersonnelContractDirectoryBoard({ data }: { data: PersonnelContr
     };
   }, [isFilterOpen]);
 
-  useEffect(() => {
-    if (!isPageMenuOpen) {
-      return;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!pageMenuRef.current?.contains(event.target as Node)) {
-        setIsPageMenuOpen(false);
-      }
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsPageMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isPageMenuOpen]);
-
   const toggleAllVisibleContracts = () => {
     setSelectedContractIds((current) => {
       const next = new Set(current);
@@ -237,6 +244,15 @@ export function PersonnelContractDirectoryBoard({ data }: { data: PersonnelContr
 
       return next;
     });
+  };
+
+  const deleteSelectedContracts = () => {
+    if (selectedContractIds.size === 0) {
+      return;
+    }
+
+    setContracts((current) => current.filter((contract) => !selectedContractIds.has(contract.id)));
+    setSelectedContractIds(new Set());
   };
 
   const openContractDetail = (contractId: string) => {
@@ -283,11 +299,11 @@ export function PersonnelContractDirectoryBoard({ data }: { data: PersonnelContr
             <span>Biểu mẫu</span>
             <CaretDown size={13} weight="duotone" aria-hidden="true" />
           </button>
-          <button type="button">
+          <button type="button" onClick={deleteSelectedContracts}>
             <Trash size={16} weight="duotone" aria-hidden="true" />
             <span>Xóa</span>
           </button>
-          <button type="button">
+          <button type="button" onClick={() => exportContracts(selectedContracts)}>
             <Export size={16} weight="duotone" aria-hidden="true" />
             <span>Export</span>
           </button>
@@ -298,7 +314,7 @@ export function PersonnelContractDirectoryBoard({ data }: { data: PersonnelContr
             <List size={18} strokeWidth={1.8} aria-hidden="true" />
           </button>
           <button className="is-active" type="button">
-            Tất cả ({data.contracts.length})
+            Tất cả ({contractCount})
           </button>
         </nav>
       )}
@@ -393,58 +409,15 @@ export function PersonnelContractDirectoryBoard({ data }: { data: PersonnelContr
             </span>
           ) : (
             <span>
-              Hiển thị {displayStart} - {displayEnd} / {data.contracts.length} bản ghi
+              Hiển thị {displayStart} - {displayEnd} / {contractCount} bản ghi
             </span>
           )}
-          <div className="personnel-contract-page-picker" ref={pageMenuRef}>
-            <button
-              className={isPageMenuOpen ? "personnel-contract-page-trigger is-active" : "personnel-contract-page-trigger"}
-              type="button"
-              aria-expanded={isPageMenuOpen}
-              aria-haspopup="listbox"
-              onClick={() => setIsPageMenuOpen((current) => !current)}
-            >
-              <span>Trang: {String(safePage).padStart(2, "0")} / {String(pageCount).padStart(2, "0")}</span>
-              <CaretDown size={16} weight="duotone" aria-hidden="true" />
-            </button>
-            {isPageMenuOpen ? (
-              <div className="personnel-contract-page-menu" role="listbox" aria-label="Chọn trang hợp đồng">
-                {pageNumbers.map((page) => (
-                  <button
-                    className={page === safePage ? "is-active" : undefined}
-                    type="button"
-                    role="option"
-                    aria-selected={page === safePage}
-                    key={page}
-                    onClick={() => {
-                      setCurrentPage(page);
-                      setIsPageMenuOpen(false);
-                    }}
-                  >
-                    {String(page).padStart(2, "0")}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label="Trang trước"
-            disabled={safePage <= 1}
-            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-          >
-            <CaretLeft size={17} weight="duotone" aria-hidden="true" />
-          </button>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label="Trang sau"
-            disabled={safePage >= pageCount}
-            onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
-          >
-            <CaretRight size={17} weight="duotone" aria-hidden="true" />
-          </button>
+          <ListPagination
+            ariaLabel="Chọn trang hợp đồng"
+            currentPage={safePage}
+            pageCount={pageCount}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {hasSelectedRows ? null : (
@@ -454,7 +427,8 @@ export function PersonnelContractDirectoryBoard({ data }: { data: PersonnelContr
               {
                 key: "export",
                 icon: <Export size={16} weight="duotone" aria-hidden="true" />,
-                label: "Export"
+                label: "Export",
+                onClick: () => exportContracts(contracts)
               },
               {
                 key: "import",

@@ -101,6 +101,12 @@ export class AccountAccessController {
     return this.accountAccessService.restoreGroup(id, user.account?.employeeId ?? undefined);
   }
 
+  @Delete("groups/:id")
+  @ApiOkResponse({ description: "Permanently delete an archived, unused custom permission group." })
+  deleteGroup(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.accountAccessService.deleteGroup(id, user.account?.employeeId ?? undefined);
+  }
+
   @Get("permissions")
   @ApiOkResponse({ description: "Permission catalog used by roles and custom overrides." })
   findPermissions() {

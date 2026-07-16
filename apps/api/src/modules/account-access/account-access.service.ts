@@ -612,7 +612,7 @@ export class AccountAccessService {
     }
 
     if (protectedPermissionGroupIds.has(before.id)) {
-      throw new ConflictException("Default permission groups cannot be archived");
+      throw new ConflictException("Không thể đóng nhóm mặc định.");
     }
 
     if (before.status === PermissionGroupStatus.archived) {
@@ -620,7 +620,7 @@ export class AccountAccessService {
     }
 
     if (before._count.accounts > 0) {
-      throw new ConflictException("Move all accounts out of this permission group before archiving it");
+      throw new ConflictException("Hãy chuyển toàn bộ tài khoản sang nhóm khác trước khi đóng nhóm này.");
     }
 
     const group = await this.prisma.permissionGroup.update({
@@ -699,6 +699,51 @@ export class AccountAccessService {
     });
 
     return this.resolvePermissionGroup(group, await this.findPermissionCatalog());
+  }
+
+  async deleteGroup(id: string, actorId?: string) {
+    const before = await this.prisma.permissionGroup.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            accounts: true
+          }
+        }
+      }
+    });
+
+    if (!before) {
+      throw new NotFoundException(`Permission group ${id} was not found`);
+    }
+
+    if (protectedPermissionGroupIds.has(before.id) || internalPermissionGroupIds.has(before.id)) {
+      throw new ConflictException("Không thể xóa nhóm mặc định.");
+    }
+
+    if (before.status !== PermissionGroupStatus.archived) {
+      throw new ConflictException("Hãy đóng nhóm trước khi xóa vĩnh viễn.");
+    }
+
+    if (before._count.accounts > 0) {
+      throw new ConflictException("Hãy chuyển toàn bộ tài khoản sang nhóm khác trước khi xóa nhóm này.");
+    }
+
+    await this.prisma.permissionGroup.delete({
+      where: { id }
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        actorId,
+        action: "permission_group.delete",
+        entityType: "PermissionGroup",
+        entityId: id,
+        beforeValue: this.toAuditJson(before)
+      }
+    });
+
+    return { id, deleted: true };
   }
 
   private resolveAccount(account: AccountWithRelations, permissionCatalog: PermissionCatalogItem[]) {

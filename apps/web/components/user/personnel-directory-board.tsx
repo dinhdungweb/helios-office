@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ResponsiveToolbarActionMenu } from "@/components/admin/responsive-toolbar-action-menu";
 import { FormCheckbox } from "@/components/ui/form-controls";
+import { ListPagination } from "@/components/ui/list-pagination";
 import {
-  CaretLeft,
   CaretRight,
   CaretDown,
   Certificate,
@@ -22,6 +22,7 @@ import {
   UploadSimple,
   UserStatus
 } from "@/lib/icons";
+import { datedCsvFilename, exportCsv } from "@/lib/csv-export";
 import type { EmployeeDirectoryData, EmployeeDirectoryRecord } from "@/lib/employee-directory-api";
 
 type PersonnelFilter = "all" | "active" | "resigned";
@@ -82,20 +83,55 @@ export function PersonnelDirectoryBoard({ data }: { data: EmployeeDirectoryData 
   const [activeFilter, setActiveFilter] = useState<PersonnelFilter>("all");
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(() => new Set());
   const [isBulkMenuOpen, setIsBulkMenuOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const bulkMenuRef = useRef<HTMLDivElement | null>(null);
   const filteredEmployees = useMemo(
     () => data.employees.filter((employee) => matchesFilter(employee, activeFilter)),
     [activeFilter, data.employees]
   );
-  const visibleEmployees = filteredEmployees.slice(0, pageSize);
+  const pageCount = Math.max(1, Math.ceil(Math.max(filteredEmployees.length, 1) / pageSize));
+  const safePage = Math.min(currentPage, pageCount);
+  const pageStartIndex = (safePage - 1) * pageSize;
+  const visibleEmployees = filteredEmployees.slice(pageStartIndex, pageStartIndex + pageSize);
   const visibleEmployeeIds = visibleEmployees.map((employee) => employee.id);
   const selectedVisibleCount = visibleEmployeeIds.filter((id) => selectedEmployeeIds.has(id)).length;
   const areAllVisibleEmployeesSelected = visibleEmployeeIds.length > 0 && selectedVisibleCount === visibleEmployeeIds.length;
   const isSomeVisibleEmployeeSelected = selectedVisibleCount > 0 && !areAllVisibleEmployeesSelected;
   const selectedCount = selectedEmployeeIds.size;
   const hasSelectedRows = selectedCount > 0;
-  const pageCount = Math.max(1, Math.ceil(Math.max(filteredEmployees.length, 1) / pageSize));
-  const displayStart = visibleEmployees.length > 0 ? 1 : 0;
+  const selectedEmployees = useMemo(
+    () => filteredEmployees.filter((employee) => selectedEmployeeIds.has(employee.id)),
+    [filteredEmployees, selectedEmployeeIds]
+  );
+  const displayStart = visibleEmployees.length > 0 ? pageStartIndex + 1 : 0;
+  const displayEnd = pageStartIndex + visibleEmployees.length;
+
+  const exportEmployees = (employees: EmployeeDirectoryRecord[]) => {
+    exportCsv({
+      filename: datedCsvFilename("danh-sach-nhan-su"),
+      rows: employees,
+      columns: [
+        { header: "Mã NS", value: (employee) => employee.code },
+        { header: "Mã chấm công", value: (employee) => employee.attendanceCode },
+        { header: "Họ và tên", value: (employee) => employee.fullName },
+        { header: "Phòng ban", value: (employee) => employee.department },
+        { header: "Vị trí", value: positionLabel },
+        { header: "Chức vụ", value: titleLabel },
+        { header: "Ngày vào", value: (employee) => formatDate(employee.startDate) },
+        { header: "Trạng thái", value: (employee) => employee.status },
+        { header: "Email", value: (employee) => employee.accountEmail },
+        { header: "Ngày tạo tài khoản", value: (employee) => formatDate(accountCreatedDate(employee)) }
+      ]
+    });
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilter]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(Math.max(page, 1), pageCount));
+  }, [pageCount]);
 
   useEffect(() => {
     if (!isBulkMenuOpen) {
@@ -224,7 +260,14 @@ export function PersonnelDirectoryBoard({ data }: { data: EmployeeDirectoryData 
                     <span>Sms/Zalo</span>
                     <CaretRight size={15} weight="duotone" aria-hidden="true" />
                   </button>
-                  <button type="button" role="menuitem">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      exportEmployees(selectedEmployees);
+                      setIsBulkMenuOpen(false);
+                    }}
+                  >
                     <Export size={17} weight="duotone" aria-hidden="true" />
                     <span>Export</span>
                   </button>
@@ -268,32 +311,20 @@ export function PersonnelDirectoryBoard({ data }: { data: EmployeeDirectoryData 
             <SlidersHorizontal size={18} strokeWidth={1.8} aria-hidden="true" />
           </button>
           {hasSelectedRows ? (
-            <>
-              <span>
-                Đã chọn <strong>{selectedCount}</strong> bản ghi
-              </span>
-              <span>Trang: 01 / {String(pageCount).padStart(2, "0")}</span>
-              <button className="icon-button" type="button" aria-label="Trang trước">
-                <CaretLeft size={17} weight="duotone" aria-hidden="true" />
-              </button>
-              <button className="icon-button" type="button" aria-label="Trang sau">
-                <CaretRight size={17} weight="duotone" aria-hidden="true" />
-              </button>
-            </>
+            <span>
+              Đã chọn <strong>{selectedCount}</strong> bản ghi
+            </span>
           ) : (
-            <>
-              <span>
-                Hiển thị {displayStart} - {visibleEmployees.length} / {filteredEmployees.length} bản ghi
-              </span>
-              <span>Trang: 01 / {String(pageCount).padStart(2, "0")}</span>
-              <button className="icon-button" type="button" aria-label="Trang trước">
-                <CaretLeft size={17} weight="duotone" aria-hidden="true" />
-              </button>
-              <button className="icon-button" type="button" aria-label="Trang sau">
-                <CaretRight size={17} weight="duotone" aria-hidden="true" />
-              </button>
-            </>
+            <span>
+              Hiển thị {displayStart} - {displayEnd} / {filteredEmployees.length} bản ghi
+            </span>
           )}
+          <ListPagination
+            ariaLabel="Chọn trang nhân sự"
+            currentPage={safePage}
+            pageCount={pageCount}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {hasSelectedRows ? null : (
@@ -308,7 +339,8 @@ export function PersonnelDirectoryBoard({ data }: { data: EmployeeDirectoryData 
               {
                 key: "export",
                 icon: <Export size={16} weight="duotone" aria-hidden="true" />,
-                label: "Export"
+                label: "Export",
+                onClick: () => exportEmployees(filteredEmployees)
               },
               {
                 key: "update-address",

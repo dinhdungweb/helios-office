@@ -21,6 +21,12 @@ import type {
   PermissionGroup
 } from "@/lib/account-access-api";
 import type { DeviceAuthRequest } from "@/lib/device-auth-api";
+import {
+  filterGroupPermissionSectionsByCatalog,
+  groupPermissionModuleSections,
+  hasGroupPermissionAction,
+  type GroupPermissionItem
+} from "@/lib/user-group-permission-model";
 
 type DetailField = {
   label: string;
@@ -286,17 +292,19 @@ function PermissionDetailTable({
   permissions: AccountPermission[];
 }) {
   const allowedKeys = new Set(account.effectivePermissionKeys);
-  const groupedPermissions = permissions.reduce<Array<{ category: string; items: AccountPermission[] }>>((groups, permission) => {
-    const existing = groups.find((group) => group.category === permission.category);
+  const groupedPermissions = permissions
+    .filter((permission) => !permission.key.startsWith("permission."))
+    .reduce<Array<{ category: string; items: AccountPermission[] }>>((groups, permission) => {
+      const existing = groups.find((group) => group.category === permission.category);
 
-    if (existing) {
-      existing.items.push(permission);
-    } else {
-      groups.push({ category: permission.category, items: [permission] });
-    }
+      if (existing) {
+        existing.items.push(permission);
+      } else {
+        groups.push({ category: permission.category, items: [permission] });
+      }
 
-    return groups;
-  }, []);
+      return groups;
+    }, []);
 
   return (
     <div className="admin-account-permission-shell" tabIndex={0} aria-label="Bảng chi tiết quyền có thể cuộn ngang">
@@ -343,6 +351,74 @@ function PermissionDetailTable({
             );
           })}
           {groupedPermissions.length === 0 ? (
+            <tr>
+              <td colSpan={4}>
+                <span className="account-empty-state">Chưa có dữ liệu phân quyền.</span>
+              </td>
+            </tr>
+          ) : null}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function isPermissionModuleSelected(item: GroupPermissionItem, allowedKeys: Set<string>) {
+  return item.permissionKeys.some((permissionKey) => allowedKeys.has(permissionKey));
+}
+
+function ModulePermissionDetailTable({
+  account,
+  data
+}: {
+  account: ManagedUserAccount;
+  data: AccountAccessData;
+}) {
+  const allowedKeys = new Set(account.effectivePermissionKeys);
+  const sections = filterGroupPermissionSectionsByCatalog(groupPermissionModuleSections, data.permissions)
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => isPermissionModuleSelected(item, allowedKeys))
+    }))
+    .filter((section) => section.items.length > 0);
+
+  return (
+    <div className="admin-account-permission-shell" tabIndex={0} aria-label="Bảng chi tiết quyền có thể cuộn ngang">
+      <table className="admin-account-permission-table">
+        <thead>
+          <tr>
+            <th scope="col">Đối tượng</th>
+            <th scope="col">Quản lý</th>
+            <th scope="col">Xem</th>
+            <th scope="col">Tạo mới</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sections.map((section) => (
+            <Fragment key={section.category}>
+              <tr className="is-category">
+                <th scope="row">
+                  <PermissionCheckbox checked />
+                  <strong>{section.category}</strong>
+                </th>
+                <td>--</td>
+                <td>--</td>
+                <td>--</td>
+              </tr>
+              {section.items.map((item) => (
+                <tr key={item.id}>
+                  <th scope="row">
+                    <PermissionCheckbox checked />
+                    <span>{item.label}</span>
+                  </th>
+                  <td>{hasGroupPermissionAction(item, allowedKeys, "manage") ? item.manage ?? "--" : "--"}</td>
+                  <td>{hasGroupPermissionAction(item, allowedKeys, "view") ? item.view ?? "--" : "--"}</td>
+                  <td>{hasGroupPermissionAction(item, allowedKeys, "create") ? item.create ?? "--" : "--"}</td>
+                </tr>
+              ))}
+            </Fragment>
+          ))}
+          {sections.length === 0 ? (
             <tr>
               <td colSpan={4}>
                 <span className="account-empty-state">Chưa có dữ liệu phân quyền.</span>
@@ -532,7 +608,7 @@ export function AdminUserDetailBoard({
           </DetailPanel>
 
           <DetailPanel title="Chi tiết quyền" className="admin-account-permission-panel">
-            <PermissionDetailTable account={account} permissions={data.permissions} />
+            <ModulePermissionDetailTable account={account} data={data} />
           </DetailPanel>
         </div>
 

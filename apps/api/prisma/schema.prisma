@@ -249,18 +249,23 @@ model Employee {
 }
 
 model Department {
-  id        String       @id @default(uuid())
-  code      String       @unique
-  name      String       @unique
-  parentId  String?
-  headId    String?
-  status    DepartmentStatus @default(active)
-  archivedAt DateTime?
-  parent    Department?  @relation("DepartmentTree", fields: [parentId], references: [id])
-  children  Department[] @relation("DepartmentTree")
-  employees Employee[]
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id                  String           @id @default(uuid())
+  code                String           @unique
+  name                String           @unique
+  parentId            String?
+  headId              String?
+  permissionStructure String           @default("department")
+  departmentType      String?
+  businessUnit        String?
+  description         String?
+  isManagementUnit    Boolean          @default(false)
+  status              DepartmentStatus @default(active)
+  archivedAt          DateTime?
+  parent              Department?      @relation("DepartmentTree", fields: [parentId], references: [id])
+  children            Department[]     @relation("DepartmentTree")
+  employees           Employee[]
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 }
 
 model JobPosition {

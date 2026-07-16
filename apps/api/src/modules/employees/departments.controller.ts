@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/auth.types";
@@ -44,5 +44,11 @@ export class DepartmentsController {
   @ApiOkResponse({ description: "Restore an archived department." })
   restore(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.employeesService.restoreDepartment(id, user.account?.employeeId ?? undefined);
+  }
+
+  @Delete(":id")
+  @ApiOkResponse({ description: "Permanently delete an archived empty department." })
+  remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.employeesService.deleteDepartment(id, user.account?.employeeId ?? undefined);
   }
 }

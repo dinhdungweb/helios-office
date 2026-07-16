@@ -7,6 +7,7 @@ import { getSessionAccessToken } from "@/lib/auth-session";
 export type DepartmentFormState = {
   ok: boolean;
   error?: string;
+  message?: string;
 };
 
 function readOptionalString(formData: FormData, key: string) {
@@ -50,7 +51,7 @@ function friendlyDepartmentError(status: number) {
   return "Không lưu được phòng ban. Hãy kiểm tra dữ liệu và thử lại.";
 }
 
-async function mutateDepartment(path: string, method: "POST" | "PATCH", payload?: Record<string, unknown>) {
+async function mutateDepartment(path: string, method: "DELETE" | "POST" | "PATCH", payload?: Record<string, unknown>) {
   const accessToken = await getSessionAccessToken();
   const headers = new Headers();
 
@@ -82,6 +83,38 @@ async function mutateDepartment(path: string, method: "POST" | "PATCH", payload?
   return { ok: true };
 }
 
+async function mutateDepartments(
+  ids: string[],
+  operation: "archive" | "delete"
+): Promise<DepartmentFormState> {
+  const results = await Promise.all(
+    ids.map(async (id) => {
+      const result = await mutateDepartment(
+        `/departments/${encodeURIComponent(id)}${operation === "archive" ? "/archive" : ""}`,
+        operation === "archive" ? "POST" : "DELETE"
+      );
+
+      return { id, ...result };
+    })
+  );
+  const failed = results.filter((result) => !result.ok);
+  const successCount = results.length - failed.length;
+
+  if (failed.length > 0) {
+    return {
+      ok: false,
+      error: `${successCount}/${results.length} phòng ban đã xử lý. ${failed.length} phòng ban không thể ${operation === "archive" ? "đóng vì còn nhân sự hoặc phòng ban con" : "xóa vì chưa đóng hoặc còn dữ liệu liên kết"}.`
+    };
+  }
+
+  return {
+    ok: true,
+    message: operation === "archive"
+      ? `Đã đóng ${successCount} phòng ban.`
+      : `Đã xóa ${successCount} phòng ban.`
+  };
+}
+
 export async function createDepartmentAction(
   _state: DepartmentFormState,
   formData: FormData
@@ -90,7 +123,12 @@ export async function createDepartmentAction(
     return mutateDepartment("/departments", "POST", {
       name: readRequiredString(formData, "name"),
       parentId: readOptionalString(formData, "parentId"),
-      headId: readOptionalString(formData, "headId")
+      headId: readOptionalString(formData, "headId"),
+      permissionStructure: readOptionalString(formData, "permissionStructure") ?? "department",
+      departmentType: readOptionalString(formData, "departmentType"),
+      businessUnit: readOptionalString(formData, "businessUnit"),
+      description: readOptionalString(formData, "description"),
+      isManagementUnit: formData.get("isManagementUnit") === "on"
     });
   } catch (error) {
     return {
@@ -128,4 +166,20 @@ export async function archiveDepartmentAction(formData: FormData) {
 export async function restoreDepartmentAction(formData: FormData) {
   const id = readRequiredString(formData, "id");
   await mutateDepartment(`/departments/${encodeURIComponent(id)}/restore`, "POST");
+}
+
+export async function bulkArchiveDepartmentsAction(
+  _state: DepartmentFormState,
+  formData: FormData
+): Promise<DepartmentFormState> {
+  const ids = formData.getAll("departmentIds").filter((value): value is string => typeof value === "string");
+  return ids.length > 0 ? mutateDepartments(ids, "archive") : { ok: false, error: "Chưa chọn phòng ban cần đóng." };
+}
+
+export async function bulkDeleteDepartmentsAction(
+  _state: DepartmentFormState,
+  formData: FormData
+): Promise<DepartmentFormState> {
+  const ids = formData.getAll("departmentIds").filter((value): value is string => typeof value === "string");
+  return ids.length > 0 ? mutateDepartments(ids, "delete") : { ok: false, error: "Chưa chọn phòng ban cần xóa." };
 }

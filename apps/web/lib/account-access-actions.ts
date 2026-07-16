@@ -7,6 +7,7 @@ import {
   closeAccount,
   createAccount,
   createPermissionGroup,
+  deletePermissionGroup,
   resendAccountInvite,
   restorePermissionGroup,
   updateAccount,
@@ -26,6 +27,7 @@ export type AccountFormState = {
 export type GroupFormState = {
   ok: boolean;
   error?: string;
+  message?: string;
 };
 
 const accountFormInitialError = "Không lưu được tài khoản. Hãy kiểm tra đăng nhập admin rồi thử lại.";
@@ -166,7 +168,49 @@ export async function updateAccountAction(_state: AccountFormState, formData: Fo
     revalidatePath("/admin/settings/accounts");
     revalidatePath(`/admin/settings/accounts/${accountId}`);
 
-    return { ok: true };
+    return {
+      ok: true,
+      message: "Đã cập nhật tài khoản."
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : accountFormInitialError
+    };
+  }
+}
+
+export async function bulkUpdateAccountGroupAction(
+  _state: AccountFormState,
+  formData: FormData
+): Promise<AccountFormState> {
+  try {
+    const accountIds = formData
+      .getAll("accountIds")
+      .filter((value): value is string => typeof value === "string" && value.length > 0);
+    const permissionGroupId = readRequiredString(formData, "permissionGroupId");
+
+    if (accountIds.length === 0) {
+      throw new Error("Chưa chọn tài khoản cần đổi nhóm.");
+    }
+
+    await Promise.all(
+      accountIds.map((accountId) =>
+        updateAccount(accountId, {
+          permissionGroupId,
+          customPermissionKeys: [],
+          customPermissionNote: null
+        })
+      )
+    );
+
+    revalidatePath("/admin/settings/accounts");
+    accountIds.forEach((accountId) => revalidatePath(`/admin/settings/accounts/${accountId}`));
+
+    return {
+      ok: true,
+      message: `Đã cập nhật nhóm cho ${accountIds.length} tài khoản.`
+    };
   } catch (error) {
     return {
       ok: false,
@@ -221,4 +265,70 @@ export async function restorePermissionGroupAction(formData: FormData) {
   await restorePermissionGroup(groupId);
   revalidatePath("/admin/settings/accounts");
   revalidatePath("/admin/settings/accounts/groups");
+}
+
+async function mutatePermissionGroups(
+  groupIds: string[],
+  operation: "archive" | "delete"
+): Promise<GroupFormState> {
+  const results = await Promise.allSettled(
+    groupIds.map((groupId) =>
+      operation === "archive"
+        ? archivePermissionGroup(groupId)
+        : deletePermissionGroup(groupId)
+    )
+  );
+  const failed = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
+  const successCount = results.length - failed.length;
+
+  revalidatePath("/admin/settings/accounts");
+  revalidatePath("/admin/settings/accounts/groups");
+
+  if (failed.length > 0) {
+    const reasons = Array.from(
+      new Set(
+        failed.map((result) =>
+          result.reason instanceof Error ? result.reason.message : "Không thể xử lý nhóm đã chọn."
+        )
+      )
+    );
+
+    return {
+      ok: false,
+      error: `${successCount}/${results.length} nhóm đã xử lý. ${reasons.join(" ")}`
+    };
+  }
+
+  return {
+    ok: true,
+    message: operation === "archive"
+      ? `Đã đóng ${successCount} nhóm.`
+      : `Đã xóa ${successCount} nhóm.`
+  };
+}
+
+export async function bulkArchivePermissionGroupsAction(
+  _state: GroupFormState,
+  formData: FormData
+): Promise<GroupFormState> {
+  const groupIds = formData
+    .getAll("groupIds")
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+
+  return groupIds.length > 0
+    ? mutatePermissionGroups(groupIds, "archive")
+    : { ok: false, error: "Chưa chọn nhóm cần đóng." };
+}
+
+export async function bulkDeletePermissionGroupsAction(
+  _state: GroupFormState,
+  formData: FormData
+): Promise<GroupFormState> {
+  const groupIds = formData
+    .getAll("groupIds")
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+
+  return groupIds.length > 0
+    ? mutatePermissionGroups(groupIds, "delete")
+    : { ok: false, error: "Chưa chọn nhóm cần xóa." };
 }

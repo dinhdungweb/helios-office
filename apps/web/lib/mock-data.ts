@@ -931,6 +931,656 @@ export const accountPermissions: AccountPermission[] = [
     label: "Xem báo cáo cá nhân",
     adminOnly: false
   }
+,
+  // Detail permission action selections persisted from group/account editors.
+  {
+    key: "permission.hrm-employees.manage",
+    category: "Chi ti?t quy?n",
+    label: "hrm-employees manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-employees.view",
+    category: "Chi ti?t quy?n",
+    label: "hrm-employees view",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-employees.create",
+    category: "Chi ti?t quy?n",
+    label: "hrm-employees create",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-contracts.manage",
+    category: "Chi ti?t quy?n",
+    label: "hrm-contracts manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-contracts.view",
+    category: "Chi ti?t quy?n",
+    label: "hrm-contracts view",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-contracts.create",
+    category: "Chi ti?t quy?n",
+    label: "hrm-contracts create",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-decisions.manage",
+    category: "Chi ti?t quy?n",
+    label: "hrm-decisions manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-decisions.view",
+    category: "Chi ti?t quy?n",
+    label: "hrm-decisions view",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-decisions.create",
+    category: "Chi ti?t quy?n",
+    label: "hrm-decisions create",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-proposals.manage",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-proposals manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-proposals.view",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-proposals view",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-proposals.create",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-proposals create",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-pipeline.manage",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-pipeline manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-pipeline.view",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-pipeline view",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-pipeline.create",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-pipeline create",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-care.manage",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-care manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-care.view",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-care view",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-care.create",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-care create",
+    adminOnly: false
+  },
+  {
+    key: "permission.attendance.manage",
+    category: "Chi ti?t quy?n",
+    label: "attendance manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.attendance.view",
+    category: "Chi ti?t quy?n",
+    label: "attendance view",
+    adminOnly: false
+  },
+  {
+    key: "permission.attendance.create",
+    category: "Chi ti?t quy?n",
+    label: "attendance create",
+    adminOnly: false
+  },
+  {
+    key: "permission.attendance-timesheets.manage",
+    category: "Chi ti?t quy?n",
+    label: "attendance-timesheets manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.attendance-timesheets.view",
+    category: "Chi ti?t quy?n",
+    label: "attendance-timesheets view",
+    adminOnly: false
+  },
+  {
+    key: "permission.attendance-timesheets.create",
+    category: "Chi ti?t quy?n",
+    label: "attendance-timesheets create",
+    adminOnly: false
+  },
+  {
+    key: "permission.payroll.manage",
+    category: "Chi ti?t quy?n",
+    label: "payroll manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.payroll.view",
+    category: "Chi ti?t quy?n",
+    label: "payroll view",
+    adminOnly: false
+  },
+  {
+    key: "permission.payroll.create",
+    category: "Chi ti?t quy?n",
+    label: "payroll create",
+    adminOnly: false
+  },
+  {
+    key: "permission.payroll-types.manage",
+    category: "Chi ti?t quy?n",
+    label: "payroll-types manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.payroll-types.view",
+    category: "Chi ti?t quy?n",
+    label: "payroll-types view",
+    adminOnly: false
+  },
+  {
+    key: "permission.payroll-types.create",
+    category: "Chi ti?t quy?n",
+    label: "payroll-types create",
+    adminOnly: false
+  },
+  {
+    key: "permission.requests.manage",
+    category: "Chi ti?t quy?n",
+    label: "requests manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.requests.view",
+    category: "Chi ti?t quy?n",
+    label: "requests view",
+    adminOnly: false
+  },
+  {
+    key: "permission.requests.create",
+    category: "Chi ti?t quy?n",
+    label: "requests create",
+    adminOnly: false
+  },
+  {
+    key: "permission.approvals.manage",
+    category: "Chi ti?t quy?n",
+    label: "approvals manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.approvals.view",
+    category: "Chi ti?t quy?n",
+    label: "approvals view",
+    adminOnly: false
+  },
+  {
+    key: "permission.approvals.create",
+    category: "Chi ti?t quy?n",
+    label: "approvals create",
+    adminOnly: false
+  },
+  {
+    key: "permission.assets.manage",
+    category: "Chi ti?t quy?n",
+    label: "assets manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.assets.view",
+    category: "Chi ti?t quy?n",
+    label: "assets view",
+    adminOnly: false
+  },
+  {
+    key: "permission.assets.create",
+    category: "Chi ti?t quy?n",
+    label: "assets create",
+    adminOnly: false
+  },
+  {
+    key: "permission.insurance.manage",
+    category: "Chi ti?t quy?n",
+    label: "insurance manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.insurance.view",
+    category: "Chi ti?t quy?n",
+    label: "insurance view",
+    adminOnly: false
+  },
+  {
+    key: "permission.insurance.create",
+    category: "Chi ti?t quy?n",
+    label: "insurance create",
+    adminOnly: false
+  },
+  {
+    key: "permission.calendar-events.manage",
+    category: "Chi ti?t quy?n",
+    label: "calendar-events manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.calendar-events.view",
+    category: "Chi ti?t quy?n",
+    label: "calendar-events view",
+    adminOnly: false
+  },
+  {
+    key: "permission.calendar-events.create",
+    category: "Chi ti?t quy?n",
+    label: "calendar-events create",
+    adminOnly: false
+  },
+  {
+    key: "permission.documents-company.manage",
+    category: "Chi ti?t quy?n",
+    label: "documents-company manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.documents-company.view",
+    category: "Chi ti?t quy?n",
+    label: "documents-company view",
+    adminOnly: false
+  },
+  {
+    key: "permission.documents-company.create",
+    category: "Chi ti?t quy?n",
+    label: "documents-company create",
+    adminOnly: false
+  },
+  {
+    key: "permission.documents-personal.manage",
+    category: "Chi ti?t quy?n",
+    label: "documents-personal manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.documents-personal.view",
+    category: "Chi ti?t quy?n",
+    label: "documents-personal view",
+    adminOnly: false
+  },
+  {
+    key: "permission.documents-personal.create",
+    category: "Chi ti?t quy?n",
+    label: "documents-personal create",
+    adminOnly: false
+  },
+  {
+    key: "permission.kpi-evaluation.manage",
+    category: "Chi ti?t quy?n",
+    label: "kpi-evaluation manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.kpi-evaluation.view",
+    category: "Chi ti?t quy?n",
+    label: "kpi-evaluation view",
+    adminOnly: false
+  },
+  {
+    key: "permission.kpi-evaluation.create",
+    category: "Chi ti?t quy?n",
+    label: "kpi-evaluation create",
+    adminOnly: false
+  },
+  {
+    key: "permission.kpi-goals.manage",
+    category: "Chi ti?t quy?n",
+    label: "kpi-goals manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.kpi-goals.view",
+    category: "Chi ti?t quy?n",
+    label: "kpi-goals view",
+    adminOnly: false
+  },
+  {
+    key: "permission.kpi-goals.create",
+    category: "Chi ti?t quy?n",
+    label: "kpi-goals create",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-tasks.manage",
+    category: "Chi ti?t quy?n",
+    label: "work-tasks manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-tasks.view",
+    category: "Chi ti?t quy?n",
+    label: "work-tasks view",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-tasks.create",
+    category: "Chi ti?t quy?n",
+    label: "work-tasks create",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-timesheet.manage",
+    category: "Chi ti?t quy?n",
+    label: "work-timesheet manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-timesheet.view",
+    category: "Chi ti?t quy?n",
+    label: "work-timesheet view",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-timesheet.create",
+    category: "Chi ti?t quy?n",
+    label: "work-timesheet create",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-projects.manage",
+    category: "Chi ti?t quy?n",
+    label: "work-projects manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-projects.view",
+    category: "Chi ti?t quy?n",
+    label: "work-projects view",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-projects.create",
+    category: "Chi ti?t quy?n",
+    label: "work-projects create",
+    adminOnly: false
+  },
+  {
+    key: "permission.performance-reviews.manage",
+    category: "Chi ti?t quy?n",
+    label: "performance-reviews manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.performance-reviews.view",
+    category: "Chi ti?t quy?n",
+    label: "performance-reviews view",
+    adminOnly: false
+  },
+  {
+    key: "permission.performance-reviews.create",
+    category: "Chi ti?t quy?n",
+    label: "performance-reviews create",
+    adminOnly: false
+  },
+  {
+    key: "permission.digital-signatures.manage",
+    category: "Chi ti?t quy?n",
+    label: "digital-signatures manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.digital-signatures.view",
+    category: "Chi ti?t quy?n",
+    label: "digital-signatures view",
+    adminOnly: false
+  },
+  {
+    key: "permission.digital-signatures.create",
+    category: "Chi ti?t quy?n",
+    label: "digital-signatures create",
+    adminOnly: false
+  },
+  {
+    key: "permission.digital-signature-records.manage",
+    category: "Chi ti?t quy?n",
+    label: "digital-signature-records manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.digital-signature-records.view",
+    category: "Chi ti?t quy?n",
+    label: "digital-signature-records view",
+    adminOnly: false
+  },
+  {
+    key: "permission.digital-signature-records.create",
+    category: "Chi ti?t quy?n",
+    label: "digital-signature-records create",
+    adminOnly: false
+  },
+  {
+    key: "permission.reports.manage",
+    category: "Chi ti?t quy?n",
+    label: "reports manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.reports.view",
+    category: "Chi ti?t quy?n",
+    label: "reports view",
+    adminOnly: false
+  },
+  {
+    key: "permission.reports.create",
+    category: "Chi ti?t quy?n",
+    label: "reports create",
+    adminOnly: false
+  },
+  {
+    key: "permission.reports-dashboard.manage",
+    category: "Chi ti?t quy?n",
+    label: "reports-dashboard manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.reports-dashboard.view",
+    category: "Chi ti?t quy?n",
+    label: "reports-dashboard view",
+    adminOnly: false
+  },
+  {
+    key: "permission.reports-dashboard.create",
+    category: "Chi ti?t quy?n",
+    label: "reports-dashboard create",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-groups.manage",
+    category: "Chi ti?t quy?n",
+    label: "social-groups manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-groups.view",
+    category: "Chi ti?t quy?n",
+    label: "social-groups view",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-groups.create",
+    category: "Chi ti?t quy?n",
+    label: "social-groups create",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-posts.manage",
+    category: "Chi ti?t quy?n",
+    label: "social-posts manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-posts.view",
+    category: "Chi ti?t quy?n",
+    label: "social-posts view",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-posts.create",
+    category: "Chi ti?t quy?n",
+    label: "social-posts create",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-wall.manage",
+    category: "Chi ti?t quy?n",
+    label: "social-wall manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-wall.view",
+    category: "Chi ti?t quy?n",
+    label: "social-wall view",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-wall.create",
+    category: "Chi ti?t quy?n",
+    label: "social-wall create",
+    adminOnly: false
+  },
+  {
+    key: "permission.support-tickets.manage",
+    category: "Chi ti?t quy?n",
+    label: "support-tickets manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.support-tickets.view",
+    category: "Chi ti?t quy?n",
+    label: "support-tickets view",
+    adminOnly: false
+  },
+  {
+    key: "permission.support-tickets.create",
+    category: "Chi ti?t quy?n",
+    label: "support-tickets create",
+    adminOnly: false
+  },
+  {
+    key: "permission.training.manage",
+    category: "Chi ti?t quy?n",
+    label: "training manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.training.view",
+    category: "Chi ti?t quy?n",
+    label: "training view",
+    adminOnly: false
+  },
+  {
+    key: "permission.training.create",
+    category: "Chi ti?t quy?n",
+    label: "training create",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation.manage",
+    category: "Chi ti?t quy?n",
+    label: "automation manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation.view",
+    category: "Chi ti?t quy?n",
+    label: "automation view",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation.create",
+    category: "Chi ti?t quy?n",
+    label: "automation create",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation-alerts.manage",
+    category: "Chi ti?t quy?n",
+    label: "automation-alerts manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation-alerts.view",
+    category: "Chi ti?t quy?n",
+    label: "automation-alerts view",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation-alerts.create",
+    category: "Chi ti?t quy?n",
+    label: "automation-alerts create",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation-approval-flow.manage",
+    category: "Chi ti?t quy?n",
+    label: "automation-approval-flow manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation-approval-flow.view",
+    category: "Chi ti?t quy?n",
+    label: "automation-approval-flow view",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation-approval-flow.create",
+    category: "Chi ti?t quy?n",
+    label: "automation-approval-flow create",
+    adminOnly: false
+  },
+  {
+    key: "permission.assistant-knowledge.manage",
+    category: "Chi ti?t quy?n",
+    label: "assistant-knowledge manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.assistant-knowledge.view",
+    category: "Chi ti?t quy?n",
+    label: "assistant-knowledge view",
+    adminOnly: false
+  },
+  {
+    key: "permission.assistant-knowledge.create",
+    category: "Chi ti?t quy?n",
+    label: "assistant-knowledge create",
+    adminOnly: false
+  }
 ];
 
 export const permissionGroups: PermissionGroup[] = [

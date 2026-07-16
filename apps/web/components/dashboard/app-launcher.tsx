@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   BookOpenText,
   Briefcase,
@@ -87,8 +88,53 @@ const launcherSections: LauncherSection[] = [
 
 export function AppLauncher() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const panelId = useId();
+  const closeTimerRef = useRef<number | null>(null);
   const firstItemRef = useRef<HTMLAnchorElement | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  function openLauncher() {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setIsOpen(true);
+  }
+
+  function closeLauncher() {
+    setIsVisible(false);
+    closeTimerRef.current = window.setTimeout(() => {
+      setIsOpen(false);
+      closeTimerRef.current = null;
+    }, 240);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current !== null) {
+        window.clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      setIsVisible(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -101,7 +147,7 @@ export function AppLauncher() {
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setIsOpen(false);
+        closeLauncher();
       }
     };
 
@@ -122,18 +168,18 @@ export function AppLauncher() {
         aria-label="Mở bảng chức năng"
         className="icon-button"
         type="button"
-        onClick={() => setIsOpen(true)}
+        onClick={openLauncher}
       >
         <SquaresFour size={19} weight="duotone" aria-hidden="true" />
       </button>
 
-      {isOpen ? (
-        <div className="launcher-layer" role="presentation">
+      {isMounted && isOpen ? createPortal(
+        <div className="launcher-layer" data-state={isVisible ? "open" : "closed"} role="presentation">
           <button
             className="launcher-backdrop"
             type="button"
             aria-label="Đóng bảng chức năng"
-            onClick={() => setIsOpen(false)}
+            onClick={closeLauncher}
           />
           <aside
             aria-label="Bảng chức năng"
@@ -151,7 +197,7 @@ export function AppLauncher() {
                 <button className="icon-button" type="button" aria-label="Tìm chức năng">
                   <MagnifyingGlass size={19} weight="duotone" aria-hidden="true" />
                 </button>
-                <button className="icon-button" type="button" aria-label="Đóng bảng chức năng" onClick={() => setIsOpen(false)}>
+                <button className="icon-button" type="button" aria-label="Đóng bảng chức năng" onClick={closeLauncher}>
                   <X size={18} weight="duotone" aria-hidden="true" />
                 </button>
               </div>
@@ -179,7 +225,7 @@ export function AppLauncher() {
                             className="launcher-item"
                             href={item.href}
                             key={item.label}
-                            onClick={() => setIsOpen(false)}
+                            onClick={closeLauncher}
                             ref={isFirstItem ? firstItemRef : undefined}
                           >
                             {itemContent}
@@ -196,7 +242,8 @@ export function AppLauncher() {
               ))}
             </div>
           </aside>
-        </div>
+        </div>,
+        document.body
       ) : null}
     </>
   );

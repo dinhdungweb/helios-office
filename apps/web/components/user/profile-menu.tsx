@@ -31,6 +31,7 @@ type ThemeColor = {
 
 const appearancePreferenceScope = "appearance.theme";
 const appearanceStorageKeyPrefix = "helios:appearance-theme";
+const appearanceGlobalStorageKey = `${appearanceStorageKeyPrefix}:current`;
 
 const themeColors: ThemeColor[] = [
   { id: "orange", label: "Cam", primary: "#f15a24", strong: "#d94918", soft: "#fff0ea", border: "#ffd7cb" },
@@ -56,6 +57,7 @@ function applyThemeColor(theme: ThemeColor) {
   root.style.setProperty("--color-primary-soft", theme.soft);
   root.style.setProperty("--color-primary-border", theme.border);
   root.style.setProperty("--color-primary-contrast", "#ffffff");
+  root.style.setProperty("--app-loading-color", theme.primary);
 }
 
 function readPreferenceTheme(value: unknown) {
@@ -160,6 +162,7 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
 
         try {
           window.localStorage.setItem(appearanceStorageKey, preferenceTheme.id);
+          window.localStorage.setItem(appearanceGlobalStorageKey, preferenceTheme.id);
         } catch {
           // Local storage is best-effort.
         }
@@ -179,6 +182,7 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
 
     try {
       window.localStorage.setItem(appearanceStorageKey, theme.id);
+      window.localStorage.setItem(appearanceGlobalStorageKey, theme.id);
     } catch {
       // Local storage is best-effort.
     }

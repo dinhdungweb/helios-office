@@ -96,6 +96,17 @@ function groupDetailHref(groupId: string) {
   return `/admin/settings/accounts/groups/${encodeURIComponent(groupId)}`;
 }
 
+function selectedPermissionItemIdsFromKeys(sections: GroupPermissionSection[], permissionKeys: Iterable<string>) {
+  const permissionKeySet = new Set(permissionKeys);
+
+  return new Set(
+    sections
+      .flatMap((section) => section.items)
+      .filter((item) => item.permissionKeys.some((permissionKey) => permissionKeySet.has(permissionKey)))
+      .map((item) => item.id)
+  );
+}
+
 export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData; group?: PermissionGroup }) {
   const router = useRouter();
   const isEditing = Boolean(group);
@@ -105,12 +116,16 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
   const [isSystemPermissionsEnabled, setIsSystemPermissionsEnabled] = useState(() =>
     group ? hasGroupSystemPermissions(group.permissionKeys) : false
   );
-  const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<Set<string>>(() => new Set(group?.permissionKeys ?? []));
-  const [collapsedSections, setCollapsedSections] = useState<Set<GroupCreateSectionKey>>(() => new Set());
   const permissionSections = useMemo(
     () => filterGroupPermissionSectionsByCatalog(groupPermissionFormSections, data.permissions),
     [data.permissions]
   );
+  const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<Set<string>>(() => new Set(group?.permissionKeys ?? []));
+  const [selectedPermissionItemIds, setSelectedPermissionItemIds] = useState<Set<string>>(() =>
+    selectedPermissionItemIdsFromKeys(permissionSections, group?.permissionKeys ?? [])
+  );
+  const [permissionActionOverrides, setPermissionActionOverrides] = useState<Record<string, string>>({});
+  const [collapsedSections, setCollapsedSections] = useState<Set<GroupCreateSectionKey>>(() => new Set());
   const knownPermissionKeys = useMemo(() => new Set(data.permissions.map((permission) => permission.key)), [data.permissions]);
   const visiblePermissionKeys = useMemo(
     () => new Set(permissionSections.flatMap((section) => section.items.flatMap((item) => item.permissionKeys))),
@@ -158,17 +173,38 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
   }
 
   function getPermissionItemSelectionKeys(item: GroupPermissionItem) {
-    const baseKeys = getGroupPermissionBaseKeys(item);
-
-    return baseKeys.length > 0 ? baseKeys : item.permissionKeys;
+    return getGroupPermissionBaseKeys(item);
   }
 
   function togglePermissionItem(item: GroupPermissionItem, checked: boolean) {
+    if (!checked) {
+      setPermissionActionOverrides((current) => {
+        const next = { ...current };
+
+        delete next[`${item.id}.manage`];
+        delete next[`${item.id}.view`];
+        delete next[`${item.id}.create`];
+
+        return next;
+      });
+    }
+
+    setSelectedPermissionItemIds((current) => {
+      const next = new Set(current);
+
+      if (checked) {
+        next.add(item.id);
+      } else {
+        next.delete(item.id);
+      }
+
+      return next;
+    });
     togglePermissionKeys(checked ? getPermissionItemSelectionKeys(item) : item.permissionKeys, checked);
   }
 
   function isPermissionItemSelected(item: GroupPermissionItem) {
-    return item.permissionKeys.some((permissionKey) => selectedPermissionKeys.has(permissionKey));
+    return selectedPermissionItemIds.has(item.id);
   }
 
   function isPermissionSectionSelected(section: GroupPermissionSection) {
@@ -176,6 +212,33 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
   }
 
   function toggleCategory(section: GroupPermissionSection, checked: boolean) {
+    if (!checked) {
+      setPermissionActionOverrides((current) => {
+        const next = { ...current };
+
+        section.items.forEach((item) => {
+          delete next[`${item.id}.manage`];
+          delete next[`${item.id}.view`];
+          delete next[`${item.id}.create`];
+        });
+
+        return next;
+      });
+    }
+
+    setSelectedPermissionItemIds((current) => {
+      const next = new Set(current);
+
+      section.items.forEach((item) => {
+        if (checked) {
+          next.add(item.id);
+        } else {
+          next.delete(item.id);
+        }
+      });
+
+      return next;
+    });
     togglePermissionKeys(
       section.items.flatMap((item) => (checked ? getPermissionItemSelectionKeys(item) : item.permissionKeys)),
       checked
@@ -183,18 +246,38 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
   }
 
   function permissionActionValue(item: GroupPermissionItem, column: GroupPermissionActionColumn) {
+    const overrideKey = `${item.id}.${column}`;
+
+    if (permissionActionOverrides[overrideKey] !== undefined) {
+      return permissionActionOverrides[overrideKey];
+    }
+
     return hasGroupPermissionAction(item, selectedPermissionKeys, column) ? permissionActionDefaultValues[column] : "";
+  }
+
+  function hasPermissionActionColumn(item: GroupPermissionItem, column: GroupPermissionActionColumn) {
+    return getGroupPermissionActionKeys(item, column).length > 0 || Boolean(item[column]);
   }
 
   function setPermissionAction(item: GroupPermissionItem, column: GroupPermissionActionColumn, value: string) {
     const actionKeys = getGroupPermissionActionKeys(item, column);
+    const nextValue = value !== "none" && value !== "no_create" ? value : "";
+
+    if (nextValue) {
+      setSelectedPermissionItemIds((current) => new Set(current).add(item.id));
+    }
+
+    setPermissionActionOverrides((current) => ({
+      ...current,
+      [`${item.id}.${column}`]: nextValue
+    }));
 
     setSelectedPermissionKeys((current) => {
       const next = new Set(current);
 
       actionKeys.forEach((permissionKey) => next.delete(permissionKey));
 
-      if (value !== "none" && value !== "no_create" && value.length > 0 && actionKeys.length > 0) {
+      if (value !== "none" && value !== "no_create" && value.length > 0) {
         getPermissionItemSelectionKeys(item).forEach((permissionKey) => next.add(permissionKey));
         actionKeys.forEach((permissionKey) => next.add(permissionKey));
       }
@@ -337,7 +420,7 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
                             <PermissionActionSelect
                               column="manage"
                               defaultValue={permissionActionValue(permission, "manage")}
-                              disabled={!isChecked || getGroupPermissionActionKeys(permission, "manage").length === 0}
+                              disabled={!isChecked}
                               key={`${permission.id}-manage-${permissionActionValue(permission, "manage")}-${isChecked ? "on" : "off"}`}
                               onValueChange={(value) => setPermissionAction(permission, "manage", value)}
                               permissionKey={permission.id}
@@ -347,7 +430,7 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
                             <PermissionActionSelect
                               column="view"
                               defaultValue={permissionActionValue(permission, "view")}
-                              disabled={!isChecked || getGroupPermissionActionKeys(permission, "view").length === 0}
+                              disabled={!isChecked}
                               key={`${permission.id}-view-${permissionActionValue(permission, "view")}-${isChecked ? "on" : "off"}`}
                               onValueChange={(value) => setPermissionAction(permission, "view", value)}
                               permissionKey={permission.id}
@@ -357,7 +440,7 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
                             <PermissionActionSelect
                               column="create"
                               defaultValue={permissionActionValue(permission, "create")}
-                              disabled={!isChecked || getGroupPermissionActionKeys(permission, "create").length === 0}
+                              disabled={!isChecked}
                               key={`${permission.id}-create-${permissionActionValue(permission, "create")}-${isChecked ? "on" : "off"}`}
                               onValueChange={(value) => setPermissionAction(permission, "create", value)}
                               permissionKey={permission.id}

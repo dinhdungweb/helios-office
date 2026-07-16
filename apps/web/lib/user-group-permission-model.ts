@@ -17,8 +17,12 @@ export type GroupPermissionSection = {
 
 export type GroupPermissionActionColumn = "manage" | "view" | "create";
 
+export function getGroupPermissionSyntheticActionKey(item: GroupPermissionItem, column: GroupPermissionActionColumn) {
+  return `permission.${item.id}.${column}`;
+}
+
 export function getGroupPermissionActionKeys(item: GroupPermissionItem, column: GroupPermissionActionColumn) {
-  return item.actionKeys?.[column] ?? [];
+  return item.actionKeys?.[column] ?? (item[column] ? [getGroupPermissionSyntheticActionKey(item, column)] : []);
 }
 
 export function getGroupPermissionBaseKeys(item: GroupPermissionItem) {
@@ -468,7 +472,14 @@ export function filterGroupPermissionSectionsByCatalog(
       items: section.items
         .map((item) => ({
           ...item,
-          permissionKeys: item.permissionKeys.filter((permissionKey) => knownPermissionKeys.has(permissionKey))
+          permissionKeys: [
+            ...item.permissionKeys.filter(
+              (permissionKey) => knownPermissionKeys.has(permissionKey) && !permissionKey.startsWith("permission.")
+            ),
+            ...(["manage", "view", "create"] as const)
+              .flatMap((column) => getGroupPermissionActionKeys(item, column))
+              .filter((permissionKey) => knownPermissionKeys.has(permissionKey))
+          ]
         }))
         .filter((item) => item.permissionKeys.length > 0)
     }))

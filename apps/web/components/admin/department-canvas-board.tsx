@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import { Columns, Export, ListBullets, Minus, Network, Plus, SquaresFour, UploadSimple, Users } from "@/lib/icons";
+import { datedCsvFilename, exportCsv } from "@/lib/csv-export";
 import type { DepartmentRecord, OrgChartData } from "@/lib/org-chart-api";
 
 type DepartmentCanvasTab = "departments" | "business" | "types" | "inactive";
@@ -61,6 +62,7 @@ function buildTree(departments: DepartmentRecord[]) {
       code: department.code,
       headcount: department.headcount,
       id: department.id,
+      isCompanyRoot: department.permissionStructure === "company",
       name: department.name,
       parentId: department.parentId
     });
@@ -74,16 +76,7 @@ function buildTree(departments: DepartmentRecord[]) {
     }
   }
 
-  return {
-    childCount: roots.length,
-    children: roots,
-    code: "SRG",
-    headcount: roots.reduce((total, node) => total + node.headcount, 0),
-    id: "company-root-srg",
-    isCompanyRoot: true,
-    name: "SRG",
-    parentId: null
-  } satisfies DepartmentCanvasNode;
+  return roots;
 }
 
 function roundedElbowPath(startX: number, startY: number, middleX: number, endX: number, endY: number) {
@@ -109,7 +102,7 @@ function roundedElbowPath(startX: number, startY: number, middleX: number, endX:
   ].join(" ");
 }
 
-function layoutTree(root: DepartmentCanvasNode) {
+function layoutTree(roots: DepartmentCanvasNode[]) {
   const positionedNodes: PositionedCanvasNode[] = [];
   const nodesById = new Map<string, PositionedCanvasNode>();
   let leafCursor = 0;
@@ -137,12 +130,14 @@ function layoutTree(root: DepartmentCanvasNode) {
     return y;
   };
 
-  placeNode(root, 0, branchAccents[0]);
+  roots.forEach((root, index) => {
+    placeNode(root, 0, branchAccents[index % branchAccents.length]);
+  });
 
   const connections: CanvasConnection[] = [];
 
   for (const node of positionedNodes) {
-    const parent = node.parentId ? nodesById.get(node.parentId) : node.isCompanyRoot ? undefined : nodesById.get("company-root-srg");
+    const parent = node.parentId ? nodesById.get(node.parentId) : undefined;
 
     if (!parent) {
       continue;
@@ -205,6 +200,25 @@ export function DepartmentCanvasBoard({ data }: { data: OrgChartData }) {
     { key: "types", label: "Loại phòng ban", count: 2 },
     { key: "inactive", label: "Phòng ban không hoạt động", count: inactiveDepartments.length }
   ];
+  const exportDepartments = activeTab === "inactive" ? inactiveDepartments : activeDepartments;
+
+  const handleExport = () => {
+    exportCsv({
+      filename: datedCsvFilename(activeTab === "inactive" ? "phong-ban-khong-hoat-dong" : "so-do-phong-ban"),
+      rows: exportDepartments,
+      columns: [
+        { header: "Mã", value: (department) => department.code },
+        { header: "Tên đơn vị", value: (department) => department.name },
+        { header: "Đơn vị cha", value: (department) => department.parentName },
+        { header: "Cấu trúc quyền", value: (department) => department.permissionStructure },
+        { header: "Loại phòng ban", value: (department) => department.departmentType },
+        { header: "Khối nghiệp vụ", value: (department) => department.businessUnit },
+        { header: "Số nhân sự", value: (department) => department.headcount },
+        { header: "Số đơn vị con", value: (department) => department.childCount },
+        { header: "Trạng thái", value: (department) => department.status === "active" ? "Đang hoạt động" : "Đã đóng" }
+      ]
+    });
+  };
 
   return (
     <main className="admin-user-list-page department-directory-page department-canvas-page" aria-label="Sơ đồ phòng ban">
@@ -215,7 +229,7 @@ export function DepartmentCanvasBoard({ data }: { data: OrgChartData }) {
           <ListBullets size={16} weight="duotone" aria-hidden="true" />
           <span>Danh sách</span>
         </a>
-        <button type="button">
+        <button type="button" disabled={exportDepartments.length === 0} onClick={handleExport}>
           <Export size={16} weight="duotone" aria-hidden="true" />
           <span>Export</span>
         </button>

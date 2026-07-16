@@ -2,7 +2,7 @@
 
 import { Fragment, useActionState, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { FormCheckbox, FormSelect } from "@/components/ui/form-controls";
+import { FormCheckbox, FormSelect, type FormSelectOption } from "@/components/ui/form-controls";
 import { updateAccountAction, type AccountFormState } from "@/lib/account-access-actions";
 import { CalendarBlank, CaretDown, CheckCircle, Eye, X } from "@/lib/icons";
 import type {
@@ -12,6 +12,16 @@ import type {
   ManagedUserAccount,
   PermissionGroup
 } from "@/lib/account-access-api";
+import {
+  filterGroupPermissionSectionsByCatalog,
+  getGroupPermissionActionKeys,
+  getGroupPermissionBaseKeys,
+  groupPermissionFormSections,
+  hasGroupPermissionAction,
+  type GroupPermissionActionColumn,
+  type GroupPermissionItem,
+  type GroupPermissionSection
+} from "@/lib/user-group-permission-model";
 
 const initialState: AccountFormState = {
   ok: false
@@ -26,6 +36,42 @@ const statusOptions: Array<{ value: AccountLifecycleStatus; label: string }> = [
 ];
 
 type EditSectionKey = "login" | "permissions";
+
+const noPermissionOption: FormSelectOption = { label: "Không có", value: "none" };
+
+const permissionActionOptions: Record<GroupPermissionActionColumn, FormSelectOption[]> = {
+  manage: [
+    noPermissionOption,
+    { label: "Quản lý tất cả", value: "manage_all" },
+    { label: "Quản lý công ty", value: "manage_company" },
+    { label: "Quản lý chi nhánh", value: "manage_branch" },
+    { label: "Quản lý phòng ban", value: "manage_department" }
+  ],
+  view: [
+    noPermissionOption,
+    { label: "Xem tất cả", value: "view_all" },
+    { label: "Xem công ty", value: "view_company" },
+    { label: "Xem chi nhánh", value: "view_branch" },
+    { label: "Xem phòng ban", value: "view_department" }
+  ],
+  create: [
+    noPermissionOption,
+    { label: "Tạo mới", value: "create" },
+    { label: "Không tạo mới", value: "no_create" }
+  ]
+};
+
+const permissionActionMenuLabels: Record<GroupPermissionActionColumn, string> = {
+  manage: "Quyền quản lý",
+  view: "Quyền xem",
+  create: "Quyền tạo mới"
+};
+
+const permissionActionDefaultValues: Record<GroupPermissionActionColumn, string> = {
+  manage: "manage_all",
+  view: "view_all",
+  create: "create"
+};
 
 function accountLogin(account: ManagedUserAccount) {
   return account.email.includes("@") ? account.email.split("@")[0] : account.email;
@@ -42,8 +88,29 @@ function groupPermissions(groupId: string, groups: PermissionGroup[]) {
   return groups.find((group) => group.id === groupId)?.permissionKeys ?? [];
 }
 
+function selectedPermissionItemIdsFromKeys(sections: GroupPermissionSection[], permissionKeys: Iterable<string>) {
+  const permissionKeySet = new Set(permissionKeys);
+
+  return new Set(
+    sections
+      .flatMap((section) => section.items)
+      .filter((item) => item.permissionKeys.some((permissionKey) => permissionKeySet.has(permissionKey)))
+      .map((item) => item.id)
+  );
+}
+
+function isEditableAccountPermission(permission: AccountPermission) {
+  return !permission.adminOnly && !permission.key.startsWith("system.");
+}
+
+function editablePermissionKeys(permissionKeys: string[], permissionSections: GroupPermissionSection[]) {
+  const editableKeys = new Set(permissionSections.flatMap((section) => section.items.flatMap((item) => item.permissionKeys)));
+
+  return permissionKeys.filter((permissionKey) => editableKeys.has(permissionKey));
+}
+
 function groupPermissionsByCategory(permissions: AccountPermission[]) {
-  return permissions.reduce<Array<{ category: string; items: AccountPermission[] }>>((groups, permission) => {
+  return permissions.filter(isEditableAccountPermission).reduce<Array<{ category: string; items: AccountPermission[] }>>((groups, permission) => {
     const existing = groups.find((group) => group.category === permission.category);
 
     if (existing) {
@@ -87,6 +154,34 @@ function PermissionActionControl({
   );
 }
 
+function PermissionActionSelect({
+  column,
+  defaultValue,
+  disabled,
+  onValueChange,
+  permissionKey
+}: {
+  column: GroupPermissionActionColumn;
+  defaultValue?: string;
+  disabled?: boolean;
+  onValueChange: (value: string) => void;
+  permissionKey: string;
+}) {
+  return (
+    <FormSelect
+      ariaLabel={permissionActionMenuLabels[column]}
+      className="group-create-permission-select"
+      defaultValue={defaultValue}
+      disabled={disabled}
+      menuLabel={permissionActionMenuLabels[column]}
+      name={`permissionAction.${permissionKey}.${column}`}
+      onValueChange={onValueChange}
+      options={permissionActionOptions[column]}
+      placeholder="Chọn quyền"
+    />
+  );
+}
+
 function FloatingField({
   children,
   label,
@@ -122,15 +217,33 @@ export function AdminUserEditBoard({
     () => data.groups.filter((group) => group.status !== "archived" || group.id === account.groupId),
     [account.groupId, data.groups]
   );
+  const permissionSections = useMemo(
+    () => filterGroupPermissionSectionsByCatalog(groupPermissionFormSections, data.permissions),
+    [data.permissions]
+  );
+  const visiblePermissionKeys = useMemo(
+    () => new Set(permissionSections.flatMap((section) => section.items.flatMap((item) => item.permissionKeys))),
+    [permissionSections]
+  );
   const initialGroupId = account.groupId ?? assignableGroups[0]?.id ?? "";
   const [selectedGroupId, setSelectedGroupId] = useState(initialGroupId);
   const [isPasswordChangeEnabled, setIsPasswordChangeEnabled] = useState(false);
   const [isCustomPermission, setIsCustomPermission] = useState(account.customPermissionKeys.length > 0);
   const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<Set<string>>(
-    () => new Set(account.effectivePermissionKeys.length > 0 ? account.effectivePermissionKeys : groupPermissions(initialGroupId, data.groups))
+    () => new Set(editablePermissionKeys(account.effectivePermissionKeys.length > 0 ? account.effectivePermissionKeys : groupPermissions(initialGroupId, data.groups), permissionSections))
   );
+  const [selectedPermissionItemIds, setSelectedPermissionItemIds] = useState<Set<string>>(() =>
+    selectedPermissionItemIdsFromKeys(
+      permissionSections,
+      editablePermissionKeys(account.effectivePermissionKeys.length > 0 ? account.effectivePermissionKeys : groupPermissions(initialGroupId, data.groups), permissionSections)
+    )
+  );
+  const [permissionActionOverrides, setPermissionActionOverrides] = useState<Record<string, string>>({});
   const [collapsedSections, setCollapsedSections] = useState<Set<EditSectionKey>>(() => new Set());
-  const groupedPermissions = useMemo(() => groupPermissionsByCategory(data.permissions), [data.permissions]);
+  const selectedPermissionKeysToSubmit = useMemo(
+    () => Array.from(selectedPermissionKeys).filter((permissionKey) => visiblePermissionKeys.has(permissionKey)),
+    [selectedPermissionKeys, visiblePermissionKeys]
+  );
 
   const isSectionCollapsed = (sectionKey: EditSectionKey) => collapsedSections.has(sectionKey);
   const toggleSection = (sectionKey: EditSectionKey) => {
@@ -184,11 +297,125 @@ export function AdminUserEditBoard({
     });
   };
 
+  const getPermissionItemSelectionKeys = (item: GroupPermissionItem) => {
+    return getGroupPermissionBaseKeys(item);
+  };
+
+  const setPermissionItemChecked = (item: GroupPermissionItem, checked: boolean) => {
+    if (!checked) {
+      setPermissionActionOverrides((current) => {
+        const next = { ...current };
+
+        delete next[`${item.id}.manage`];
+        delete next[`${item.id}.view`];
+        delete next[`${item.id}.create`];
+
+        return next;
+      });
+    }
+
+    setSelectedPermissionItemIds((current) => {
+      const next = new Set(current);
+
+      if (checked) {
+        next.add(item.id);
+      } else {
+        next.delete(item.id);
+      }
+
+      return next;
+    });
+    setCategoryChecked(checked ? getPermissionItemSelectionKeys(item) : item.permissionKeys, checked);
+  };
+
+  const isPermissionItemChecked = (item: GroupPermissionItem) =>
+    selectedPermissionItemIds.has(item.id);
+
+  const isPermissionSectionChecked = (section: GroupPermissionSection) =>
+    section.items.every((item) => isPermissionItemChecked(item));
+
+  const setPermissionSectionChecked = (section: GroupPermissionSection, checked: boolean) => {
+    if (!checked) {
+      setPermissionActionOverrides((current) => {
+        const next = { ...current };
+
+        section.items.forEach((item) => {
+          delete next[`${item.id}.manage`];
+          delete next[`${item.id}.view`];
+          delete next[`${item.id}.create`];
+        });
+
+        return next;
+      });
+    }
+
+    setSelectedPermissionItemIds((current) => {
+      const next = new Set(current);
+
+      section.items.forEach((item) => {
+        if (checked) {
+          next.add(item.id);
+        } else {
+          next.delete(item.id);
+        }
+      });
+
+      return next;
+    });
+    setCategoryChecked(
+      section.items.flatMap((item) => (checked ? getPermissionItemSelectionKeys(item) : item.permissionKeys)),
+      checked
+    );
+  };
+
+  const permissionActionValue = (item: GroupPermissionItem, column: GroupPermissionActionColumn) => {
+    const overrideKey = `${item.id}.${column}`;
+
+    if (permissionActionOverrides[overrideKey] !== undefined) {
+      return permissionActionOverrides[overrideKey];
+    }
+
+    return hasGroupPermissionAction(item, selectedPermissionKeys, column) ? permissionActionDefaultValues[column] : "";
+  };
+
+  const hasPermissionActionColumn = (item: GroupPermissionItem, column: GroupPermissionActionColumn) =>
+    getGroupPermissionActionKeys(item, column).length > 0 || Boolean(item[column]);
+
+  const setPermissionAction = (item: GroupPermissionItem, column: GroupPermissionActionColumn, value: string) => {
+    const actionKeys = getGroupPermissionActionKeys(item, column);
+    const nextValue = value !== "none" && value !== "no_create" ? value : "";
+
+    if (nextValue) {
+      setSelectedPermissionItemIds((current) => new Set(current).add(item.id));
+    }
+
+    setPermissionActionOverrides((current) => ({
+      ...current,
+      [`${item.id}.${column}`]: nextValue
+    }));
+
+    setSelectedPermissionKeys((current) => {
+      const next = new Set(current);
+
+      actionKeys.forEach((permissionKey) => next.delete(permissionKey));
+
+      if (value !== "none" && value !== "no_create" && value.length > 0) {
+        getPermissionItemSelectionKeys(item).forEach((permissionKey) => next.add(permissionKey));
+        actionKeys.forEach((permissionKey) => next.add(permissionKey));
+      }
+
+      return next;
+    });
+  };
+
   const toggleCustomPermission = (checked: boolean) => {
     setIsCustomPermission(checked);
 
     if (checked && selectedPermissionKeys.size === 0) {
-      setSelectedPermissionKeys(new Set(groupPermissions(selectedGroupId, data.groups)));
+      const nextPermissionKeys = editablePermissionKeys(groupPermissions(selectedGroupId, data.groups), permissionSections);
+
+      setSelectedPermissionKeys(new Set(nextPermissionKeys));
+      setSelectedPermissionItemIds(selectedPermissionItemIdsFromKeys(permissionSections, nextPermissionKeys));
     }
   };
 
@@ -200,6 +427,9 @@ export function AdminUserEditBoard({
         <input name="displayName" type="hidden" value={account.name} />
         <input name="adminRole" type="hidden" value={account.role} />
         <input name="customPermissionNote" type="hidden" value={account.customPermissionNote ?? ""} />
+        {isCustomPermission ? selectedPermissionKeysToSubmit.map((permissionKey) => (
+          <input key={permissionKey} name="customPermissionKeys" type="hidden" value={permissionKey} />
+        )) : null}
 
         <section className="admin-user-edit-section" aria-labelledby="admin-user-edit-login-title">
           <header>
@@ -306,7 +536,10 @@ export function AdminUserEditBoard({
                   setSelectedGroupId(value);
 
                   if (!isCustomPermission) {
-                    setSelectedPermissionKeys(new Set(groupPermissions(value, data.groups)));
+                    const nextPermissionKeys = editablePermissionKeys(groupPermissions(value, data.groups), permissionSections);
+
+                    setSelectedPermissionKeys(new Set(nextPermissionKeys));
+                    setSelectedPermissionItemIds(selectedPermissionItemIdsFromKeys(permissionSections, nextPermissionKeys));
                   }
                 }}
               />
@@ -364,51 +597,69 @@ export function AdminUserEditBoard({
                 </tr>
               </thead>
               <tbody>
-                {groupedPermissions.map((group) => {
-                  const groupPermissionKeys = group.items.map((permission) => permission.key);
-                  const checkedCount = groupPermissionKeys.filter((permissionKey) => selectedPermissionKeys.has(permissionKey)).length;
-                  const isGroupChecked = checkedCount > 0;
+                {permissionSections.map((section) => (
+                  <Fragment key={section.category}>
+                    <tr className="is-category">
+                      <th scope="row">
+                        <FormCheckbox
+                          checked={isPermissionSectionChecked(section)}
+                          disabled={!isCustomPermission}
+                          onChange={(event) => setPermissionSectionChecked(section, event.currentTarget.checked)}
+                          label={<strong>{section.category}</strong>}
+                        />
+                      </th>
+                      <td>--</td>
+                      <td>--</td>
+                      <td>--</td>
+                    </tr>
+                    {section.items.map((permission) => {
+                      const isChecked = isPermissionItemChecked(permission);
 
-                  return (
-                    <Fragment key={group.category}>
-                      <tr className="is-category">
-                        <th scope="row">
-                          <FormCheckbox
-                            checked={isGroupChecked}
-                            disabled={!isCustomPermission}
-                            onChange={(event) => setCategoryChecked(groupPermissionKeys, event.currentTarget.checked)}
-                            label={<strong>{group.category}</strong>}
-                          />
-                        </th>
-                        <td>--</td>
-                        <td>--</td>
-                        <td>--</td>
-                      </tr>
-                      {group.items.map((permission) => {
-                        const isChecked = selectedPermissionKeys.has(permission.key);
-
-                        return (
-                          <tr key={permission.key}>
-                            <th scope="row">
-                              <FormCheckbox
-                                checked={isChecked}
-                                disabled={!isCustomPermission}
-                                name={isCustomPermission ? "customPermissionKeys" : undefined}
-                                value={permission.key}
-                                onChange={(event) => setPermissionChecked(permission.key, event.currentTarget.checked)}
-                                label={permission.label}
-                              />
-                            </th>
-                            <td><PermissionActionControl disabled={!isChecked || !isCustomPermission} label={isChecked ? permissionActionText(permission, "manage") : "Không có"} /></td>
-                            <td><PermissionActionControl disabled={!isChecked || !isCustomPermission} label={isChecked ? permissionActionText(permission, "view") : "Không có"} /></td>
-                            <td><PermissionActionControl disabled={!isChecked || !isCustomPermission} label={isChecked ? permissionActionText(permission, "create") : "Không có"} /></td>
-                          </tr>
-                        );
-                      })}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
+                      return (
+                        <tr key={permission.id}>
+                          <th scope="row">
+                            <FormCheckbox
+                              checked={isChecked}
+                              disabled={!isCustomPermission}
+                              onChange={(event) => setPermissionItemChecked(permission, event.currentTarget.checked)}
+                              label={permission.label}
+                            />
+                          </th>
+                          <td>
+                            <PermissionActionSelect
+                              column="manage"
+                              defaultValue={permissionActionValue(permission, "manage")}
+                              disabled={!isChecked || !isCustomPermission}
+                              key={`${permission.id}-manage-${permissionActionValue(permission, "manage")}-${isChecked ? "on" : "off"}`}
+                              onValueChange={(value) => setPermissionAction(permission, "manage", value)}
+                              permissionKey={permission.id}
+                            />
+                          </td>
+                          <td>
+                            <PermissionActionSelect
+                              column="view"
+                              defaultValue={permissionActionValue(permission, "view")}
+                              disabled={!isChecked || !isCustomPermission}
+                              key={`${permission.id}-view-${permissionActionValue(permission, "view")}-${isChecked ? "on" : "off"}`}
+                              onValueChange={(value) => setPermissionAction(permission, "view", value)}
+                              permissionKey={permission.id}
+                            />
+                          </td>
+                          <td>
+                            <PermissionActionSelect
+                              column="create"
+                              defaultValue={permissionActionValue(permission, "create")}
+                              disabled={!isChecked || !isCustomPermission}
+                              key={`${permission.id}-create-${permissionActionValue(permission, "create")}-${isChecked ? "on" : "off"}`}
+                              onValueChange={(value) => setPermissionAction(permission, "create", value)}
+                              permissionKey={permission.id}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                ))}              </tbody>
             </table>
           </div>
           </div>

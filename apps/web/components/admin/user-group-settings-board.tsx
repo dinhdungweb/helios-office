@@ -62,6 +62,10 @@ function isArchivedGroup(group: PermissionGroup) {
   return group.status === "archived";
 }
 
+function visibleCatalogPermissions(permissions: AccountPermission[]) {
+  return permissions.filter((permission) => !permission.key.startsWith("permission."));
+}
+
 function archiveDisabledReason(group: PermissionGroup) {
   if (isArchivedGroup(group)) {
     return "Nhóm đã lưu trữ";
@@ -276,7 +280,7 @@ function GroupEditorDialog({
                 <fieldset className="account-dialog-permissions">
                   <legend>Quyền áp dụng</legend>
                   <div className="account-dialog-permission-grid">
-                    {permissions.map((permission) => (
+                    {visibleCatalogPermissions(permissions).map((permission) => (
                       <FormCheckbox
                         name="permissionKeys"
                         value={permission.key}
@@ -494,7 +498,7 @@ function PermissionMatrixPanel({
             </tr>
           </thead>
           <tbody>
-            {permissions.map((permission) => {
+            {visibleCatalogPermissions(permissions).map((permission) => {
               const isAllowed = selectedKeys.has(permission.key);
 
               return (

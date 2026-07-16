@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BulkAccountGroupChangeDialog } from "@/components/admin/bulk-account-group-change-dialog";
 import { ResponsiveToolbarActionMenu } from "@/components/admin/responsive-toolbar-action-menu";
 import { FormCheckbox } from "@/components/ui/form-controls";
+import { ListPagination } from "@/components/ui/list-pagination";
 import {
-  CaretLeft,
   CaretRight,
   DotsThree,
+  EnvelopeSimple,
   Export,
   GearSix,
+  Key,
   List,
+  Lock,
   MagnifyingGlass,
   SlidersHorizontal,
   Star,
@@ -19,10 +23,10 @@ import {
 import type {
   AccountAccessData,
   AccountLifecycleStatus,
-  AccountRole,
   ManagedUserAccount,
   PermissionGroup
 } from "@/lib/account-access-api";
+import { datedCsvFilename, exportCsv } from "@/lib/csv-export";
 
 type UserListFilter = AccountLifecycleStatus | "waiting" | "device";
 type FilterPanel = "sort" | "columns" | null;
@@ -36,8 +40,6 @@ type UserColumnKey =
   | "signature"
   | "createdAt"
   | "activatedAt"
-  | "combo"
-  | "apps"
   | "personnelId"
   | "customPermission"
   | "adminRole"
@@ -94,8 +96,6 @@ const userColumns: UserColumn[] = [
   { key: "signature", label: "Chữ ký số", defaultVisible: true },
   { key: "createdAt", label: "Ngày tạo", defaultVisible: true },
   { key: "activatedAt", label: "Ngày kích hoạt", defaultVisible: true },
-  { key: "combo", label: "Combo sử dụng", defaultVisible: true },
-  { key: "apps", label: "Apps sử dụng", defaultVisible: true },
   { key: "personnelId", label: "admin.user.field.personnel_id", defaultVisible: false },
   { key: "customPermission", label: "Tùy chỉnh quyền", defaultVisible: false },
   { key: "adminRole", label: "Quản trị hệ thống", defaultVisible: false },
@@ -128,10 +128,6 @@ function ApiStatusBanner({ data }: { data: AccountAccessData }) {
 
 function getAccountName(account: ManagedUserAccount) {
   return account.email.includes("@") ? account.email.split("@")[0] : account.email;
-}
-
-function getLicenseLabel(role: AccountRole) {
-  return role === "system_admin" ? "Professional" : "Basic Hrm";
 }
 
 function isSystemAdminAccount(account: ManagedUserAccount) {
@@ -205,7 +201,6 @@ function renderColumnValue(columnKey: UserColumnKey, account: ManagedUserAccount
 
       return account.department;
     case "signature":
-    case "apps":
     case "extraDepartments":
     case "company":
     case "branch":
@@ -225,17 +220,6 @@ function renderColumnValue(columnKey: UserColumnKey, account: ManagedUserAccount
       }
 
       return account.activatedAt ?? "--";
-    case "combo":
-      if (isSystemAdmin) {
-        return "--";
-      }
-
-      return (
-        <>
-          {getLicenseLabel(account.role)}
-          <span>{account.closedAt ? `(${account.closedAt})` : ""}</span>
-        </>
-      );
     case "customPermission":
       return account.customPermissionKeys.length > 0 ? "Có" : "Không";
     case "adminRole":
@@ -292,12 +276,6 @@ function getSortValue(columnKey: UserColumnKey, account: ManagedUserAccount, gro
       }
 
       return account.activatedAt ?? "";
-    case "combo":
-      if (isSystemAdmin) {
-        return "";
-      }
-
-      return getLicenseLabel(account.role);
     case "customPermission":
       return String(account.customPermissionKeys.length);
     case "adminRole":
@@ -413,6 +391,7 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
   const [columnQuery, setColumnQuery] = useState("");
   const [sortColumnKey, setSortColumnKey] = useState<UserColumnKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [currentPage, setCurrentPage] = useState(1);
   const filterRef = useRef<HTMLDivElement | null>(null);
   const [selectedAccountIds, setSelectedAccountIds] = useState<Set<string>>(() => new Set());
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<Set<UserColumnKey>>(
@@ -437,13 +416,42 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
       return sortDirection === "asc" ? result : -result;
     });
   }, [filteredAccounts, groupsById, sortColumnKey, sortDirection]);
-  const visibleAccounts = sortedAccounts.slice(0, 50);
+  const pageCount = Math.max(1, Math.ceil(Math.max(filteredAccounts.length, 1) / 50));
+  const safePage = Math.min(currentPage, pageCount);
+  const pageStartIndex = (safePage - 1) * 50;
+  const visibleAccounts = sortedAccounts.slice(pageStartIndex, pageStartIndex + 50);
   const visibleAccountIds = visibleAccounts.map((account) => account.id);
   const selectedVisibleCount = visibleAccountIds.filter((id) => selectedAccountIds.has(id)).length;
+  const selectedAccountCount = selectedAccountIds.size;
+  const hasSelectedAccounts = selectedAccountCount > 0;
+  const selectedAccountIdList = useMemo(() => Array.from(selectedAccountIds), [selectedAccountIds]);
+  const selectedAccounts = useMemo(
+    () => sortedAccounts.filter((account) => selectedAccountIds.has(account.id)),
+    [selectedAccountIds, sortedAccounts]
+  );
   const areAllVisibleAccountsSelected = visibleAccountIds.length > 0 && selectedVisibleCount === visibleAccountIds.length;
   const isSomeVisibleAccountSelected = selectedVisibleCount > 0 && !areAllVisibleAccountsSelected;
   const visibleColumns = userColumns.filter((column) => visibleColumnKeys.has(column.key));
-  const pageCount = Math.max(1, Math.ceil(Math.max(filteredAccounts.length, 1) / 50));
+  const displayStart = visibleAccounts.length > 0 ? pageStartIndex + 1 : 0;
+  const displayEnd = pageStartIndex + visibleAccounts.length;
+  const exportAccounts = (accounts: ManagedUserAccount[]) => {
+    exportCsv({
+      filename: datedCsvFilename("danh-sach-nguoi-dung"),
+      rows: accounts,
+      columns: [
+        { header: "Tài khoản", value: (account) => getAccountName(account) },
+        { header: "Nhóm", value: (account) => groupNameFor(account, groupsById) },
+        { header: "Mã NS", value: (account) => account.employeeCode },
+        { header: "Họ tên", value: (account) => account.name },
+        { header: "Phòng ban", value: (account) => account.department },
+        { header: "Chức vụ", value: (account) => account.title },
+        { header: "Email", value: (account) => account.email },
+        { header: "Trạng thái", value: (account) => statusLabels[account.status] },
+        { header: "Ngày kích hoạt", value: (account) => account.activatedAt },
+        { header: "Quyền tùy chỉnh", value: (account) => account.customPermissionKeys.length > 0 ? "Có" : "Không" }
+      ]
+    });
+  };
   const chooseSortColumn = (columnKey: UserColumnKey) => {
     if (sortColumnKey === columnKey) {
       setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
@@ -456,9 +464,19 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
   const clearSort = () => {
     setSortColumnKey(null);
     setSortDirection("asc");
+    setVisibleColumnKeys(new Set(defaultVisibleColumnKeys));
+    setColumnQuery("");
     setActiveFilterPanel(null);
     setIsFilterOpen(false);
   };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilter, sortColumnKey, sortDirection]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(Math.max(page, 1), pageCount));
+  }, [pageCount]);
 
   useEffect(() => {
     if (!isFilterOpen) {
@@ -533,22 +551,53 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
     });
   };
 
+  const clearSelectedAccounts = useCallback(() => {
+    setSelectedAccountIds(new Set());
+  }, []);
+
   return (
     <main className="admin-user-list-page" aria-label="Danh sách người dùng">
       <ApiStatusBanner data={data} />
 
-      <nav className="admin-user-status-tabs" aria-label="Trạng thái người dùng">
-        {tabOrder.map((tab) => (
-          <button
-            className={activeFilter === tab.key ? "is-active" : undefined}
-            key={tab.key}
-            type="button"
-            onClick={() => setActiveFilter(tab.key)}
-          >
-            {tab.label} ({getTabCount(userAccounts, tab.key)})
+      {hasSelectedAccounts ? (
+        <section className="department-directory-bulk-actions personnel-contract-bulk-actions" aria-label="Thao tác với người dùng đã chọn">
+          <BulkAccountGroupChangeDialog
+            accountIds={selectedAccountIdList}
+            groups={data.groups}
+            permissions={data.permissions}
+            onSuccess={clearSelectedAccounts}
+          />
+          <button type="button">
+            <EnvelopeSimple size={16} weight="duotone" aria-hidden="true" />
+            <span>Gửi mật khẩu</span>
           </button>
-        ))}
-      </nav>
+          <button type="button">
+            <Key size={16} weight="duotone" aria-hidden="true" />
+            <span>Tạo chữ ký số</span>
+          </button>
+          <button type="button">
+            <Lock size={16} weight="duotone" aria-hidden="true" />
+            <span>Khóa</span>
+          </button>
+          <button type="button" onClick={() => exportAccounts(selectedAccounts)}>
+            <Export size={16} weight="duotone" aria-hidden="true" />
+            <span>Export</span>
+          </button>
+        </section>
+      ) : (
+        <nav className="admin-user-status-tabs" aria-label="Trạng thái người dùng">
+          {tabOrder.map((tab) => (
+            <button
+              className={activeFilter === tab.key ? "is-active" : undefined}
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveFilter(tab.key)}
+            >
+              {tab.label} ({getTabCount(userAccounts, tab.key)})
+            </button>
+          ))}
+        </nav>
+      )}
 
       <section className="admin-user-toolbar has-responsive-actions" aria-label="Công cụ danh sách người dùng">
         <div className="admin-user-toolbar-left">
@@ -654,34 +703,42 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
               </div>
             ) : null}
           </div>
-          <span>
-            Hiển thị 1 - {visibleAccounts.length} / {filteredAccounts.length} bản ghi
-          </span>
-          <span>Trang: 01 / {String(pageCount).padStart(2, "0")}</span>
-          <button className="icon-button" type="button" aria-label="Trang trước">
-            <CaretLeft size={17} weight="duotone" aria-hidden="true" />
-          </button>
-          <button className="icon-button" type="button" aria-label="Trang sau">
-            <CaretRight size={17} weight="duotone" aria-hidden="true" />
-          </button>
+          {hasSelectedAccounts ? (
+            <span>
+              Đã chọn <strong>{selectedAccountCount}</strong> bản ghi
+            </span>
+          ) : (
+            <span>
+              Hiển thị {displayStart} - {displayEnd} / {filteredAccounts.length} bản ghi
+            </span>
+          )}
+          <ListPagination
+            ariaLabel="Chọn trang người dùng"
+            currentPage={safePage}
+            pageCount={pageCount}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
-        <ResponsiveToolbarActionMenu
-          ariaLabel="Mở menu thao tác người dùng"
-          actions={[
-            {
-              key: "export",
-              icon: <Export size={16} weight="duotone" aria-hidden="true" />,
-              label: "Export"
-            },
-            {
-              key: "settings",
-              href: "/admin/settings/accounts/permissions",
-              icon: <GearSix size={16} weight="duotone" aria-hidden="true" />,
-              label: "Cài đặt"
-            }
-          ]}
-        />
+        {hasSelectedAccounts ? null : (
+          <ResponsiveToolbarActionMenu
+            ariaLabel="Mở menu thao tác người dùng"
+            actions={[
+              {
+                key: "export",
+                icon: <Export size={16} weight="duotone" aria-hidden="true" />,
+                label: "Export",
+                onClick: () => exportAccounts(sortedAccounts)
+              },
+              {
+                key: "settings",
+                href: "/admin/settings/accounts/permissions",
+                icon: <GearSix size={16} weight="duotone" aria-hidden="true" />,
+                label: "Cài đặt"
+              }
+            ]}
+          />
+        )}
       </section>
 
       <div className="admin-user-table-shell" tabIndex={0} aria-label="Bảng danh sách người dùng có thể cuộn ngang">
@@ -699,9 +756,21 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
                 />
               </th>
               {visibleColumns.map((column) => (
-                <th scope="col" key={column.key}>
+                <th
+                  scope="col"
+                  key={column.key}
+                  aria-sort={
+                    column.key === sortColumnKey
+                      ? sortDirection === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
+                >
                   {column.label}
-                  {column.key === "activatedAt" ? <span aria-hidden="true"> ↑</span> : null}
+                  {column.key === sortColumnKey ? (
+                    <span aria-hidden="true">{sortDirection === "asc" ? " ↑" : " ↓"}</span>
+                  ) : null}
                 </th>
               ))}
             </tr>

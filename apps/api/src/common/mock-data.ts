@@ -469,6 +469,655 @@ export const accountPermissionCatalog = [
     category: "Menu Quản trị",
     label: "Thêm module Cấu hình vào sidebar",
     adminOnly: true
+  },
+  // Detail permission action selections persisted from group/account editors.
+  {
+    key: "permission.hrm-employees.manage",
+    category: "Chi ti?t quy?n",
+    label: "hrm-employees manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-employees.view",
+    category: "Chi ti?t quy?n",
+    label: "hrm-employees view",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-employees.create",
+    category: "Chi ti?t quy?n",
+    label: "hrm-employees create",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-contracts.manage",
+    category: "Chi ti?t quy?n",
+    label: "hrm-contracts manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-contracts.view",
+    category: "Chi ti?t quy?n",
+    label: "hrm-contracts view",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-contracts.create",
+    category: "Chi ti?t quy?n",
+    label: "hrm-contracts create",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-decisions.manage",
+    category: "Chi ti?t quy?n",
+    label: "hrm-decisions manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-decisions.view",
+    category: "Chi ti?t quy?n",
+    label: "hrm-decisions view",
+    adminOnly: false
+  },
+  {
+    key: "permission.hrm-decisions.create",
+    category: "Chi ti?t quy?n",
+    label: "hrm-decisions create",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-proposals.manage",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-proposals manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-proposals.view",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-proposals view",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-proposals.create",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-proposals create",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-pipeline.manage",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-pipeline manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-pipeline.view",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-pipeline view",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-pipeline.create",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-pipeline create",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-care.manage",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-care manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-care.view",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-care view",
+    adminOnly: false
+  },
+  {
+    key: "permission.recruitment-care.create",
+    category: "Chi ti?t quy?n",
+    label: "recruitment-care create",
+    adminOnly: false
+  },
+  {
+    key: "permission.attendance.manage",
+    category: "Chi ti?t quy?n",
+    label: "attendance manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.attendance.view",
+    category: "Chi ti?t quy?n",
+    label: "attendance view",
+    adminOnly: false
+  },
+  {
+    key: "permission.attendance.create",
+    category: "Chi ti?t quy?n",
+    label: "attendance create",
+    adminOnly: false
+  },
+  {
+    key: "permission.attendance-timesheets.manage",
+    category: "Chi ti?t quy?n",
+    label: "attendance-timesheets manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.attendance-timesheets.view",
+    category: "Chi ti?t quy?n",
+    label: "attendance-timesheets view",
+    adminOnly: false
+  },
+  {
+    key: "permission.attendance-timesheets.create",
+    category: "Chi ti?t quy?n",
+    label: "attendance-timesheets create",
+    adminOnly: false
+  },
+  {
+    key: "permission.payroll.manage",
+    category: "Chi ti?t quy?n",
+    label: "payroll manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.payroll.view",
+    category: "Chi ti?t quy?n",
+    label: "payroll view",
+    adminOnly: false
+  },
+  {
+    key: "permission.payroll.create",
+    category: "Chi ti?t quy?n",
+    label: "payroll create",
+    adminOnly: false
+  },
+  {
+    key: "permission.payroll-types.manage",
+    category: "Chi ti?t quy?n",
+    label: "payroll-types manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.payroll-types.view",
+    category: "Chi ti?t quy?n",
+    label: "payroll-types view",
+    adminOnly: false
+  },
+  {
+    key: "permission.payroll-types.create",
+    category: "Chi ti?t quy?n",
+    label: "payroll-types create",
+    adminOnly: false
+  },
+  {
+    key: "permission.requests.manage",
+    category: "Chi ti?t quy?n",
+    label: "requests manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.requests.view",
+    category: "Chi ti?t quy?n",
+    label: "requests view",
+    adminOnly: false
+  },
+  {
+    key: "permission.requests.create",
+    category: "Chi ti?t quy?n",
+    label: "requests create",
+    adminOnly: false
+  },
+  {
+    key: "permission.approvals.manage",
+    category: "Chi ti?t quy?n",
+    label: "approvals manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.approvals.view",
+    category: "Chi ti?t quy?n",
+    label: "approvals view",
+    adminOnly: false
+  },
+  {
+    key: "permission.approvals.create",
+    category: "Chi ti?t quy?n",
+    label: "approvals create",
+    adminOnly: false
+  },
+  {
+    key: "permission.assets.manage",
+    category: "Chi ti?t quy?n",
+    label: "assets manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.assets.view",
+    category: "Chi ti?t quy?n",
+    label: "assets view",
+    adminOnly: false
+  },
+  {
+    key: "permission.assets.create",
+    category: "Chi ti?t quy?n",
+    label: "assets create",
+    adminOnly: false
+  },
+  {
+    key: "permission.insurance.manage",
+    category: "Chi ti?t quy?n",
+    label: "insurance manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.insurance.view",
+    category: "Chi ti?t quy?n",
+    label: "insurance view",
+    adminOnly: false
+  },
+  {
+    key: "permission.insurance.create",
+    category: "Chi ti?t quy?n",
+    label: "insurance create",
+    adminOnly: false
+  },
+  {
+    key: "permission.calendar-events.manage",
+    category: "Chi ti?t quy?n",
+    label: "calendar-events manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.calendar-events.view",
+    category: "Chi ti?t quy?n",
+    label: "calendar-events view",
+    adminOnly: false
+  },
+  {
+    key: "permission.calendar-events.create",
+    category: "Chi ti?t quy?n",
+    label: "calendar-events create",
+    adminOnly: false
+  },
+  {
+    key: "permission.documents-company.manage",
+    category: "Chi ti?t quy?n",
+    label: "documents-company manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.documents-company.view",
+    category: "Chi ti?t quy?n",
+    label: "documents-company view",
+    adminOnly: false
+  },
+  {
+    key: "permission.documents-company.create",
+    category: "Chi ti?t quy?n",
+    label: "documents-company create",
+    adminOnly: false
+  },
+  {
+    key: "permission.documents-personal.manage",
+    category: "Chi ti?t quy?n",
+    label: "documents-personal manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.documents-personal.view",
+    category: "Chi ti?t quy?n",
+    label: "documents-personal view",
+    adminOnly: false
+  },
+  {
+    key: "permission.documents-personal.create",
+    category: "Chi ti?t quy?n",
+    label: "documents-personal create",
+    adminOnly: false
+  },
+  {
+    key: "permission.kpi-evaluation.manage",
+    category: "Chi ti?t quy?n",
+    label: "kpi-evaluation manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.kpi-evaluation.view",
+    category: "Chi ti?t quy?n",
+    label: "kpi-evaluation view",
+    adminOnly: false
+  },
+  {
+    key: "permission.kpi-evaluation.create",
+    category: "Chi ti?t quy?n",
+    label: "kpi-evaluation create",
+    adminOnly: false
+  },
+  {
+    key: "permission.kpi-goals.manage",
+    category: "Chi ti?t quy?n",
+    label: "kpi-goals manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.kpi-goals.view",
+    category: "Chi ti?t quy?n",
+    label: "kpi-goals view",
+    adminOnly: false
+  },
+  {
+    key: "permission.kpi-goals.create",
+    category: "Chi ti?t quy?n",
+    label: "kpi-goals create",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-tasks.manage",
+    category: "Chi ti?t quy?n",
+    label: "work-tasks manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-tasks.view",
+    category: "Chi ti?t quy?n",
+    label: "work-tasks view",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-tasks.create",
+    category: "Chi ti?t quy?n",
+    label: "work-tasks create",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-timesheet.manage",
+    category: "Chi ti?t quy?n",
+    label: "work-timesheet manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-timesheet.view",
+    category: "Chi ti?t quy?n",
+    label: "work-timesheet view",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-timesheet.create",
+    category: "Chi ti?t quy?n",
+    label: "work-timesheet create",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-projects.manage",
+    category: "Chi ti?t quy?n",
+    label: "work-projects manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-projects.view",
+    category: "Chi ti?t quy?n",
+    label: "work-projects view",
+    adminOnly: false
+  },
+  {
+    key: "permission.work-projects.create",
+    category: "Chi ti?t quy?n",
+    label: "work-projects create",
+    adminOnly: false
+  },
+  {
+    key: "permission.performance-reviews.manage",
+    category: "Chi ti?t quy?n",
+    label: "performance-reviews manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.performance-reviews.view",
+    category: "Chi ti?t quy?n",
+    label: "performance-reviews view",
+    adminOnly: false
+  },
+  {
+    key: "permission.performance-reviews.create",
+    category: "Chi ti?t quy?n",
+    label: "performance-reviews create",
+    adminOnly: false
+  },
+  {
+    key: "permission.digital-signatures.manage",
+    category: "Chi ti?t quy?n",
+    label: "digital-signatures manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.digital-signatures.view",
+    category: "Chi ti?t quy?n",
+    label: "digital-signatures view",
+    adminOnly: false
+  },
+  {
+    key: "permission.digital-signatures.create",
+    category: "Chi ti?t quy?n",
+    label: "digital-signatures create",
+    adminOnly: false
+  },
+  {
+    key: "permission.digital-signature-records.manage",
+    category: "Chi ti?t quy?n",
+    label: "digital-signature-records manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.digital-signature-records.view",
+    category: "Chi ti?t quy?n",
+    label: "digital-signature-records view",
+    adminOnly: false
+  },
+  {
+    key: "permission.digital-signature-records.create",
+    category: "Chi ti?t quy?n",
+    label: "digital-signature-records create",
+    adminOnly: false
+  },
+  {
+    key: "permission.reports.manage",
+    category: "Chi ti?t quy?n",
+    label: "reports manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.reports.view",
+    category: "Chi ti?t quy?n",
+    label: "reports view",
+    adminOnly: false
+  },
+  {
+    key: "permission.reports.create",
+    category: "Chi ti?t quy?n",
+    label: "reports create",
+    adminOnly: false
+  },
+  {
+    key: "permission.reports-dashboard.manage",
+    category: "Chi ti?t quy?n",
+    label: "reports-dashboard manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.reports-dashboard.view",
+    category: "Chi ti?t quy?n",
+    label: "reports-dashboard view",
+    adminOnly: false
+  },
+  {
+    key: "permission.reports-dashboard.create",
+    category: "Chi ti?t quy?n",
+    label: "reports-dashboard create",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-groups.manage",
+    category: "Chi ti?t quy?n",
+    label: "social-groups manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-groups.view",
+    category: "Chi ti?t quy?n",
+    label: "social-groups view",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-groups.create",
+    category: "Chi ti?t quy?n",
+    label: "social-groups create",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-posts.manage",
+    category: "Chi ti?t quy?n",
+    label: "social-posts manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-posts.view",
+    category: "Chi ti?t quy?n",
+    label: "social-posts view",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-posts.create",
+    category: "Chi ti?t quy?n",
+    label: "social-posts create",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-wall.manage",
+    category: "Chi ti?t quy?n",
+    label: "social-wall manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-wall.view",
+    category: "Chi ti?t quy?n",
+    label: "social-wall view",
+    adminOnly: false
+  },
+  {
+    key: "permission.social-wall.create",
+    category: "Chi ti?t quy?n",
+    label: "social-wall create",
+    adminOnly: false
+  },
+  {
+    key: "permission.support-tickets.manage",
+    category: "Chi ti?t quy?n",
+    label: "support-tickets manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.support-tickets.view",
+    category: "Chi ti?t quy?n",
+    label: "support-tickets view",
+    adminOnly: false
+  },
+  {
+    key: "permission.support-tickets.create",
+    category: "Chi ti?t quy?n",
+    label: "support-tickets create",
+    adminOnly: false
+  },
+  {
+    key: "permission.training.manage",
+    category: "Chi ti?t quy?n",
+    label: "training manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.training.view",
+    category: "Chi ti?t quy?n",
+    label: "training view",
+    adminOnly: false
+  },
+  {
+    key: "permission.training.create",
+    category: "Chi ti?t quy?n",
+    label: "training create",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation.manage",
+    category: "Chi ti?t quy?n",
+    label: "automation manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation.view",
+    category: "Chi ti?t quy?n",
+    label: "automation view",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation.create",
+    category: "Chi ti?t quy?n",
+    label: "automation create",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation-alerts.manage",
+    category: "Chi ti?t quy?n",
+    label: "automation-alerts manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation-alerts.view",
+    category: "Chi ti?t quy?n",
+    label: "automation-alerts view",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation-alerts.create",
+    category: "Chi ti?t quy?n",
+    label: "automation-alerts create",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation-approval-flow.manage",
+    category: "Chi ti?t quy?n",
+    label: "automation-approval-flow manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation-approval-flow.view",
+    category: "Chi ti?t quy?n",
+    label: "automation-approval-flow view",
+    adminOnly: false
+  },
+  {
+    key: "permission.automation-approval-flow.create",
+    category: "Chi ti?t quy?n",
+    label: "automation-approval-flow create",
+    adminOnly: false
+  },
+  {
+    key: "permission.assistant-knowledge.manage",
+    category: "Chi ti?t quy?n",
+    label: "assistant-knowledge manage",
+    adminOnly: false
+  },
+  {
+    key: "permission.assistant-knowledge.view",
+    category: "Chi ti?t quy?n",
+    label: "assistant-knowledge view",
+    adminOnly: false
+  },
+  {
+    key: "permission.assistant-knowledge.create",
+    category: "Chi ti?t quy?n",
+    label: "assistant-knowledge create",
+    adminOnly: false
   }
 ];
 
@@ -950,30 +1599,222 @@ export const adminOperationEvents = [
 ];
 
 export const departments = [
-  { id: "dep-001", code: "DEP-001", name: "Ban Giám Đốc", headId: "emp-001", parentId: null, headcount: 3 },
-  { id: "dep-002", code: "DEP-002", name: "Chi nhánh Miền Bắc", headId: "emp-010", parentId: null, headcount: 62 },
-  { id: "dep-003", code: "DEP-003", name: "Kinh doanh Miền Bắc", headId: "emp-011", parentId: "dep-002", headcount: 34 },
-  { id: "dep-004", code: "DEP-004", name: "Cửa hàng Hà Nội - Cầu Giấy", headId: "emp-012", parentId: "dep-003", headcount: 10 },
-  { id: "dep-005", code: "DEP-005", name: "Cửa hàng Hà Nội - Long Biên", headId: "emp-013", parentId: "dep-003", headcount: 9 },
-  { id: "dep-006", code: "DEP-006", name: "Cửa hàng Hải Phòng", headId: "emp-014", parentId: "dep-003", headcount: 8 },
-  { id: "dep-007", code: "DEP-007", name: "Kho vận Miền Bắc", headId: "emp-015", parentId: "dep-002", headcount: 18 },
-  { id: "dep-008", code: "DEP-008", name: "Chi nhánh Miền Nam", headId: "emp-003", parentId: null, headcount: 74 },
-  { id: "dep-009", code: "DEP-009", name: "Kinh doanh Miền Nam", headId: "emp-003", parentId: "dep-008", headcount: 42 },
-  { id: "dep-010", code: "DEP-010", name: "Cửa hàng TP.HCM - Quận 1", headId: "emp-016", parentId: "dep-009", headcount: 11 },
-  { id: "dep-011", code: "DEP-011", name: "Cửa hàng TP.HCM - Thủ Đức", headId: "emp-017", parentId: "dep-009", headcount: 10 },
-  { id: "dep-012", code: "DEP-012", name: "Cửa hàng Bình Dương", headId: "emp-018", parentId: "dep-009", headcount: 8 },
-  { id: "dep-013", code: "DEP-013", name: "Kho vận Miền Nam", headId: "emp-019", parentId: "dep-008", headcount: 20 },
-  { id: "dep-014", code: "DEP-014", name: "Kinh doanh toàn quốc", headId: "emp-020", parentId: null, headcount: 38 },
-  { id: "dep-015", code: "DEP-015", name: "Telesales & Online", headId: "emp-021", parentId: "dep-014", headcount: 16 },
-  { id: "dep-016", code: "DEP-016", name: "Key Account / B2B", headId: "emp-022", parentId: "dep-014", headcount: 12 },
-  { id: "dep-017", code: "DEP-017", name: "CSKH & Chăm sóc sau bán", headId: "emp-023", parentId: "dep-014", headcount: 10 },
-  { id: "dep-018", code: "DEP-018", name: "Marketing & Thương hiệu", headId: "emp-024", parentId: null, headcount: 18 },
-  { id: "dep-019", code: "DEP-019", name: "Digital Marketing", headId: "emp-025", parentId: "dep-018", headcount: 9 },
-  { id: "dep-020", code: "DEP-020", name: "Trade Marketing", headId: "emp-026", parentId: "dep-018", headcount: 7 },
-  { id: "dep-021", code: "DEP-021", name: "Back Office", headId: "emp-027", parentId: null, headcount: 31 },
-  { id: "dep-022", code: "DEP-022", name: "People Operations", headId: "emp-002", parentId: "dep-021", headcount: 8 },
-  { id: "dep-023", code: "DEP-023", name: "Tài chính - Kế toán", headId: "emp-028", parentId: "dep-021", headcount: 7 },
-  { id: "dep-024", code: "DEP-024", name: "Technology", headId: "emp-001", parentId: "dep-021", headcount: 12 }
+  {
+    id: "org-company-srg",
+    code: "SRG",
+    name: "Công ty Cổ phần SRG",
+    headId: null,
+    parentId: null,
+    permissionStructure: "company",
+    departmentType: null,
+    businessUnit: null,
+    description: "Đơn vị pháp nhân gốc của toàn bộ cây tổ chức.",
+    isManagementUnit: true
+  },
+  {
+    id: "org-executive-board",
+    code: "SRG-BGD",
+    name: "Ban Giám đốc",
+    headId: null,
+    parentId: "org-company-srg",
+    permissionStructure: "department",
+    departmentType: "department",
+    businessUnit: null,
+    description: "Ban điều hành công ty.",
+    isManagementUnit: true
+  },
+  {
+    id: "org-branch-north",
+    code: "SRG-CNMB",
+    name: "Chi nhánh Miền Bắc",
+    headId: null,
+    parentId: "org-company-srg",
+    permissionStructure: "branch",
+    departmentType: "branch",
+    businessUnit: "business",
+    description: "Chi nhánh phụ trách thị trường miền Bắc.",
+    isManagementUnit: true
+  },
+  {
+    id: "org-sales-north",
+    code: "SRG-KDMB",
+    name: "Kinh doanh Miền Bắc",
+    headId: null,
+    parentId: "org-branch-north",
+    permissionStructure: "department",
+    departmentType: "department",
+    businessUnit: "business",
+    description: "Đơn vị kinh doanh thuộc Chi nhánh Miền Bắc.",
+    isManagementUnit: false
+  },
+  {
+    id: "org-logistics-north",
+    code: "SRG-KVMB",
+    name: "Kho vận Miền Bắc",
+    headId: null,
+    parentId: "org-branch-north",
+    permissionStructure: "department",
+    departmentType: "department",
+    businessUnit: "operations",
+    description: "Đơn vị kho vận thuộc Chi nhánh Miền Bắc.",
+    isManagementUnit: false
+  },
+  {
+    id: "org-branch-south",
+    code: "SRG-CNMN",
+    name: "Chi nhánh Miền Nam",
+    headId: null,
+    parentId: "org-company-srg",
+    permissionStructure: "branch",
+    departmentType: "branch",
+    businessUnit: "business",
+    description: "Chi nhánh phụ trách thị trường miền Nam.",
+    isManagementUnit: true
+  },
+  {
+    id: "org-sales-south",
+    code: "SRG-KDMN",
+    name: "Kinh doanh Miền Nam",
+    headId: "emp-003",
+    parentId: "org-branch-south",
+    permissionStructure: "department",
+    departmentType: "department",
+    businessUnit: "business",
+    description: "Đơn vị kinh doanh thuộc Chi nhánh Miền Nam.",
+    isManagementUnit: false
+  },
+  {
+    id: "org-logistics-south",
+    code: "SRG-KVMN",
+    name: "Kho vận Miền Nam",
+    headId: null,
+    parentId: "org-branch-south",
+    permissionStructure: "department",
+    departmentType: "department",
+    businessUnit: "operations",
+    description: "Đơn vị kho vận thuộc Chi nhánh Miền Nam.",
+    isManagementUnit: false
+  },
+  {
+    id: "org-national-sales",
+    code: "SRG-KDTQ",
+    name: "Kinh doanh toàn quốc",
+    headId: null,
+    parentId: "org-company-srg",
+    permissionStructure: "department",
+    departmentType: "department",
+    businessUnit: "business",
+    description: "Khối kinh doanh và phát triển khách hàng toàn quốc.",
+    isManagementUnit: true
+  },
+  {
+    id: "org-telesales",
+    code: "SRG-TS",
+    name: "Telesales & Online",
+    headId: null,
+    parentId: "org-national-sales",
+    permissionStructure: "department",
+    departmentType: "team",
+    businessUnit: "business",
+    description: "Kênh bán hàng từ xa và trực tuyến.",
+    isManagementUnit: false
+  },
+  {
+    id: "org-key-account",
+    code: "SRG-KA",
+    name: "Key Account / B2B",
+    headId: null,
+    parentId: "org-national-sales",
+    permissionStructure: "department",
+    departmentType: "team",
+    businessUnit: "business",
+    description: "Đơn vị phụ trách khách hàng doanh nghiệp.",
+    isManagementUnit: false
+  },
+  {
+    id: "org-customer-care",
+    code: "SRG-CSKH",
+    name: "CSKH & Chăm sóc sau bán",
+    headId: null,
+    parentId: "org-national-sales",
+    permissionStructure: "department",
+    departmentType: "team",
+    businessUnit: "business",
+    description: "Đơn vị chăm sóc và duy trì khách hàng.",
+    isManagementUnit: false
+  },
+  {
+    id: "org-marketing",
+    code: "SRG-MKT",
+    name: "Marketing & Thương hiệu",
+    headId: null,
+    parentId: "org-company-srg",
+    permissionStructure: "department",
+    departmentType: "department",
+    businessUnit: "business",
+    description: "Phụ trách marketing và phát triển thương hiệu.",
+    isManagementUnit: true
+  },
+  {
+    id: "org-digital-marketing",
+    code: "SRG-DM",
+    name: "Digital Marketing",
+    headId: null,
+    parentId: "org-marketing",
+    permissionStructure: "department",
+    departmentType: "team",
+    businessUnit: "business",
+    description: "Nhóm triển khai các kênh marketing số.",
+    isManagementUnit: false
+  },
+  {
+    id: "org-back-office",
+    code: "SRG-BO",
+    name: "Back Office",
+    headId: null,
+    parentId: "org-company-srg",
+    permissionStructure: "department",
+    departmentType: "department",
+    businessUnit: "operations",
+    description: "Khối nghiệp vụ hỗ trợ hoạt động toàn công ty.",
+    isManagementUnit: true
+  },
+  {
+    id: "org-people-operations",
+    code: "SRG-HR",
+    name: "People Operations",
+    headId: "emp-002",
+    parentId: "org-back-office",
+    permissionStructure: "department",
+    departmentType: "department",
+    businessUnit: "hr",
+    description: "Quản trị nhân sự và vận hành nguồn nhân lực.",
+    isManagementUnit: false
+  },
+  {
+    id: "org-finance",
+    code: "SRG-FIN",
+    name: "Tài chính - Kế toán",
+    headId: null,
+    parentId: "org-back-office",
+    permissionStructure: "department",
+    departmentType: "department",
+    businessUnit: "accounting",
+    description: "Quản trị tài chính, kế toán và kiểm soát chi phí.",
+    isManagementUnit: false
+  },
+  {
+    id: "org-technology",
+    code: "SRG-TECH",
+    name: "Technology",
+    headId: "emp-001",
+    parentId: "org-back-office",
+    permissionStructure: "department",
+    departmentType: "department",
+    businessUnit: "operations",
+    description: "Phát triển và vận hành hệ thống công nghệ.",
+    isManagementUnit: false
+  }
 ];
 
 export const contracts = [

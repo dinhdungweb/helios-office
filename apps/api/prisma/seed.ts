@@ -33,6 +33,9 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: databaseUrl })
 });
 
+const stagingDepartmentId = "seed-department-staging";
+const companyDepartmentId = "org-company-srg";
+
 const deviceAuthPolicySeed = {
   id: "default",
   maxDevicesPerUser: 1,
@@ -400,6 +403,11 @@ async function seedDepartments() {
         name: department.name,
         parentId: department.parentId,
         headId: department.headId,
+        permissionStructure: department.permissionStructure,
+        departmentType: department.departmentType,
+        businessUnit: department.businessUnit,
+        description: department.description,
+        isManagementUnit: department.isManagementUnit,
         status: "active",
         archivedAt: null
       },
@@ -409,10 +417,61 @@ async function seedDepartments() {
         name: department.name,
         parentId: department.parentId,
         headId: department.headId,
+        permissionStructure: department.permissionStructure,
+        departmentType: department.departmentType,
+        businessUnit: department.businessUnit,
+        description: department.description,
+        isManagementUnit: department.isManagementUnit,
         status: "active"
       }
     });
   }
+}
+
+async function prepareDepartmentTreeReset() {
+  await prisma.department.upsert({
+    where: { id: stagingDepartmentId },
+    update: {
+      code: "SEED-STAGING",
+      name: "Seed Department Staging",
+      parentId: null,
+      headId: null,
+      permissionStructure: "department",
+      departmentType: "department",
+      businessUnit: null,
+      description: "Temporary department used while rebuilding seeded organization data.",
+      isManagementUnit: false,
+      status: "active",
+      archivedAt: null
+    },
+    create: {
+      id: stagingDepartmentId,
+      code: "SEED-STAGING",
+      name: "Seed Department Staging",
+      permissionStructure: "department",
+      departmentType: "department",
+      description: "Temporary department used while rebuilding seeded organization data."
+    }
+  });
+
+  await prisma.employee.updateMany({
+    data: { departmentId: stagingDepartmentId }
+  });
+
+  await prisma.department.deleteMany({
+    where: { id: { not: stagingDepartmentId } }
+  });
+}
+
+async function finishDepartmentTreeReset() {
+  await prisma.employee.updateMany({
+    where: { departmentId: stagingDepartmentId },
+    data: { departmentId: companyDepartmentId }
+  });
+
+  await prisma.department.delete({
+    where: { id: stagingDepartmentId }
+  });
 }
 
 async function seedJobCatalog() {
@@ -748,10 +807,12 @@ async function seedDeviceAuth() {
 async function main() {
   await seedPermissionDefinitions();
   await seedPermissionGroups();
+  await prepareDepartmentTreeReset();
   await seedDepartments();
   await seedJobCatalog();
   await seedUserAccounts();
   await seedEmployees();
+  await finishDepartmentTreeReset();
   await seedContracts();
   await seedLeaveRequests();
   await seedAttendance();

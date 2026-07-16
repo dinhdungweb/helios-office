@@ -189,7 +189,10 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
       throw new Error("Tài khoản hiện tại không có quyền quản trị hệ thống.");
     }
 
-    throw new Error(`${path} returned ${response.status}`);
+    const errorBody = await response.json().catch(() => null) as { message?: string | string[] } | null;
+    const message = Array.isArray(errorBody?.message) ? errorBody.message.join(". ") : errorBody?.message;
+
+    throw new Error(message || `${path} returned ${response.status}`);
   }
 
   return response.json() as Promise<T>;
@@ -385,5 +388,11 @@ export async function archivePermissionGroup(groupId: string) {
 export async function restorePermissionGroup(groupId: string) {
   return requestJson<unknown>(`/account-access/groups/${groupId}/restore`, {
     method: "POST"
+  });
+}
+
+export async function deletePermissionGroup(groupId: string) {
+  return requestJson<unknown>(`/account-access/groups/${groupId}`, {
+    method: "DELETE"
   });
 }

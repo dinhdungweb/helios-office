@@ -314,7 +314,12 @@ export class EmployeesService {
             code,
             name: dto.name,
             parentId: dto.parentId ?? null,
-            headId: dto.headId ?? null
+            headId: dto.headId ?? null,
+            permissionStructure: dto.permissionStructure ?? "department",
+            departmentType: dto.departmentType ?? null,
+            businessUnit: dto.businessUnit ?? null,
+            description: dto.description ?? null,
+            isManagementUnit: dto.isManagementUnit ?? false
           },
           include: departmentInclude
         });
@@ -366,7 +371,12 @@ export class EmployeesService {
         data: {
           name: dto.name,
           parentId: dto.parentId,
-          headId: dto.headId
+          headId: dto.headId,
+          permissionStructure: dto.permissionStructure,
+          departmentType: dto.departmentType,
+          businessUnit: dto.businessUnit,
+          description: dto.description,
+          isManagementUnit: dto.isManagementUnit
         },
         include: departmentInclude
       });
@@ -452,6 +462,30 @@ export class EmployeesService {
     await this.writeEmployeeAudit("department.restore", "Department", department.id, before, department, actorId);
 
     return this.resolveDepartment(department);
+  }
+
+  async deleteDepartment(id: string, actorId?: string) {
+    const before = await this.prisma.department.findUnique({
+      where: { id },
+      include: departmentInclude
+    });
+
+    if (!before) {
+      throw new NotFoundException(`Department ${id} was not found`);
+    }
+
+    if (before.status !== DepartmentStatus.archived) {
+      throw new ConflictException("Archive the department before permanently deleting it");
+    }
+
+    if (before._count.employees > 0 || before._count.children > 0) {
+      throw new ConflictException("Move employees and child departments before deleting this department");
+    }
+
+    await this.prisma.department.delete({ where: { id } });
+    await this.writeEmployeeAudit("department.delete", "Department", id, before, null, actorId);
+
+    return { id, deleted: true };
   }
 
   async findJobPositions(includeArchived = false) {

@@ -46,6 +46,7 @@ function DialogForm({
 }) {
   const [state, formAction, isPending] = useActionState(updateAccountAction, initialState);
   const selectedPermissions = new Set(account?.customPermissionKeys ?? []);
+  const visiblePermissions = permissions.filter((permission) => !permission.key.startsWith("permission."));
   const assignableGroups = groups.filter((group) => group.status !== "archived" || group.id === account?.groupId);
 
   useEffect(() => {
@@ -111,7 +112,7 @@ function DialogForm({
       <fieldset className="account-dialog-permissions">
         <legend>Quyền cá nhân</legend>
         <div className="account-dialog-permission-grid">
-          {permissions.map((permission) => (
+          {visiblePermissions.map((permission) => (
             <FormCheckbox
               name="customPermissionKeys"
               value={permission.key}

@@ -4,7 +4,7 @@ import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, ModalDialog } from "@/components/ui/primitives";
 import { updateAccountAction, type AccountFormState } from "@/lib/account-access-actions";
-import { CheckCircle, X, Users } from "@/lib/icons";
+import { CaretDown, CheckCircle, X, Users } from "@/lib/icons";
 import type { AccountPermission, ManagedUserAccount, PermissionGroup } from "@/lib/account-access-api";
 
 const initialState: AccountFormState = {
@@ -24,7 +24,9 @@ function permissionItemsFor(group: PermissionGroup, permissions: AccountPermissi
   const allowedKeys = group.permissionKeys;
   const allowedKeySet = new Set(allowedKeys);
 
-  return permissions.filter((permission) => allowedKeySet.has(permission.key));
+  return permissions.filter(
+    (permission) => allowedKeySet.has(permission.key) && !permission.key.startsWith("permission.")
+  );
 }
 
 function summarizePermissionItems(permissions: AccountPermission[]): PermissionPreviewItem[] {
@@ -107,14 +109,30 @@ export function AccountGroupChangeDialog({
   );
   const [selectedGroupId, setSelectedGroupId] = useState(account.groupId ?? assignableGroups[0]?.id ?? "");
   const [isGroupListOpen, setIsGroupListOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const selectedGroup = assignableGroups.find((group) => group.id === selectedGroupId) ?? null;
 
   useEffect(() => {
     if (state.ok) {
       dialogRef.current?.close();
+      setSuccessMessage("Đã cập nhật nhóm và quyền người dùng.");
       router.refresh();
+      return;
     }
-  }, [router, state.ok]);
+
+    if (state.error && !dialogRef.current?.open) {
+      dialogRef.current?.showModal();
+    }
+  }, [router, state.error, state.message, state.ok]);
+
+  useEffect(() => {
+    if (!successMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setSuccessMessage(""), 3500);
+    return () => window.clearTimeout(timeoutId);
+  }, [successMessage]);
 
   const openDialog = () => {
     setSelectedGroupId(account.groupId ?? assignableGroups[0]?.id ?? "");
@@ -124,6 +142,13 @@ export function AccountGroupChangeDialog({
 
   return (
     <>
+      {successMessage ? (
+        <div className="account-group-change-success" role="status">
+          <CheckCircle size={18} weight="fill" aria-hidden="true" />
+          <span>{successMessage}</span>
+        </div>
+      ) : null}
+
       <button className="admin-account-action-button" type="button" onClick={openDialog}>
         <Users size={15} weight="duotone" aria-hidden="true" />
         Đổi nhóm
@@ -135,18 +160,17 @@ export function AccountGroupChangeDialog({
         title="Cập nhật nhóm người dùng"
         onCloseRequest={() => dialogRef.current?.close()}
       >
-        <form className="account-group-change-form" action={formAction}>
+        <form
+          className="account-group-change-form"
+          action={formAction}
+          onSubmit={() => dialogRef.current?.close()}
+        >
           <input name="accountId" type="hidden" value={account.id} />
           <input name="displayName" type="hidden" value={account.name} />
           <input name="email" type="hidden" value={account.email} />
           <input name="adminRole" type="hidden" value={account.role} />
           <input name="accountStatus" type="hidden" value={account.status} />
           <input name="permissionGroupId" type="hidden" value={selectedGroupId} />
-          {account.customPermissionKeys.map((permissionKey) => (
-            <input name="customPermissionKeys" type="hidden" value={permissionKey} key={permissionKey} />
-          ))}
-          {account.customPermissionNote ? <input name="customPermissionNote" type="hidden" value={account.customPermissionNote} /> : null}
-
           <div className="account-group-change-grid">
             <label>
               <span>Tài khoản</span>
@@ -168,7 +192,7 @@ export function AccountGroupChangeDialog({
               onClick={() => setIsGroupListOpen((current) => !current)}
             >
               <span>{selectedGroup?.name ?? "Chọn nhóm người dùng"}</span>
-              <i aria-hidden="true" />
+              <CaretDown className="account-group-select-arrow" size={17} weight="duotone" aria-hidden="true" />
             </button>
 
             {isGroupListOpen ? (
@@ -196,9 +220,9 @@ export function AccountGroupChangeDialog({
           </div>
 
           <div className="account-group-change-note">
-            <p>Khi chuyển người dùng sang 1 nhóm mới:</p>
-            <p>+ Người dùng chưa được tùy chỉnh quyền sẽ được cấp quyền theo nhóm mới.</p>
-            <p>+ Người dùng đã được tùy chỉnh quyền sẽ giữ nguyên quyền tùy chỉnh.</p>
+            <p>Khi chuyển người dùng sang nhóm mới:</p>
+            <p>+ Quyền tùy chỉnh riêng của tài khoản sẽ được xóa.</p>
+            <p>+ Người dùng sẽ được cấp quyền theo nhóm mới.</p>
           </div>
 
           {state.error ? <p className="account-dialog-error">{state.error}</p> : null}

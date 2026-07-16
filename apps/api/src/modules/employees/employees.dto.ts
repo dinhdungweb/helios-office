@@ -5,6 +5,7 @@ import {
   IsDateString,
   IsEmail,
   IsEnum,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -265,6 +266,31 @@ export class CreateDepartmentDto {
   @IsOptional()
   @IsString()
   headId?: string | null;
+
+  @ApiPropertyOptional({ enum: ["company", "branch", "department"], default: "department" })
+  @IsOptional()
+  @IsIn(["company", "branch", "department"])
+  permissionStructure?: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  departmentType?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  businessUnit?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isManagementUnit?: boolean;
 }
 
 export class UpdateDepartmentDto {
@@ -283,6 +309,31 @@ export class UpdateDepartmentDto {
   @IsOptional()
   @IsString()
   headId?: string | null;
+
+  @ApiPropertyOptional({ enum: ["company", "branch", "department"] })
+  @IsOptional()
+  @IsIn(["company", "branch", "department"])
+  permissionStructure?: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  departmentType?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  businessUnit?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isManagementUnit?: boolean;
 }
 
 export class CreateJobPositionDto {

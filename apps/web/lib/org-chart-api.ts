@@ -18,6 +18,11 @@ export type DepartmentRecord = {
   parentName: string | null;
   headId: string | null;
   head: DepartmentHead | null;
+  permissionStructure: "company" | "branch" | "department";
+  departmentType: string | null;
+  businessUnit: string | null;
+  description: string | null;
+  isManagementUnit: boolean;
   status: DepartmentStatus;
   archivedAt?: string | null;
   headcount: number;
@@ -47,6 +52,11 @@ type ApiDepartment = {
   parentName?: string | null;
   headId?: string | null;
   head?: DepartmentHead | null;
+  permissionStructure?: "company" | "branch" | "department";
+  departmentType?: string | null;
+  businessUnit?: string | null;
+  description?: string | null;
+  isManagementUnit?: boolean;
   status?: DepartmentStatus;
   archivedAt?: string | null;
   headcount?: number;
@@ -91,6 +101,11 @@ function normalizeDepartment(department: ApiDepartment): DepartmentRecord {
     parentName: department.parentName ?? null,
     headId: department.headId ?? null,
     head: department.head ?? null,
+    permissionStructure: department.permissionStructure ?? "department",
+    departmentType: department.departmentType ?? null,
+    businessUnit: department.businessUnit ?? null,
+    description: department.description ?? null,
+    isManagementUnit: department.isManagementUnit ?? false,
     status: department.status ?? "active",
     archivedAt: department.archivedAt ?? null,
     headcount: department.headcount ?? 0,
