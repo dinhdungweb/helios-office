@@ -27,7 +27,7 @@ function isAccessTokenFresh(token: string) {
   const expiresAt = getJwtExpiresAt(token);
 
   if (!expiresAt) {
-    return true;
+    return false;
   }
 
   return expiresAt > Date.now() + 60_000;
@@ -67,5 +67,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"]
+  matcher: ["/", "/user/:path*", "/admin/:path*"]
 };

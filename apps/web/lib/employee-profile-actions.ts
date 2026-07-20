@@ -7,7 +7,75 @@ import { getSessionAccessToken } from "@/lib/auth-session";
 export type EmployeeCreateFormState = {
   ok: boolean;
   error?: string;
+  employeeId?: string;
 };
+
+const employeeCoreFields = new Set([
+  "code", "fullName", "title", "positionId", "jobTitleId", "departmentId", "managerId",
+  "startDate", "status", "employeeType", "officialStartDate", "avatarUrl", "attendanceCode",
+  "attendanceMode", "payrollTemplate", "standardWorkdays", "createAccount", "username",
+  "initialPassword", "requirePasswordChange", "adminRole", "accountStatus",
+  "permissionGroupId", "sendInviteEmail"
+]);
+
+function readProfileData(formData: FormData) {
+  const profileData: Record<string, string | string[] | boolean> = {};
+
+  for (const [key, rawValue] of formData.entries()) {
+    if (key.startsWith("$ACTION_") || employeeCoreFields.has(key) || typeof rawValue !== "string") continue;
+    const value = rawValue.trim();
+    if (!value || value === "none") continue;
+
+    const current = profileData[key];
+    profileData[key] = current === undefined
+      ? value
+      : Array.isArray(current)
+        ? [...current, value]
+        : typeof current === "string"
+          ? [current, value]
+          : value;
+  }
+
+  for (let index = 1; index <= 21; index += 1) {
+    const key = `onboardingItem${index}`;
+    profileData[key] = formData.has(key);
+  }
+
+  profileData.isDigitalContract = formData.has("isDigitalContract");
+  return profileData;
+}
+
+async function readDocuments(formData: FormData) {
+  const documents: Array<{
+    fieldName: string;
+    fileName: string;
+    mimeType: string;
+    size: number;
+    contentBase64: string;
+  }> = [];
+  let totalSize = 0;
+
+  for (const [fieldName, value] of formData.entries()) {
+    if (typeof value === "string" || value.size === 0) continue;
+    if (value.size > 5 * 1024 * 1024) {
+      throw new Error(`Tệp ${value.name} vượt quá giới hạn 5 MB.`);
+    }
+    totalSize += value.size;
+    if (totalSize > 20 * 1024 * 1024) {
+      throw new Error("Tổng dung lượng tệp đính kèm vượt quá giới hạn 20 MB.");
+    }
+
+    documents.push({
+      fieldName,
+      fileName: value.name,
+      mimeType: value.type || "application/octet-stream",
+      size: value.size,
+      contentBase64: Buffer.from(await value.arrayBuffer()).toString("base64")
+    });
+  }
+
+  return documents;
+}
 
 function readOptionalString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -89,6 +157,15 @@ export async function createEmployeeProfileAction(
       attendanceMode: readOptionalString(formData, "attendanceMode"),
       payrollTemplate: readOptionalString(formData, "payrollTemplate"),
       standardWorkdays: readNumber(formData, "standardWorkdays"),
+      profileData: readProfileData(formData),
+      documents: await readDocuments(formData),
+      contract: readOptionalString(formData, "contractType") && readOptionalString(formData, "contractStartDate")
+        ? {
+            type: readRequiredString(formData, "contractType"),
+            startDate: readRequiredString(formData, "contractStartDate"),
+            endDate: readOptionalString(formData, "contractEndDate")
+          }
+        : undefined,
       createAccount,
       account: createAccount
         ? {
@@ -125,6 +202,8 @@ export async function createEmployeeProfileAction(
     };
   }
 
+  const employee = (await response.json()) as { id?: string };
+
   revalidatePath("/admin/settings/accounts");
   revalidatePath("/admin/hr/employees");
   revalidatePath("/admin/hr/employees/new");
@@ -135,5 +214,5 @@ export async function createEmployeeProfileAction(
   revalidatePath("/personnel-profile-profile");
   revalidatePath("/personnel-profile-profile/add");
 
-  return { ok: true };
+  return { ok: true, employeeId: employee.id };
 }

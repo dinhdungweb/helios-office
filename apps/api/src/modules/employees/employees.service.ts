@@ -24,6 +24,17 @@ const employeeInclude = {
   userAccount: true,
   contracts: {
     orderBy: { startDate: "desc" }
+  },
+  documents: {
+    select: {
+      id: true,
+      fieldName: true,
+      fileName: true,
+      mimeType: true,
+      size: true,
+      createdAt: true
+    },
+    orderBy: { createdAt: "asc" }
   }
 } satisfies Prisma.EmployeeInclude;
 
@@ -79,6 +90,18 @@ export class EmployeesService {
     }
 
     return this.resolveEmployee(employee);
+  }
+
+  async getDocument(employeeId: string, documentId: string) {
+    const document = await this.prisma.employeeDocument.findFirst({
+      where: { id: documentId, employeeId }
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document ${documentId} was not found`);
+    }
+
+    return document;
   }
 
   async create(dto: CreateEmployeeDto, actorId?: string) {
@@ -146,11 +169,37 @@ export class EmployeesService {
             attendanceMode: dto.attendanceMode ?? null,
             payrollTemplate: dto.payrollTemplate ?? null,
             standardWorkdays: dto.standardWorkdays ?? null,
+            profileData: dto.profileData as Prisma.InputJsonValue | undefined,
             departmentId: dto.departmentId,
             managerId: dto.managerId,
             userAccountId
           }
         });
+
+        if (dto.contract) {
+          await tx.contract.create({
+            data: {
+              employeeId: employee.id,
+              type: dto.contract.type,
+              startDate: new Date(dto.contract.startDate),
+              endDate: dto.contract.endDate ? new Date(dto.contract.endDate) : null,
+              status: "active"
+            }
+          });
+        }
+
+        if (dto.documents?.length) {
+          await tx.employeeDocument.createMany({
+            data: dto.documents.map((document) => ({
+              employeeId: employee.id,
+              fieldName: document.fieldName,
+              fileName: document.fileName,
+              mimeType: document.mimeType || "application/octet-stream",
+              size: document.size,
+              content: Buffer.from(document.contentBase64, "base64")
+            }))
+          });
+        }
 
         await tx.auditLog.create({
           data: {
@@ -231,6 +280,7 @@ export class EmployeesService {
           attendanceMode: dto.attendanceMode,
           payrollTemplate: dto.payrollTemplate,
           standardWorkdays: dto.standardWorkdays,
+          profileData: dto.profileData as Prisma.InputJsonValue | undefined,
           departmentId: dto.departmentId,
           managerId: dto.managerId
         },

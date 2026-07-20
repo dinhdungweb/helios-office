@@ -2275,7 +2275,7 @@
 
 .personnel-directory-selection-bar {
   position: relative;
-  z-index: 20;
+  z-index: 80;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2361,7 +2361,7 @@
   position: absolute;
   top: calc(100% + var(--space-3));
   left: 0;
-  z-index: 90;
+  z-index: 100;
   display: grid;
   width: 240px;
   max-height: min(420px, calc(100vh - 150px));
@@ -2415,7 +2415,10 @@
 }
 
 .personnel-directory-toolbar {
-  overflow: hidden;
+  position: relative;
+  z-index: 70;
+  min-height: 48px;
+  overflow: visible;
 }
 
 .personnel-directory-table {

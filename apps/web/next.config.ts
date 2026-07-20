@@ -38,7 +38,12 @@ const allowedDevOrigins = Array.from(
 const nextConfig: NextConfig = {
   ...(process.env.NODE_ENV === "production" ? {} : { allowedDevOrigins }),
   reactStrictMode: true,
-  typedRoutes: true
+  typedRoutes: true,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "25mb"
+    }
+  }
 };
 
 export default nextConfig;

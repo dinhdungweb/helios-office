@@ -19,6 +19,17 @@ npm run dev
 - Keycloak admin: http://localhost:8080
 - MinIO console: http://localhost:9001
 
+### Đồng bộ máy chấm công
+
+App Windows `HELIOS-CHAM-CONG` gửi batch log tới:
+
+```text
+POST http://localhost:4000/api/v1/attendance/sync
+Authorization: Bearer <ATTENDANCE_SYNC_TOKEN>
+```
+
+Đặt một secret dài, ngẫu nhiên cho `ATTENDANCE_SYNC_TOKEN` trong `.env`, rồi nhập cùng URL/token trong tab API của app Windows. API lưu log gốc, chống gửi trùng, ghi lỗi mapping và tự tổng hợp lần chấm đầu/cuối thành bảng công ngày.
+
 Seeded app users use the password from `KEYCLOAK_SEED_PASSWORD` in `.env` (`Welcome@123` by default). The default app admin is `dungdd / Welcome@123`; the Keycloak admin console uses `admin / admin`. The bootstrap script creates the `helios-office` realm, the `helios-office-web` OIDC client, realm roles, seed users, and syncs each local `UserAccount.keycloakUserId` to the real Keycloak user id.
 
 ## What Is Implemented

@@ -225,6 +225,7 @@ model Employee {
   attendanceMode    String?
   payrollTemplate   String?
   standardWorkdays  Int?
+  profileData       Json?
   userAccountId     String?            @unique
   departmentId      String
   managerId         String?
@@ -235,7 +236,9 @@ model Employee {
   manager           Employee?          @relation("EmployeeManager", fields: [managerId], references: [id])
   directReports     Employee[]         @relation("EmployeeManager")
   contracts         Contract[]
+  documents         EmployeeDocument[]
   attendanceRecords AttendanceRecord[]
+  attendanceRawLogs AttendanceRawLog[]
   leaveRequests     LeaveRequest[]
   payrollItems      PayrollItem[]
   assetAssignments  AssetAssignment[]
@@ -266,6 +269,20 @@ model Department {
   employees           Employee[]
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
+}
+
+model EmployeeDocument {
+  id         String   @id @default(uuid())
+  employeeId String
+  fieldName  String
+  fileName   String
+  mimeType   String
+  size       Int
+  content    Bytes
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([employeeId, fieldName])
 }
 
 model JobPosition {
@@ -390,6 +407,53 @@ model AttendanceRecord {
   updatedAt  DateTime         @updatedAt
 
   @@unique([employeeId, workDate, source])
+}
+
+model AttendanceDevice {
+  id         String             @id @default(uuid())
+  deviceId   String             @unique
+  deviceName String?
+  storeCode  String?
+  status     String             @default("active")
+  lastSyncAt DateTime?
+  rawLogs    AttendanceRawLog[]
+  syncErrors AttendanceSyncError[]
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+}
+
+model AttendanceRawLog {
+  id           String           @id @default(uuid())
+  deviceId     String
+  employeeId   String
+  employeeCode String
+  storeCode    String?
+  punchTime    DateTime
+  verifyType   String?
+  rawPayload   Json?
+  syncedAt     DateTime         @default(now())
+  device       AttendanceDevice @relation(fields: [deviceId], references: [deviceId])
+  employee     Employee         @relation(fields: [employeeId], references: [id])
+  createdAt    DateTime         @default(now())
+
+  @@unique([deviceId, employeeCode, punchTime])
+  @@index([employeeId, punchTime])
+}
+
+model AttendanceSyncError {
+  id           String            @id @default(uuid())
+  deviceId     String
+  employeeCode String?
+  storeCode    String?
+  punchTime    DateTime?
+  errorType    String
+  errorMessage String
+  rawPayload   Json?
+  device       AttendanceDevice  @relation(fields: [deviceId], references: [deviceId])
+  createdAt    DateTime          @default(now())
+
+  @@index([deviceId, createdAt])
+  @@index([employeeCode, createdAt])
 }
 
 model LeaveRequest {

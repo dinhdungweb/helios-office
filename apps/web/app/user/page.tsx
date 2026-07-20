@@ -27,6 +27,7 @@ import { UserFrame } from "@/components/user/user-frame";
 import { getCurrentSessionUser } from "@/lib/auth-user";
 import { announcements } from "@/lib/mock-data";
 import { getEmployeeDirectoryData } from "@/lib/employee-directory-api";
+import { getMyAttendanceData } from "@/lib/attendance-api";
 
 type UserPageProps = {
   searchParams?: Promise<{
@@ -257,10 +258,12 @@ function UserHome() {
   );
 }
 
-function UserAttendance() {
+async function UserAttendance() {
+  const data = await getMyAttendanceData();
+
   return (
     <UserFrame activeModule="attendance">
-      <AttendanceBoard />
+      <AttendanceBoard data={data} />
     </UserFrame>
   );
 }
@@ -345,6 +348,19 @@ async function UserProfile({
     item.accountId === employeeId
   ));
   const isAdminView = Boolean(employee && sessionUser?.account?.adminRole === "system_admin");
+
+  if (employeeId && !employee) {
+    return (
+      <UserFrame activeModule="hcns-employees" showSearch title="Hồ sơ nhân sự">
+        <main className="employee-profile-page">
+          <section className="account-api-banner" role="alert">
+            <strong>Không tìm thấy hồ sơ nhân sự</strong>
+            <span>Hồ sơ có mã {employeeId} không tồn tại hoặc tài khoản hiện tại không có quyền xem.</span>
+          </section>
+        </main>
+      </UserFrame>
+    );
+  }
 
   return (
     <UserFrame

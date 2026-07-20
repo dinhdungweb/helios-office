@@ -36,6 +36,23 @@ export type EmployeeDirectoryRecord = {
   accountRole?: "system_admin" | "user" | null;
   accountCreatedAt?: string | null;
   permissionGroupId?: string | null;
+  profileData?: Record<string, unknown> | null;
+  documents?: Array<{
+    id: string;
+    fieldName: string;
+    fileName: string;
+    mimeType: string;
+    size: number;
+    createdAt: string;
+  }>;
+  contracts?: Array<{
+    id: string;
+    type: string;
+    startDate: string;
+    endDate?: string | null;
+    status: string;
+    createdAt: string;
+  }>;
   createdAt?: string;
   updatedAt?: string;
 };

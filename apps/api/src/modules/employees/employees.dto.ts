@@ -8,6 +8,7 @@ import {
   IsIn,
   IsInt,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   Min,
@@ -60,6 +61,39 @@ export class CreateEmployeeAccountDto {
   @IsOptional()
   @IsBoolean()
   sendInviteEmail?: boolean;
+}
+
+export class CreateEmployeeContractDto {
+  @ApiProperty({ example: "indefinite" })
+  @IsString()
+  type!: string;
+
+  @ApiProperty({ example: "2026-07-20" })
+  @IsDateString()
+  startDate!: string;
+
+  @ApiPropertyOptional({ example: "2027-07-19" })
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+}
+
+export class CreateEmployeeDocumentDto {
+  @IsString()
+  fieldName!: string;
+
+  @IsString()
+  fileName!: string;
+
+  @IsString()
+  mimeType!: string;
+
+  @IsInt()
+  @Min(1)
+  size!: number;
+
+  @IsString()
+  contentBase64!: string;
 }
 
 export class CreateEmployeeDto {
@@ -141,6 +175,23 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsNumber()
   standardWorkdays?: number;
+
+  @ApiPropertyOptional({ type: "object", additionalProperties: true })
+  @IsOptional()
+  @IsObject()
+  profileData?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ type: CreateEmployeeContractDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateEmployeeContractDto)
+  contract?: CreateEmployeeContractDto;
+
+  @ApiPropertyOptional({ type: [CreateEmployeeDocumentDto] })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CreateEmployeeDocumentDto)
+  documents?: CreateEmployeeDocumentDto[];
 
   @ApiPropertyOptional({ default: true })
   @IsOptional()
@@ -242,6 +293,11 @@ export class UpdateEmployeeDto {
   @IsOptional()
   @IsNumber()
   standardWorkdays?: number | null;
+
+  @ApiPropertyOptional({ type: "object", additionalProperties: true })
+  @IsOptional()
+  @IsObject()
+  profileData?: Record<string, unknown>;
 }
 
 export class LinkEmployeeAccountDto {

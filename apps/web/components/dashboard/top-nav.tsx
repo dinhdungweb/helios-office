@@ -56,7 +56,7 @@ export function TopNav({ user }: TopNavProps) {
         <a className="icon-button mobile-visible-action" href="/admin/settings" aria-label="Cài đặt hệ thống">
           <GearSix size={18} weight="duotone" aria-hidden="true" />
         </a>
-        <ProfileMenu user={user} />
+        <ProfileMenu canOpenAdminSettings={false} user={user} />
       </nav>
     </header>
   );

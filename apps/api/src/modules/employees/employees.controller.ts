@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Res, UseGuards } from "@nestjs/common";
+import type { Response } from "express";
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/auth.types";
@@ -48,6 +49,20 @@ export class EmployeesController {
   @ApiOkResponse({ description: "Department tree with department heads and members." })
   getOrgChart() {
     return this.employeesService.getOrgChart();
+  }
+
+  @Get(":id/documents/:documentId")
+  @RequireAnyPermission("employees.department.manage", "system.accounts.manage")
+  async getDocument(
+    @Param("id") id: string,
+    @Param("documentId") documentId: string,
+    @Res() response: Response
+  ) {
+    const document = await this.employeesService.getDocument(id, documentId);
+    response.setHeader("Content-Type", document.mimeType);
+    response.setHeader("Content-Length", document.size.toString());
+    response.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(document.fileName)}`);
+    response.send(document.content);
   }
 
   @Get(":id")

@@ -101,6 +101,20 @@ const profileRows: ProfileInfoRow[] = [
   { label: "Tài khoản HOffice", value: "dungdd", icon: UserCircle }
 ];
 
+function profileValue(employee: EmployeeDirectoryRecord | undefined, key: string) {
+  const value = employee?.profileData?.[key];
+  return typeof value === "string" && value.trim() ? value : "--";
+}
+
+function formatProfileDate(value?: string | null) {
+  if (!value) return "--";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("vi-VN").format(date);
+}
+
+const genderLabels: Record<string, string> = { female: "Nữ", male: "Nam", other: "Khác" };
+const maritalLabels: Record<string, string> = { single: "Độc thân", married: "Đã kết hôn" };
+
 function profileStatusLabel(status?: EmployeeDirectoryRecord["status"]) {
   if (status === "resigned") {
     return "Nghỉ việc";
@@ -125,12 +139,12 @@ function employeeProfileRows(employee?: EmployeeDirectoryRecord): ProfileInfoRow
   const accountName = employee.accountDisplayName ?? employee.accountEmail?.split("@")[0] ?? "--";
 
   return [
-    { label: "Email", value: employee.accountEmail ?? "--", icon: EnvelopeSimple },
-    { label: "Điện thoại", value: "--", icon: Phone, variant: "phone" },
-    { label: "Ngày sinh", value: "--", icon: Clock },
-    { label: "Nguyên quán", value: "--", icon: HouseLine },
-    { label: "Giới tính", value: "--", icon: GenderMale },
-    { label: "Hôn nhân", value: "--", icon: Star },
+    { label: "Email", value: profileValue(employee, "email") !== "--" ? profileValue(employee, "email") : employee.accountEmail ?? "--", icon: EnvelopeSimple },
+    { label: "Điện thoại", value: profileValue(employee, "phone"), icon: Phone, variant: "phone" },
+    { label: "Ngày sinh", value: formatProfileDate(profileValue(employee, "birthDate") === "--" ? null : profileValue(employee, "birthDate")), icon: Clock },
+    { label: "Nguyên quán", value: profileValue(employee, "hometown"), icon: HouseLine },
+    { label: "Giới tính", value: genderLabels[profileValue(employee, "gender")] ?? profileValue(employee, "gender"), icon: GenderMale },
+    { label: "Hôn nhân", value: maritalLabels[profileValue(employee, "maritalStatus")] ?? profileValue(employee, "maritalStatus"), icon: Star },
     { label: "Tài khoản HOffice", value: accountName, icon: UserCircle }
   ];
 }
@@ -566,7 +580,8 @@ function InfoCard({ employee }: { employee?: EmployeeDirectoryRecord }) {
   );
 }
 
-function WorkHistoryPanel() {
+function WorkHistoryPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const contract = employee?.contracts?.[0];
   return (
     <ProfilePanel
       title="Quá trình làm việc"
@@ -587,29 +602,29 @@ function WorkHistoryPanel() {
           </span>
           <div className="profile-work-content">
             <header>
-              <h3>Web</h3>
-              <ProfileStatusBadge>Đang làm việc</ProfileStatusBadge>
+              <h3>{employee?.positionName ?? employee?.title ?? "--"}</h3>
+              <ProfileStatusBadge>{profileStatusLabel(employee?.status)}</ProfileStatusBadge>
             </header>
 
             <article className="profile-work-card">
               <div>
                 <h4>
-                  Hợp đồng chính thức
+                  {contract?.type ?? "Chưa có hợp đồng"}
                   <ArrowSquareOut size={15} weight="duotone" aria-hidden="true" />
                 </h4>
-                <time dateTime="2024-01-01">01/01/2024</time>
+                <time dateTime={contract?.startDate}>{formatProfileDate(contract?.startDate)}</time>
               </div>
-              <p>SRG-035-01 • Hợp đồng chính thức • Nhân viên Fulltime</p>
-              <p className="profile-breadcrumb">SRG › Helios › Phòng MKT</p>
+              <p>{profileValue(employee, "contractCode")} • {contract?.type ?? "--"} • {employee?.jobTitleName ?? "--"}</p>
+              <p className="profile-breadcrumb">Helios › {employee?.department ?? "--"}</p>
             </article>
 
             <article className="profile-work-card">
               <div>
                 <h4>Ngày bắt đầu làm việc</h4>
-                <time dateTime="2023-02-13">13/02/2023</time>
+                <time dateTime={employee?.startDate}>{formatProfileDate(employee?.startDate)}</time>
               </div>
-              <p>Nhân viên Fulltime</p>
-              <p className="profile-breadcrumb">SRG › Helios › Phòng MKT</p>
+              <p>{employee?.employeeType ?? "--"}</p>
+              <p className="profile-breadcrumb">Helios › {employee?.department ?? "--"}</p>
             </article>
           </div>
         </div>
@@ -618,22 +633,26 @@ function WorkHistoryPanel() {
   );
 }
 
-function OnboardingPanel() {
+function OnboardingPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
   return (
     <ProfilePanel title="Tiến trình tiếp nhận hồ sơ" id="profile-onboarding">
       <div className="profile-checklist" role="list" aria-label="Hồ sơ đã tiếp nhận">
-        {checklistItems.map((item) => (
+        {checklistItems.map((item, index) => {
+          const completed = employee?.profileData?.[`onboardingItem${index + 1}`] === true;
+          return (
           <div className="profile-check-row" role="listitem" key={item.label}>
-            <Check size={17} weight="regular" aria-hidden="true" />
+            {completed ? <Check size={17} weight="regular" aria-hidden="true" /> : <span aria-hidden="true">—</span>}
             <span>{item.label}</span>
           </div>
-        ))}
+          );
+        })}
       </div>
     </ProfilePanel>
   );
 }
 
-function AwarenessPanel() {
+function AwarenessPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const rows = employee ? awarenessRows.map((row) => ({ ...row, total: "--", average: "--" })) : awarenessRows;
   return (
     <ProfilePanel title="Ý thức làm việc" id="profile-awareness">
       <div className="profile-awareness-table" role="table" aria-label="Chỉ số ý thức làm việc">
@@ -642,7 +661,7 @@ function AwarenessPanel() {
           <span role="columnheader">Tổng số</span>
           <span role="columnheader">TB Cá nhân / tháng</span>
         </div>
-        {awarenessRows.map((row) => (
+        {rows.map((row) => (
           <div role="row" className="profile-awareness-row" key={row.label}>
             <span role="cell">{row.label}</span>
             <span role="cell" className="profile-metric-pill">
@@ -658,7 +677,7 @@ function AwarenessPanel() {
   );
 }
 
-function WorkEffectPanel() {
+function WorkEffectPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
   return (
     <ProfilePanel title="Hiệu quả công việc" id="profile-work-effect">
       <div className="profile-effect-body">
@@ -685,7 +704,7 @@ function WorkEffectPanel() {
                   <span />
                 </div>
               </div>
-              <strong>0</strong>
+              <strong>{employee ? "--" : "0"}</strong>
             </div>
           ))}
         </div>
@@ -694,20 +713,21 @@ function WorkEffectPanel() {
   );
 }
 
-function FinancePanel() {
+function FinancePanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const compensation = profileValue(employee, "compensationAmount");
   return (
     <ProfilePanel title="Tài chính" id="profile-finance">
       <div className="profile-finance-body">
         <div className="profile-money-banner">
           <div>
             <span>Tổng lương đã nhận của bạn</span>
-            <strong>300,919,924 đ</strong>
+            <strong>{employee ? compensation : "300,919,924 đ"}</strong>
           </div>
           <Money size={58} weight="duotone" aria-hidden="true" />
         </div>
 
         <dl className="profile-finance-list">
-          {financeRows.map((row) => (
+          {(employee ? financeRows.map((row) => ({ ...row, value: "--" })) : financeRows).map((row) => (
             <div key={row.label}>
               <dt>
                 <span className={`profile-finance-icon profile-finance-icon--${row.tone}`}>
@@ -724,14 +744,14 @@ function FinancePanel() {
   );
 }
 
-function DebtPanel() {
+function DebtPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
   return (
     <ProfilePanel title="Công nợ" id="profile-debt">
       <div className="profile-debt-body">
         <div className="profile-debt-banner">
           <div>
             <span>Tổng công nợ</span>
-            <strong>0 đ</strong>
+            <strong>{employee ? "--" : "0 đ"}</strong>
           </div>
           <Wallet size={54} weight="duotone" aria-hidden="true" />
         </div>
@@ -743,7 +763,7 @@ function DebtPanel() {
               </span>
               Công ty nợ
             </dt>
-            <dd>0 đ</dd>
+            <dd>{employee ? "--" : "0 đ"}</dd>
           </div>
           <div>
             <dt>
@@ -752,7 +772,7 @@ function DebtPanel() {
               </span>
               Bạn nợ
             </dt>
-            <dd>0 đ</dd>
+            <dd>{employee ? "--" : "0 đ"}</dd>
           </div>
         </dl>
       </div>
@@ -760,7 +780,8 @@ function DebtPanel() {
   );
 }
 
-function DisciplinePanel() {
+function DisciplinePanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const items = employee ? [] : disciplineItems;
   return (
     <ProfilePanel
       title="Khen thưởng, kỷ luật"
@@ -782,7 +803,7 @@ function DisciplinePanel() {
             </span>
             <div>
               <span>Quyết định</span>
-              <strong>1 LẦN</strong>
+              <strong>{employee ? "--" : "1 LẦN"}</strong>
             </div>
           </article>
           <article>
@@ -791,13 +812,13 @@ function DisciplinePanel() {
             </span>
             <div>
               <span>Kỷ luật</span>
-              <strong>6 LẦN</strong>
+              <strong>{employee ? "--" : "6 LẦN"}</strong>
             </div>
           </article>
         </div>
 
         <div className="profile-discipline-list">
-          {disciplineItems.map((item) => (
+          {items.map((item) => (
             <article className={`profile-discipline-item profile-discipline-item--${item.status}`} key={`${item.title}-${item.meta}`}>
               <span className="profile-discipline-icon">
                 {item.status === "approved" ? (
@@ -820,7 +841,14 @@ function DisciplinePanel() {
   );
 }
 
-function HealthPanel() {
+function HealthPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const rows = employee ? [
+    { label: "Huyết áp", value: profileValue(employee, "bloodPressure"), unit: "mmHg" },
+    { label: "Nhịp tim", value: profileValue(employee, "heartRate"), unit: "Nhịp/phút" },
+    { label: "Nhóm máu", value: profileValue(employee, "bloodType"), unit: "--" },
+    { label: "Chiều cao", value: profileValue(employee, "height"), unit: "cm" },
+    { label: "Cân nặng", value: profileValue(employee, "weight"), unit: "kg" }
+  ] : healthRows;
   return (
     <ProfilePanel title="Sức khỏe" id="profile-health">
       <div className="profile-health-table" role="table" aria-label="Thông tin sức khỏe">
@@ -829,7 +857,7 @@ function HealthPanel() {
           <span role="columnheader">Chỉ số</span>
           <span role="columnheader">Unit</span>
         </div>
-        {healthRows.map((row) => (
+        {rows.map((row) => (
           <div className="profile-health-row" role="row" key={row.label}>
             <span role="cell">{row.label}</span>
             <span role="cell" className="profile-health-placeholder">
@@ -843,7 +871,7 @@ function HealthPanel() {
   );
 }
 
-function AssetPanel() {
+function AssetPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
   return (
     <ProfilePanel title="Tài sản" id="profile-assets">
       <div className="profile-asset-card">
@@ -851,7 +879,7 @@ function AssetPanel() {
           <Package size={22} weight="duotone" aria-hidden="true" />
           Tổng giá trị
         </span>
-        <strong>0 đ</strong>
+        <strong>{employee ? "--" : "0 đ"}</strong>
       </div>
     </ProfilePanel>
   );
@@ -955,23 +983,57 @@ function ResumeFieldGrid({ fields }: { fields: Array<{ label: string; value: str
   );
 }
 
-function ResumeInfoPanel() {
+function ResumeInfoPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const fields = employee ? [
+    { label: "Dân tộc", value: profileValue(employee, "ethnicity") },
+    { label: "Tôn giáo", value: profileValue(employee, "religion") },
+    { label: "Nơi sinh", value: profileValue(employee, "birthPlace") },
+    { label: "Nguyên quán", value: profileValue(employee, "hometown") },
+    { label: "Chỗ ở hiện nay", value: profileValue(employee, "currentAddress") },
+    { label: "Thường trú", value: profileValue(employee, "permanentAddress") },
+    { label: "Quốc tịch", value: profileValue(employee, "nationality") },
+    { label: "Mã số thuế cá nhân", value: profileValue(employee, "taxCode") },
+    { label: "Loại lao động", value: profileValue(employee, "laborType") },
+    { label: "Vùng lương tối thiểu", value: profileValue(employee, "minimumWageRegion") },
+    { label: "Trình độ phổ thông", value: profileValue(employee, "generalEducation") },
+    { label: "Kinh nghiệm trước đây", value: profileValue(employee, "previousExperienceYears") },
+    { label: "Chuyên ngành", value: profileValue(employee, "major") },
+    { label: "Học vấn cao nhất", value: profileValue(employee, "highestEducation") },
+    { label: "Tình trạng hôn nhân", value: maritalLabels[profileValue(employee, "maritalStatus")] ?? profileValue(employee, "maritalStatus") },
+    { label: "Nghĩa vụ quân sự", value: profileValue(employee, "militaryStatus") },
+    { label: "Ghi chú", value: profileValue(employee, "note") }
+  ] : resumeInfoFields;
   return (
     <ProfilePanel title="Thông tin" id="profile-resume-info">
-      <ResumeFieldGrid fields={resumeInfoFields} />
+      <ResumeFieldGrid fields={fields} />
     </ProfilePanel>
   );
 }
 
-function IdentityPanel() {
+function IdentityPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const fields = employee ? [
+    { label: "Số CMT/CC/CCCD", value: profileValue(employee, "identityNumber") },
+    { label: "Ngày cấp", value: formatProfileDate(profileValue(employee, "identityIssuedDate") === "--" ? null : profileValue(employee, "identityIssuedDate")) },
+    { label: "Nơi cấp", value: profileValue(employee, "identityIssuedPlace") },
+    { label: "Số hộ chiếu", value: profileValue(employee, "passportNumber") },
+    { label: "Loại hộ chiếu", value: profileValue(employee, "passportType") },
+    { label: "Ngày cấp hộ chiếu", value: formatProfileDate(profileValue(employee, "passportIssuedDate") === "--" ? null : profileValue(employee, "passportIssuedDate")) },
+    { label: "Ngày hết hạn", value: formatProfileDate(profileValue(employee, "passportExpiredDate") === "--" ? null : profileValue(employee, "passportExpiredDate")) }
+  ] : identityFields;
   return (
     <ProfilePanel title="Thông tin CMT/CC/CCCD/Hộ chiếu" id="profile-resume-identity">
-      <ResumeFieldGrid fields={identityFields} />
+      <ResumeFieldGrid fields={fields} />
     </ProfilePanel>
   );
 }
 
-function BankPanel() {
+function BankPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const rows = employee ? [{
+    accountNumber: profileValue(employee, "bankAccountNumber"),
+    accountName: profileValue(employee, "bankAccountName"),
+    bankName: profileValue(employee, "bankName"),
+    branch: profileValue(employee, "bankBranch")
+  }] : bankRows;
   return (
     <ProfilePanel title="Ngân hàng" id="profile-resume-bank">
       <div className="profile-bank-table-shell">
@@ -985,7 +1047,7 @@ function BankPanel() {
             </tr>
           </thead>
           <tbody>
-            {bankRows.map((row) => (
+            {rows.map((row) => (
               <tr key={row.accountNumber}>
                 <td>{row.accountNumber}</td>
                 <td>{row.accountName}</td>
@@ -1000,31 +1062,51 @@ function BankPanel() {
   );
 }
 
-function DocumentImagesPanel() {
+function DocumentImagesPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const fieldNames: Record<string, string> = { front: "identityFrontImage", back: "identityBackImage", passport: "passportImage" };
   return (
     <ProfilePanel title="Ảnh CCCD" id="profile-resume-documents">
       <div className="profile-document-list">
-        {documentSections.map((section) => (
+        {documentSections.map((section) => {
+          const document = employee?.documents?.find((item) => item.fieldName === fieldNames[section.id]);
+          return (
           <section className="profile-document-section" aria-labelledby={`document-${section.id}`} key={section.id}>
             <h3 id={`document-${section.id}`}>{section.label}</h3>
-            <div className="profile-document-placeholder" role="img" aria-label={`${section.label} chưa có ảnh`}>
+            <div className="profile-document-placeholder" role="img" aria-label={document ? document.fileName : `${section.label} chưa có ảnh`}>
               <div>
-                <ImageBroken size={44} weight="duotone" aria-hidden="true" />
-                <span>No Image Found</span>
+                {document ? <FileText size={44} weight="duotone" aria-hidden="true" /> : <ImageBroken size={44} weight="duotone" aria-hidden="true" />}
+                <span>{document?.fileName ?? "Chưa có ảnh"}</span>
               </div>
             </div>
           </section>
-        ))}
+          );
+        })}
       </div>
     </ProfilePanel>
   );
 }
 
-function WorkInfoPanel() {
+function WorkInfoPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const contract = employee?.contracts?.[0];
+  const fields = employee ? [
+    { label: "Trạng thái", value: profileStatusLabel(employee.status), variant: "status" as const },
+    { label: "Phòng ban", value: employee.department },
+    { label: "Vị trí", value: employee.positionName ?? "--" },
+    { label: "Chức danh", value: employee.jobTitleName ?? employee.title ?? "--" },
+    { label: "Ngày vào", value: formatProfileDate(employee.startDate) },
+    { label: "Ngày chính thức", value: formatProfileDate(employee.officialStartDate) },
+    { label: "Loại lao động", value: employee.employeeType ?? profileValue(employee, "laborType") },
+    { label: "Tên hợp đồng", value: contract?.type ?? "--" },
+    { label: "Nơi làm việc", value: profileValue(employee, "workplace") },
+    { label: "Cấp bậc", value: profileValue(employee, "contractRankId") },
+    { label: "Mã đồng bộ", value: profileValue(employee, "syncCode") },
+    { label: "Mã chấm công", value: employee.attendanceCode ?? "--" },
+    { label: "Tài khoản HOffice", value: employee.accountEmail ?? "--" }
+  ] : workInfoFields;
   return (
     <ProfilePanel title="Công việc" id="profile-work-info">
       <dl className="profile-work-info-fields">
-        {workInfoFields.map((field) => (
+        {fields.map((field) => (
           <div key={field.label}>
             <dt>{field.label}</dt>
             <dd>
@@ -1037,7 +1119,18 @@ function WorkInfoPanel() {
   );
 }
 
-function ContractListPanel() {
+function ContractListPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const rows = employee ? (employee.contracts ?? []).map((contract) => ({
+    id: profileValue(employee, "contractCode") !== "--" ? profileValue(employee, "contractCode") : contract.id,
+    creator: "--",
+    name: contract.type,
+    department: employee.department,
+    status: contract.status === "active" ? "Đang hiệu lực" : contract.status,
+    signedAt: formatProfileDate(profileValue(employee, "contractSignedDate") === "--" ? null : profileValue(employee, "contractSignedDate")),
+    effectiveFrom: formatProfileDate(contract.startDate),
+    effectiveTo: formatProfileDate(contract.endDate),
+    createdAt: formatProfileDate(contract.createdAt)
+  })) : contractRows;
   return (
     <ProfilePanel title="Danh sách hợp đồng" id="profile-contract-list">
       <div className="profile-contract-toolbar" aria-label="Công cụ danh sách hợp đồng">
@@ -1069,7 +1162,7 @@ function ContractListPanel() {
             </tr>
           </thead>
           <tbody>
-            {contractRows.map((row) => (
+            {rows.map((row) => (
               <tr key={row.id}>
                 <td>
                   <span className="request-checkbox" aria-hidden="true" />
@@ -1096,7 +1189,8 @@ function ContractListPanel() {
   );
 }
 
-function WorkTimelineTabsPanel() {
+function WorkTimelineTabsPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const contract = employee?.contracts?.[0];
   return (
     <section className="employee-profile-panel" aria-labelledby="profile-work-timeline-title">
       <header className="employee-profile-panel-header profile-work-history-header">
@@ -1124,29 +1218,29 @@ function WorkTimelineTabsPanel() {
           </span>
           <div className="profile-work-content">
             <header>
-              <h3>Web</h3>
-              <ProfileStatusBadge>Đang làm việc</ProfileStatusBadge>
+              <h3>{employee?.positionName ?? employee?.title ?? "--"}</h3>
+              <ProfileStatusBadge>{profileStatusLabel(employee?.status)}</ProfileStatusBadge>
             </header>
 
             <article className="profile-work-card">
               <div>
                 <h4>
-                  Hợp đồng chính thức
+                  {contract?.type ?? "Chưa có hợp đồng"}
                   <ArrowSquareOut size={15} weight="duotone" aria-hidden="true" />
                 </h4>
-                <time dateTime="2024-01-01">01/01/2024</time>
+                <time dateTime={contract?.startDate}>{formatProfileDate(contract?.startDate)}</time>
               </div>
-              <p>SRG-035-01 • Hợp đồng chính thức • Nhân viên Fulltime</p>
-              <p className="profile-breadcrumb">SRG › Helios › Phòng MKT</p>
+              <p>{profileValue(employee, "contractCode")} • {contract?.type ?? "--"} • {employee?.jobTitleName ?? "--"}</p>
+              <p className="profile-breadcrumb">Helios › {employee?.department ?? "--"}</p>
             </article>
 
             <article className="profile-work-card">
               <div>
                 <h4>Ngày bắt đầu làm việc</h4>
-                <time dateTime="2023-02-13">13/02/2023</time>
+                <time dateTime={employee?.startDate}>{formatProfileDate(employee?.startDate)}</time>
               </div>
-              <p>Nhân viên Fulltime</p>
-              <p className="profile-breadcrumb">SRG › Helios › Phòng MKT</p>
+              <p>{employee?.employeeType ?? "--"}</p>
+              <p className="profile-breadcrumb">Helios › {employee?.department ?? "--"}</p>
             </article>
           </div>
         </div>
@@ -1155,7 +1249,10 @@ function WorkTimelineTabsPanel() {
   );
 }
 
-function InsuranceInfoPanel() {
+function InsuranceInfoPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const sections = employee
+    ? insuranceSections.map((section) => ({ ...section, fields: section.fields.map((field) => ({ ...field, value: "--" })) }))
+    : insuranceSections;
   return (
     <section className="employee-profile-panel" aria-labelledby="profile-insurance-info">
       <header className="employee-profile-panel-header">
@@ -1164,7 +1261,7 @@ function InsuranceInfoPanel() {
       </header>
 
       <div className="profile-insurance-sections">
-        {insuranceSections.map((section, index) => (
+        {sections.map((section, index) => (
           <section className="profile-insurance-section" aria-labelledby={`insurance-section-${index}`} key={section.title}>
             {index > 0 ? <h3 id={`insurance-section-${index}`}>{section.title}</h3> : null}
             <dl className="profile-insurance-fields">
@@ -1185,7 +1282,10 @@ function InsuranceInfoPanel() {
   );
 }
 
-function InsuranceContributionPanel() {
+function InsuranceContributionPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const rows = employee
+    ? insuranceContributionRows.map((row) => ({ ...row, bhxh: "--", accident: "--", bhyt: "--", unemployment: "--", total: "--" }))
+    : insuranceContributionRows;
   return (
     <ProfilePanel title="Mức đóng BHXH" id="profile-insurance-contribution">
       <div className="profile-contract-toolbar" aria-label="Công cụ mức đóng BHXH">
@@ -1209,7 +1309,7 @@ function InsuranceContributionPanel() {
             </tr>
           </thead>
           <tbody>
-            {insuranceContributionRows.map((row) => (
+            {rows.map((row) => (
               <tr key={row.label}>
                 <th scope="row">{row.label}</th>
                 <td>{row.bhxh}</td>
@@ -1226,11 +1326,12 @@ function InsuranceContributionPanel() {
   );
 }
 
-function InsuranceDeclarationHistoryPanel() {
+function InsuranceDeclarationHistoryPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const declarations = employee ? [] : insuranceDeclarations;
   return (
     <ProfilePanel title="Lịch sử khai báo" id="profile-insurance-history">
       <div className="profile-insurance-history" role="list" aria-label="Lịch sử khai báo bảo hiểm">
-        {insuranceDeclarations.map((item) => (
+        {declarations.map((item) => (
           <article className="profile-insurance-history-item" role="listitem" key={item.title}>
             <span className="profile-insurance-history-dot" aria-hidden="true" />
             <div>
@@ -1260,7 +1361,7 @@ function ProfilePanelCalendarActions({ label }: { label: string }) {
   );
 }
 
-function AllowanceOverviewPanel() {
+function AllowanceOverviewPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
   const chartPoints = [
     { x: 96, y: 54 },
     { x: 185, y: 57 },
@@ -1301,18 +1402,18 @@ function AllowanceOverviewPanel() {
             </text>
           ))}
 
-          <path
+          {!employee ? <><path
             className="profile-allowance-chart-area"
             d="M96 54 C145 54 158 56 185 57 C222 58 240 66 275 66 C313 66 330 60 364 60 C402 60 421 70 454 70 C490 70 508 57 543 57 C576 58 587 160 633 258 L1080 258 L1080 286 L96 286 Z"
           />
           <path
             className="profile-allowance-chart-line"
             d="M96 54 C145 54 158 56 185 57 C222 58 240 66 275 66 C313 66 330 60 364 60 C402 60 421 70 454 70 C490 70 508 57 543 57 C576 58 587 160 633 258 L1080 258"
-          />
+          /></> : null}
 
-          {chartPoints.map((point, index) => (
+          {!employee ? chartPoints.map((point, index) => (
             <circle className="profile-allowance-chart-dot" cx={point.x} cy={point.y} r="3.5" key={`${point.x}-${index}`} />
-          ))}
+          )) : null}
 
           {allowanceMonths.map((month, index) => (
             <text className="profile-allowance-chart-month" x={chartPoints[index]?.x ?? 96} y="294" key={month.short}>
@@ -1325,7 +1426,8 @@ function AllowanceOverviewPanel() {
   );
 }
 
-function AllowanceMonthGridPanel() {
+function AllowanceMonthGridPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const months = employee ? allowanceMonths.map((month) => ({ ...month, value: undefined })) : allowanceMonths;
   return (
     <ProfilePanel
       title="Lương thực nhận 2026"
@@ -1333,7 +1435,7 @@ function AllowanceMonthGridPanel() {
       action={<ProfilePanelCalendarActions label="lương thực nhận" />}
     >
       <div className="profile-allowance-month-grid">
-        {allowanceMonths.map((month) => (
+        {months.map((month) => (
           <article className="profile-allowance-month-cell" key={month.month}>
             <h3>{month.month}</h3>
             {month.value ? <strong>{month.value}</strong> : null}
@@ -1369,18 +1471,19 @@ function AllowanceMetricPanel({
   );
 }
 
-function AllowanceHistoryPanel() {
+function AllowanceHistoryPanel({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const history = employee ? [] : allowanceHistory;
   return (
     <ProfilePanel title="Lịch sử lương thực nhận" id="profile-allowance-history">
       <div className="profile-allowance-history">
         <article className="profile-allowance-history-year is-open">
           <button type="button" aria-expanded="true">
             <span>Năm 2026</span>
-            <span aria-hidden="true">⌃</span>
+            <CaretDown size={16} weight="bold" style={{ transform: "rotate(180deg)" }} aria-hidden="true" />
           </button>
 
           <div className="profile-allowance-history-list">
-            {allowanceHistory.map((item) => (
+            {history.map((item) => (
               <div className="profile-allowance-history-row" key={item.month}>
                 <span>{item.month}</span>
                 <strong className={`profile-allowance-trend profile-allowance-trend--${item.trend}`}>
@@ -1396,7 +1499,7 @@ function AllowanceHistoryPanel() {
           <article className="profile-allowance-history-year" key={year}>
             <button type="button" aria-expanded="false">
               <span>{year}</span>
-              <span aria-hidden="true">⌄</span>
+              <CaretDown size={16} weight="bold" aria-hidden="true" />
             </button>
           </article>
         ))}
@@ -1540,21 +1643,21 @@ function ProfileOverviewContent({ employee }: { employee?: EmployeeDirectoryReco
     <section className="employee-profile-grid" aria-label="Tổng quan hồ sơ nhân sự">
       <div className="employee-profile-column">
         <InfoCard employee={employee} />
-        <WorkHistoryPanel />
+        <WorkHistoryPanel employee={employee} />
       </div>
 
       <div className="employee-profile-column">
-        <OnboardingPanel />
-        <DebtPanel />
-        <HealthPanel />
+        <OnboardingPanel employee={employee} />
+        <DebtPanel employee={employee} />
+        <HealthPanel employee={employee} />
       </div>
 
       <div className="employee-profile-column">
-        <AwarenessPanel />
-        <WorkEffectPanel />
-        <FinancePanel />
-        <DisciplinePanel />
-        <AssetPanel />
+        <AwarenessPanel employee={employee} />
+        <WorkEffectPanel employee={employee} />
+        <FinancePanel employee={employee} />
+        <DisciplinePanel employee={employee} />
+        <AssetPanel employee={employee} />
       </div>
     </section>
   );
@@ -1564,62 +1667,63 @@ function ProfileResumeContent({ employee }: { employee?: EmployeeDirectoryRecord
   return (
     <section className="employee-profile-resume-grid" aria-label="Sơ yếu lý lịch">
       <div className="employee-profile-column">
-        <ResumeInfoPanel />
-        <IdentityPanel />
-        <BankPanel />
+        <ResumeInfoPanel employee={employee} />
+        <IdentityPanel employee={employee} />
+        <BankPanel employee={employee} />
       </div>
 
       <aside className="employee-profile-column" aria-label="Hồ sơ và ảnh giấy tờ">
         <InfoCard employee={employee} />
-        <DocumentImagesPanel />
+        <DocumentImagesPanel employee={employee} />
       </aside>
     </section>
   );
 }
 
-function ProfileWorkContent() {
+function ProfileWorkContent({ employee }: { employee?: EmployeeDirectoryRecord }) {
   return (
     <section className="employee-profile-work-grid" aria-label="Công việc và hợp đồng">
       <div className="employee-profile-column">
-        <WorkInfoPanel />
-        <ContractListPanel />
+        <WorkInfoPanel employee={employee} />
+        <ContractListPanel employee={employee} />
       </div>
 
       <aside className="employee-profile-column" aria-label="Lịch sử công việc và hợp đồng">
-        <WorkTimelineTabsPanel />
+        <WorkTimelineTabsPanel employee={employee} />
       </aside>
     </section>
   );
 }
 
-function ProfileBenefitContent() {
+function ProfileBenefitContent({ employee }: { employee?: EmployeeDirectoryRecord }) {
   return (
     <section className="employee-profile-benefit-grid" aria-label="Bảo hiểm và phúc lợi">
       <div className="employee-profile-column">
-        <InsuranceInfoPanel />
-        <InsuranceContributionPanel />
+        <InsuranceInfoPanel employee={employee} />
+        <InsuranceContributionPanel employee={employee} />
       </div>
 
       <aside className="employee-profile-column" aria-label="Lịch sử khai báo bảo hiểm">
-        <InsuranceDeclarationHistoryPanel />
+        <InsuranceDeclarationHistoryPanel employee={employee} />
       </aside>
     </section>
   );
 }
 
-function ProfileAllowanceContent() {
+function ProfileAllowanceContent({ employee }: { employee?: EmployeeDirectoryRecord }) {
+  const emptyValue = employee ? "--" : undefined;
   return (
     <section className="employee-profile-allowance-grid" aria-label="Lương và phụ cấp">
       <div className="employee-profile-column">
-        <AllowanceOverviewPanel />
-        <AllowanceMonthGridPanel />
+        <AllowanceOverviewPanel employee={employee} />
+        <AllowanceMonthGridPanel employee={employee} />
       </div>
 
       <aside className="employee-profile-column" aria-label="Tổng hợp và lịch sử lương">
-        <AllowanceMetricPanel id="profile-allowance-total" icon={CurrencyDollar} title="Tổng lương thực nhận 2026" tone="info" value="68,167,749.17" />
-        <AllowanceMetricPanel id="profile-allowance-bonus" icon={ArrowSquareOut} title="Tổng tiền thưởng đã nhận 2026" tone="success" value="0" />
-        <AllowanceMetricPanel id="profile-allowance-penalty" icon={ArrowSquareOut} title="Tổng tiền đã bị phạt 2026" tone="danger" value="100,000" />
-        <AllowanceHistoryPanel />
+        <AllowanceMetricPanel id="profile-allowance-total" icon={CurrencyDollar} title="Tổng lương thực nhận 2026" tone="info" value={emptyValue ?? "68,167,749.17"} />
+        <AllowanceMetricPanel id="profile-allowance-bonus" icon={ArrowSquareOut} title="Tổng tiền thưởng đã nhận 2026" tone="success" value={emptyValue ?? "0"} />
+        <AllowanceMetricPanel id="profile-allowance-penalty" icon={ArrowSquareOut} title="Tổng tiền đã bị phạt 2026" tone="danger" value={emptyValue ?? "100,000"} />
+        <AllowanceHistoryPanel employee={employee} />
       </aside>
     </section>
   );
@@ -1655,9 +1759,9 @@ export function ProfileBoard({
     <main className="employee-profile-page" aria-label="Hồ sơ cá nhân">
       <ProfileTabs activeTab={resolvedActiveTab} employee={employee} isAdminView={isAdminView} />
       {resolvedActiveTab === "resume" ? <ProfileResumeContent employee={employee} /> : null}
-      {resolvedActiveTab === "work" ? <ProfileWorkContent /> : null}
-      {resolvedActiveTab === "benefit" ? <ProfileBenefitContent /> : null}
-      {resolvedActiveTab === "allowance" ? <ProfileAllowanceContent /> : null}
+      {resolvedActiveTab === "work" ? <ProfileWorkContent employee={employee} /> : null}
+      {resolvedActiveTab === "benefit" ? <ProfileBenefitContent employee={employee} /> : null}
+      {resolvedActiveTab === "allowance" ? <ProfileAllowanceContent employee={employee} /> : null}
       {resolvedActiveTab === "furlough" ? <ProfileFurloughContent /> : null}
       {resolvedActiveTab === "overview" ? <ProfileOverviewContent employee={employee} /> : null}
     </main>

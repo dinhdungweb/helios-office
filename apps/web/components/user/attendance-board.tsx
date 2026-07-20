@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import type { AttendanceData, AttendanceRecord } from "@/lib/attendance-api";
 import {
   CalendarBlank,
   CalendarCheck,
@@ -12,6 +13,7 @@ import {
 
 type AttendanceDay = {
   day?: string;
+  fullDate?: string;
   score?: string;
   scoreTone?: "success" | "danger" | "muted" | "info";
   time?: string;
@@ -45,54 +47,79 @@ type AttendanceDetailPosition = {
 const weekdays = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"];
 const months = Array.from({ length: 12 }, (_, index) => index + 1);
 
-const attendanceDays: AttendanceDay[] = [
-  { isEmpty: true },
-  { isEmpty: true },
-  { day: "01/07", score: "8", scoreTone: "success", time: "8:28 - 18:00", shift: "Office Full SC" },
-  { day: "02", score: "8", scoreTone: "success", time: "8:30 - 18:10", shift: "Office Full SC" },
-  { day: "03", score: "8", scoreTone: "success", time: "8:23 - 18:01", shift: "Office Full SC" },
-  { day: "04", score: "x", scoreTone: "danger", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "05", score: "N", scoreTone: "success" },
-  { day: "06", score: "8", scoreTone: "success", time: "8:29 - 18:05", shift: "Office Full SC" },
-  { day: "07", score: "8", scoreTone: "success", time: "8:27 - 18:03", shift: "Office Full SC" },
-  { day: "08", score: "8", scoreTone: "success", time: "8:30 - 18:03", shift: "Office Full SC" },
-  { day: "09", score: "0", scoreTone: "info", time: "8:30 - 18:00", shift: "Office Full SC", isSelected: true },
-  { day: "10", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "11", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "12", score: "N", scoreTone: "muted" },
-  { day: "13", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "14", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "15", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "16", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "17", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "18", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "19", score: "N", scoreTone: "muted" },
-  { day: "20", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "21", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "22", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "23", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "24", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "25", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "26", score: "N", scoreTone: "muted" },
-  { day: "27", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "28", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "29", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "30", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { day: "31", score: "0", scoreTone: "muted", time: "8:30 - 18:00", shift: "Office Full SC" },
-  { isEmpty: true },
-  { isEmpty: true }
-];
+function formatTime(value: string | null) {
+  if (!value) {
+    return null;
+  }
 
-const attendanceStats: AttendanceStat[] = [
-  { label: "Công làm việc", value: "6" },
-  { label: "Giờ làm việc thực tính", value: "48" },
-  { label: "Số công chuẩn", value: "26" },
-  { label: "Số công nghỉ không lý do", value: "2" },
-  { label: "Giờ làm việc thực tính ban ngày", value: "47.9925" },
-  { label: "Tiền phạt nghỉ không lý do", value: "400,000" },
-  { label: "Tiền phạt chấm công", value: "400,000" },
-  { label: "Công theo ca", value: "6" }
-];
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(date);
+}
+
+function recordDateKey(record: AttendanceRecord) {
+  const date = new Date(record.workDate);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function buildAttendanceDays(year: number, month: number, records: AttendanceRecord[]): AttendanceDay[] {
+  const recordMap = new Map(records.map((record) => [recordDateKey(record), record]));
+  const firstDate = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0).getDate();
+  const leadingEmptyCells = (firstDate.getDay() + 6) % 7;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days: AttendanceDay[] = Array.from({ length: leadingEmptyCells }, () => ({ isEmpty: true }));
+
+  for (let day = 1; day <= lastDay; day += 1) {
+    const date = new Date(year, month - 1, day);
+    const key = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const record = recordMap.get(key);
+    const checkIn = record ? formatTime(record.checkIn) : null;
+    const checkOut = record ? formatTime(record.checkOut) : null;
+    const isWeekend = date.getDay() === 0;
+    const isFuture = date.getTime() > today.getTime();
+    const fullDate = `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
+
+    if (record) {
+      days.push({
+        day: day === 1 ? `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}` : String(day).padStart(2, "0"),
+        fullDate,
+        score: checkIn && checkOut ? "8" : "0",
+        scoreTone: checkIn && checkOut ? "success" : "info",
+        time: checkIn ? `${checkIn} - ${checkOut ?? "--:--"}` : undefined,
+        shift: record.source === "machine" ? "Máy chấm công" : "Chấm công ứng dụng"
+      });
+    } else if (isWeekend) {
+      days.push({ day: String(day).padStart(2, "0"), fullDate, score: "N", scoreTone: isFuture ? "muted" : "success" });
+    } else {
+      days.push({
+        day: day === 1 ? `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}` : String(day).padStart(2, "0"),
+        fullDate,
+        score: isFuture ? "0" : "x",
+        scoreTone: isFuture ? "muted" : "danger",
+        shift: "Chưa có dữ liệu"
+      });
+    }
+  }
+
+  while (days.length % 7 !== 0) {
+    days.push({ isEmpty: true });
+  }
+
+  return days;
+}
 
 const inactiveAttendanceStats: AttendanceStat[] = [
   { label: "Số lần đi muộn", value: "0" },
@@ -131,8 +158,7 @@ const inactiveAttendanceStats: AttendanceStat[] = [
 ];
 
 function getAttendanceDetail(day: AttendanceDay): AttendanceDetail {
-  const dateValue = day.day?.includes("/") ? day.day : `${day.day}/07`;
-  const fullDate = `${dateValue}/2026`;
+  const fullDate = day.fullDate ?? day.day ?? "--";
   const [checkIn = "--", checkOut = "--"] = day.time?.split(" - ") ?? [];
   const isUnexcusedAbsence = day.score === "x";
   const isCurrentUnchecked = day.score === "0" && day.scoreTone === "info";
@@ -310,14 +336,33 @@ function AttendanceDetailDialog({
   );
 }
 
-function AttendanceStatsPanel() {
+function AttendanceStatsPanel({ month, records, year }: { month: number; records: AttendanceRecord[]; year: number }) {
   const [activeStatTab, setActiveStatTab] = useState<"active" | "inactive">("active");
-  const visibleStats = activeStatTab === "active" ? attendanceStats : inactiveAttendanceStats;
+  const monthRecords = records.filter((record) => {
+    const date = new Date(record.workDate);
+    return !Number.isNaN(date.getTime()) && date.getFullYear() === year && date.getMonth() === month - 1;
+  });
+  const actualHours = monthRecords.reduce((total, record) => {
+    if (!record.checkIn || !record.checkOut) {
+      return total;
+    }
+
+    return total + Math.max(0, new Date(record.checkOut).getTime() - new Date(record.checkIn).getTime()) / 3_600_000;
+  }, 0);
+  const missingCheckoutCount = monthRecords.filter((record) => !record.checkOut).length;
+  const generatedStats: AttendanceStat[] = [
+    { label: "Công làm việc", value: String(monthRecords.length) },
+    { label: "Giờ làm việc thực tính", value: actualHours.toFixed(2) },
+    { label: "Số công chuẩn", value: "26" },
+    { label: "Số lần quên check in/out", value: String(missingCheckoutCount) },
+    { label: "Log từ máy chấm công", value: String(monthRecords.filter((record) => record.source === "machine").length) }
+  ];
+  const visibleStats = activeStatTab === "active" ? generatedStats : inactiveAttendanceStats;
 
   return (
     <aside className="attendance-stats-panel" aria-labelledby="attendance-stats-title">
       <header className="attendance-stats-header">
-        <h2 id="attendance-stats-title">Thống kê T07, 2026</h2>
+        <h2 id="attendance-stats-title">Thống kê T{String(month).padStart(2, "0")}, {year}</h2>
       </header>
 
       <div className="attendance-summary-grid">
@@ -327,7 +372,7 @@ function AttendanceStatsPanel() {
           </span>
           <div>
             <p>Công thực tế</p>
-            <strong>6/26</strong>
+            <strong>{monthRecords.length}/26</strong>
           </div>
         </article>
         <article className="attendance-summary-card">
@@ -336,7 +381,7 @@ function AttendanceStatsPanel() {
           </span>
           <div>
             <p>Giờ làm thực tế</p>
-            <strong>48/208</strong>
+            <strong>{actualHours.toFixed(1)}/208</strong>
           </div>
         </article>
       </div>
@@ -374,15 +419,24 @@ function AttendanceStatsPanel() {
   );
 }
 
-export function AttendanceBoard() {
-  const defaultSelectedDay = attendanceDays.find((day) => day.isSelected && !day.isEmpty) ?? null;
+export function AttendanceBoard({ data }: { data: AttendanceData }) {
   const calendarPanelRef = useRef<HTMLDivElement>(null);
-  const [selectedDay, setSelectedDay] = useState<AttendanceDay | null>(defaultSelectedDay);
+  const now = new Date();
+  const [selectedDay, setSelectedDay] = useState<AttendanceDay | null>(null);
   const [detailDay, setDetailDay] = useState<AttendanceDay | null>(null);
   const [detailPosition, setDetailPosition] = useState<AttendanceDetailPosition>({ top: 0, left: 0 });
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
-  const [monthPickerYear, setMonthPickerYear] = useState(2026);
-  const [selectedMonth, setSelectedMonth] = useState(7);
+  const [monthPickerYear, setMonthPickerYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+  const attendanceDaysForMonth = useMemo(
+    () => buildAttendanceDays(monthPickerYear, selectedMonth, data.records),
+    [data.records, monthPickerYear, selectedMonth]
+  );
+
+  useEffect(() => {
+    setSelectedDay(null);
+    setDetailDay(null);
+  }, [monthPickerYear, selectedMonth]);
 
   function handleSelectDay(day: AttendanceDay, event: MouseEvent<HTMLButtonElement>) {
     const panel = calendarPanelRef.current;
@@ -418,10 +472,16 @@ export function AttendanceBoard() {
 
   return (
     <main className="attendance-board-page" aria-label="Bảng công">
+      {data.source === "unavailable" ? (
+        <div className="account-api-banner" role="status">
+          <strong>Chưa tải được dữ liệu chấm công</strong>
+          <span>{data.error}</span>
+        </div>
+      ) : null}
       <header className="attendance-board-toolbar">
         <div className="attendance-board-tabs" role="tablist" aria-label="Chế độ xem công">
           <button className="is-active" type="button" role="tab" aria-selected="true">
-            Bảng công toàn bộ công ty
+            Bảng công cá nhân
           </button>
           <button type="button" role="tab" aria-selected="false">
             Danh sách
@@ -456,7 +516,7 @@ export function AttendanceBoard() {
               <div className="attendance-month-grid">
                 {months.map((month) => (
                   <button
-                    className={month === selectedMonth && monthPickerYear === 2026 ? "is-active" : undefined}
+                    className={month === selectedMonth ? "is-active" : undefined}
                     type="button"
                     key={month}
                     onClick={() => {
@@ -476,7 +536,7 @@ export function AttendanceBoard() {
       <section className="attendance-board-layout">
         <div className="attendance-calendar-panel" aria-labelledby="attendance-calendar-title" ref={calendarPanelRef}>
           <h2 className="sr-only" id="attendance-calendar-title">
-            Bảng công tháng 07/2026
+            Bảng công tháng {String(selectedMonth).padStart(2, "0")}/{monthPickerYear}
           </h2>
           <div className="attendance-calendar-grid">
             {weekdays.map((weekday) => (
@@ -484,7 +544,7 @@ export function AttendanceBoard() {
                 {weekday}
               </div>
             ))}
-            {attendanceDays.map((day, index) => (
+            {attendanceDaysForMonth.map((day, index) => (
               <AttendanceDayCell
                 day={day}
                 isSelected={selectedDay === day}
@@ -498,7 +558,7 @@ export function AttendanceBoard() {
           ) : null}
         </div>
 
-        <AttendanceStatsPanel />
+        <AttendanceStatsPanel month={selectedMonth} records={data.records} year={monthPickerYear} />
       </section>
     </main>
   );

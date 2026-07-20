@@ -17,6 +17,7 @@ import {
 import type { UserProfile } from "@/lib/mock-data";
 
 type ProfileMenuProps = {
+  canOpenAdminSettings: boolean;
   user: UserProfile;
 };
 
@@ -96,7 +97,7 @@ async function saveThemePreference(themeId: string) {
   }
 }
 
-export function ProfileMenu({ user }: ProfileMenuProps) {
+export function ProfileMenu({ canOpenAdminSettings, user }: ProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [selectedThemeId, setSelectedThemeId] = useState(themeColors[0].id);
@@ -226,14 +227,18 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
               <IdentificationBadge size={18} weight="duotone" aria-hidden="true" />
               <span>Tài khoản</span>
             </a>
-            <a href="/admin/settings" role="menuitem">
-              <GearSix size={18} weight="duotone" aria-hidden="true" />
-              <span>Cài đặt hệ thống</span>
-            </a>
-            <a href="/admin/settings#reconciliation" role="menuitem">
-              <Bank size={18} weight="duotone" aria-hidden="true" />
-              <span>Thông tin đối soát</span>
-            </a>
+            {canOpenAdminSettings ? (
+              <>
+                <a href="/admin/settings" role="menuitem">
+                  <GearSix size={18} weight="duotone" aria-hidden="true" />
+                  <span>Cài đặt hệ thống</span>
+                </a>
+                <a href="/admin/settings#reconciliation" role="menuitem">
+                  <Bank size={18} weight="duotone" aria-hidden="true" />
+                  <span>Thông tin đối soát</span>
+                </a>
+              </>
+            ) : null}
             <button type="button" role="menuitem">
               <BookOpenText size={18} weight="duotone" aria-hidden="true" />
               <span>Hướng dẫn sử dụng</span>

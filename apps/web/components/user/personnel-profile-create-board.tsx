@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useId, useState } from "react";
+import { useActionState, useEffect, useId, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { FormCheckbox, FormDatePicker, FormSelect, formatDateInputValue, type FormSelectOption } from "@/components/ui/form-controls";
 import { createEmployeeProfileAction, type EmployeeCreateFormState } from "@/lib/employee-profile-actions";
@@ -80,10 +81,6 @@ const simpleOptions = {
 
 function todayValue() {
   return formatDateInputValue(new Date());
-}
-
-function firstValue(options: Array<{ id: string }>) {
-  return options[0]?.id ?? "";
 }
 
 function dataOptions<T extends { id: string; name: string }>(items: T[]) {
@@ -191,11 +188,11 @@ function SearchField(props: Parameters<typeof TextField>[0]) {
   );
 }
 
-function UploadBox({ label, wide = false }: { label: string; wide?: boolean }) {
+function UploadBox({ label, name, wide = false }: { label: string; name: string; wide?: boolean }) {
   return (
     <label className={wide ? "personnel-create-upload is-wide" : "personnel-create-upload"}>
       <span>{label}</span>
-      <input type="file" />
+      <input name={name} type="file" />
       <strong aria-hidden="true">
         <UploadSimple size={34} weight="duotone" />
       </strong>
@@ -348,16 +345,16 @@ function ContractTab({
     <>
       <Section title="Thông tin chung">
         <div className="personnel-create-grid personnel-create-grid--contract">
-          <TextField defaultValue="SRG 334-01" label="Mã HĐ" name="contractCode" required />
-          <SelectField label="Loại hợp đồng" name="contractType" options={simpleOptions.contractTypes} required />
-          <SelectField className="is-wide" label="Phòng ban" name="contractDepartmentId" options={departmentOptions} defaultValue={departmentOptions[0]?.value} />
-          <SelectField className="is-wide" label="Vị trí" name="contractPositionId" options={positionOptions} defaultValue={positionOptions[0]?.value} />
-          <SelectField className="is-wide" label="Chức vụ" name="contractJobTitleId" options={jobTitleOptions} defaultValue={jobTitleOptions[0]?.value} />
+          <TextField label="Mã HĐ" name="contractCode" />
+          <SelectField label="Loại hợp đồng" name="contractType" options={simpleOptions.contractTypes} />
+          <SelectField className="is-wide" label="Phòng ban" name="departmentId" options={departmentOptions} defaultValue={departmentOptions[0]?.value} required />
+          <SelectField className="is-wide" label="Vị trí" name="positionId" options={positionOptions} defaultValue={positionOptions[0]?.value} required />
+          <SelectField className="is-wide" label="Chức danh" name="jobTitleId" options={jobTitleOptions} defaultValue={jobTitleOptions[0]?.value} required />
           <SelectField className="is-wide" label="Cấp bậc" name="contractRankId" options={jobTitleOptions} defaultValue={jobTitleOptions[0]?.value} />
           <TextField className="is-wide" name="skillCoefficient" placeholder="Hệ số tay nghề" />
           <SelectField className="is-wide" name="workplace" options={simpleOptions.workplaces} placeholder="Nơi làm việc" />
           <SelectField className="is-wide" name="workMode" options={simpleOptions.workModes} placeholder="Hình thức làm việc" />
-          <DateField label="Hiệu lực từ ngày" name="contractStartDate" required />
+          <DateField label="Hiệu lực từ ngày" name="contractStartDate" />
           <DateField name="contractEndDate" placeholder="Đến ngày" />
           <DateField name="contractSignedDate" placeholder="Ngày ký" />
           <SelectField name="contractSignerId" options={managerOptions} placeholder="Người ký" />
@@ -371,11 +368,11 @@ function ContractTab({
             <X size={18} weight="duotone" aria-hidden="true" />
           </button>
           <div className="personnel-create-grid personnel-create-grid--compensation-top">
-            <DateField label="Từ ngày" name="compensationStartDate" required />
+            <DateField label="Từ ngày" name="compensationStartDate" />
             <TextField label="Ghi chú" name="compensationNote" placeholder="Viết ghi chú" />
           </div>
           <div className="personnel-create-grid personnel-create-grid--compensation-pay">
-            <SelectField label="Lương và phụ cấp" name="compensationType" options={simpleOptions.salaryTypes} defaultValue="salary" required />
+            <SelectField label="Lương và phụ cấp" name="compensationType" options={simpleOptions.salaryTypes} defaultValue="salary" />
             <SelectField label="Hình thức" name="compensationForm" options={simpleOptions.salaryForms} placeholder="Chọn hình thức" />
             <TextField label="Số tiền" name="compensationAmount" placeholder="Nhập lương" />
             <button className="personnel-create-row-remove" type="button" aria-label="Xóa dòng lương và phụ cấp">
@@ -398,6 +395,7 @@ function ContractTab({
 export function PersonnelProfileCreateBoard({ data }: { data: EmployeeCreateData }) {
   const [state, formAction, isPending] = useActionState(createEmployeeProfileAction, initialState);
   const [activeTab, setActiveTab] = useState<PersonnelCreateTabId>("resume");
+  const router = useRouter();
   const departmentOptions = dataOptions(data.departments);
   const positionOptions = dataOptions(data.positions);
   const jobTitleOptions = dataOptions(data.jobTitles);
@@ -405,6 +403,12 @@ export function PersonnelProfileCreateBoard({ data }: { data: EmployeeCreateData
     { value: "none", label: "Người quản lý trực tiếp" },
     ...data.managers.map((manager) => ({ value: manager.id, label: `${manager.code} - ${manager.name}` }))
   ];
+
+  useEffect(() => {
+    if (state.ok && state.employeeId) {
+      router.push(`/user?customMenu=employee-profile&employeeId=${state.employeeId}`);
+    }
+  }, [router, state.employeeId, state.ok]);
 
   return (
     <main className="personnel-profile-create-page" aria-label="Tạo mới hồ sơ nhân sự">
@@ -424,24 +428,13 @@ export function PersonnelProfileCreateBoard({ data }: { data: EmployeeCreateData
       </nav>
 
       <form className="personnel-create-form" action={formAction}>
-        <input name="departmentId" type="hidden" value={firstValue(data.departments)} />
-        <input name="positionId" type="hidden" value={firstValue(data.positions)} />
-        <input name="jobTitleId" type="hidden" value={firstValue(data.jobTitles)} />
         <input name="status" type="hidden" value="active" />
         <input name="employeeType" type="hidden" value="official" />
 
-        {activeTab !== "resume" ? (
-          <>
-            <input name="code" type="hidden" value="SRG_333" />
-            <input name="fullName" type="hidden" value="Nhân sự mới" />
-            <input name="startDate" type="hidden" value={todayValue()} />
-          </>
-        ) : null}
-
-        <fieldset className="personnel-create-tab-panel" disabled={activeTab !== "resume"} hidden={activeTab !== "resume"}>
+        <fieldset className="personnel-create-tab-panel" hidden={activeTab !== "resume"}>
         <Section title="Thông tin cá nhân">
           <div className="personnel-create-grid personnel-create-grid--compact">
-            <TextField defaultValue="SRG_333" label="Mã NS" name="code" required />
+            <TextField label="Mã NS" name="code" required />
             <TextField name="attendanceCode" placeholder="Mã chấm công" />
             <TextField name="profileCode" placeholder="Mã hồ sơ" />
             <TextField className="is-wide" label="Họ và tên" name="fullName" required />
@@ -476,8 +469,8 @@ export function PersonnelProfileCreateBoard({ data }: { data: EmployeeCreateData
             <SearchField name="identityIssuedPlace" placeholder="Nơi cấp" />
           </div>
           <div className="personnel-create-upload-grid">
-            <UploadBox label="Ảnh CC/CCCD/CMND mặt trước" />
-            <UploadBox label="Ảnh CC/CCCD/CMND mặt sau" />
+            <UploadBox label="Ảnh CC/CCCD/CMND mặt trước" name="identityFrontImage" />
+            <UploadBox label="Ảnh CC/CCCD/CMND mặt sau" name="identityBackImage" />
           </div>
           <div className="personnel-create-grid">
             <SelectField name="passportType" options={[{ value: "ordinary", label: "Loại hộ chiếu" }]} placeholder="Loại hộ chiếu" />
@@ -486,15 +479,15 @@ export function PersonnelProfileCreateBoard({ data }: { data: EmployeeCreateData
             <DateField name="passportExpiredDate" placeholder="Ngày hết hạn" />
             <SelectField name="passportIssuedPlace" options={[{ value: "vn", label: "Nơi cấp" }]} placeholder="Nơi cấp" />
           </div>
-          <UploadBox label="Ảnh hộ chiếu" />
+          <UploadBox label="Ảnh hộ chiếu" name="passportImage" />
         </Section>
 
         <Section title="Thông tin ngân hàng">
           <div className="personnel-create-grid personnel-create-grid--bank">
-            <TextField defaultValue="9704723923523" label="Số tài khoản" name="bankAccountNumber" />
+            <TextField label="Số tài khoản" name="bankAccountNumber" />
             <TextField label="Tên tài khoản" name="bankAccountName" placeholder="Tên tài khoản" />
             <SelectField label="Ngân hàng" name="bankName" options={[{ value: "none", label: "Chọn ngân hàng" }]} placeholder="Chọn ngân hàng" />
-            <TextField defaultValue="Thanh Xuân" label="Chi nhánh" name="bankBranch" />
+            <TextField label="Chi nhánh" name="bankBranch" />
             <button className="personnel-create-row-remove" type="button" aria-label="Xóa thông tin ngân hàng">
               <X size={18} weight="duotone" aria-hidden="true" />
             </button>
@@ -540,10 +533,10 @@ export function PersonnelProfileCreateBoard({ data }: { data: EmployeeCreateData
         <Section title="Thông tin gia đình & người phụ thuộc">
           <div className="personnel-create-wide-row">
             <SelectField label="Mối quan hệ" name="familyRelation" options={[{ value: "parent", label: "Chọn" }]} placeholder="Chọn" />
-            <TextField label="Họ và tên" name="familyName" defaultValue="Nguyễn Văn A" />
+            <TextField label="Họ và tên" name="familyName" />
             <DateField label="Ngày sinh" name="familyBirthDate" />
             <TextField label="Điện thoại" name="familyPhone" placeholder="098..." />
-            <TextField label="CMT/Căn cước" name="familyIdentity" defaultValue="173726531" />
+            <TextField label="CMT/Căn cước" name="familyIdentity" />
             <DateField label="Ngày cấp" name="familyIdentityDate" />
             <SearchField label="Nơi cấp" name="familyIdentityPlace" placeholder="Chọn nơi cấp" />
             <SelectField label="Phụ thuộc" name="familyDependent" options={simpleOptions.yesNo} defaultValue="no" />
@@ -588,8 +581,8 @@ export function PersonnelProfileCreateBoard({ data }: { data: EmployeeCreateData
           <div className="personnel-create-wide-row personnel-create-wide-row--experience">
             <DateField label="Từ tháng" name="experienceFrom" placeholder="mm/yyyy" />
             <DateField label="Đến tháng" name="experienceTo" placeholder="mm/yyyy" />
-            <TextField label="Công ty" name="experienceCompany" defaultValue="Công ty TNHH ABC" />
-            <TextField label="Vị trí" name="experiencePosition" defaultValue="Nhân viên" />
+            <TextField label="Công ty" name="experienceCompany" />
+            <TextField label="Vị trí" name="experiencePosition" />
             <TextField label="Người tham chiếu" name="experienceReference" placeholder="Họ tên" />
             <TextField label="Điện thoại" name="experiencePhone" placeholder="Số điện thoại" />
             <TextField label="Mô tả công việc" name="experienceDescription" placeholder="Nhập mô tả" />
@@ -611,14 +604,14 @@ export function PersonnelProfileCreateBoard({ data }: { data: EmployeeCreateData
             <DateField label="Ngày hết hiệu lực" name="certificateEnd" />
             <label className="personnel-create-file-button">
               Chọn tệp đính kèm
-              <input type="file" />
+              <input name="certificateAttachment" type="file" />
             </label>
             <button className="personnel-create-row-remove" type="button" aria-label="Xóa chứng chỉ">
               <X size={18} weight="duotone" aria-hidden="true" />
             </button>
           </div>
           <AddRowButton label="Thêm chứng chỉ" />
-          <UploadBox label="Ảnh đại diện" />
+          <UploadBox label="Ảnh đại diện" name="avatarImage" />
         </Section>
 
         <label className="personnel-create-field personnel-create-note">
@@ -627,7 +620,7 @@ export function PersonnelProfileCreateBoard({ data }: { data: EmployeeCreateData
         </label>
         </fieldset>
 
-        <fieldset className="personnel-create-tab-panel" disabled={activeTab !== "contract"} hidden={activeTab !== "contract"}>
+        <fieldset className="personnel-create-tab-panel" hidden={activeTab !== "contract"}>
           <ContractTab
             departmentOptions={departmentOptions}
             jobTitleOptions={jobTitleOptions}
@@ -636,19 +629,19 @@ export function PersonnelProfileCreateBoard({ data }: { data: EmployeeCreateData
           />
         </fieldset>
 
-        <fieldset className="personnel-create-tab-panel" disabled={activeTab !== "health"} hidden={activeTab !== "health"}>
+        <fieldset className="personnel-create-tab-panel" hidden={activeTab !== "health"}>
           <HealthTab />
         </fieldset>
 
-        <fieldset className="personnel-create-tab-panel" disabled={activeTab !== "onboarding"} hidden={activeTab !== "onboarding"}>
+        <fieldset className="personnel-create-tab-panel" hidden={activeTab !== "onboarding"}>
           <OnboardingTab />
         </fieldset>
 
-        <fieldset className="personnel-create-tab-panel" disabled={activeTab !== "attachments"} hidden={activeTab !== "attachments"}>
+        <fieldset className="personnel-create-tab-panel" hidden={activeTab !== "attachments"}>
           <AttachmentsTab />
         </fieldset>
 
-        <fieldset className="personnel-create-tab-panel" disabled={activeTab !== "relations"} hidden={activeTab !== "relations"}>
+        <fieldset className="personnel-create-tab-panel" hidden={activeTab !== "relations"}>
           <RelatedObjectsTab />
         </fieldset>
 

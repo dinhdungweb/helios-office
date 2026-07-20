@@ -184,7 +184,7 @@ function UserTopbar({
             <GearSix size={18} weight="duotone" aria-hidden="true" />
           </a>
         ) : null}
-        <ProfileMenu user={user} />
+        <ProfileMenu canOpenAdminSettings={canOpenAdminSettings} user={user} />
       </nav>
     </header>
   );
