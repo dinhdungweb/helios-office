@@ -30,9 +30,25 @@ function readRequiredString(formData: FormData, key: string) {
   return value;
 }
 
-function readOptionalNumber(formData: FormData, key: string) {
-  const value = readOptionalString(formData, key);
-  return value ? Number(value) : undefined;
+function readEntryString(entry: FormDataEntryValue | undefined) {
+  if (typeof entry !== "string") return undefined;
+
+  const value = entry.trim();
+  return value.length > 0 && value !== "none" ? value : undefined;
+}
+
+function createGeneratedTitleCode(name: string, index: number) {
+  const slug = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/gi, "d")
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 24)
+    .toUpperCase() || "CHUC-VU";
+  const suffix = Date.now().toString(36).slice(-6).toUpperCase();
+
+  return `${slug}-${suffix}-${index + 1}`;
 }
 
 function friendlyCatalogError(status: number) {
@@ -49,13 +65,13 @@ function friendlyCatalogError(status: number) {
   }
 
   if (status === 409) {
-    return "Không thể lưu danh mục: mã hoặc tên đã tồn tại, hoặc danh mục đang có nhân sự sử dụng.";
+    return "Không thể thực hiện: mã hoặc tên đã tồn tại, hoặc danh mục đang có nhân sự sử dụng.";
   }
 
   return "Không lưu được danh mục. Hãy kiểm tra dữ liệu và thử lại.";
 }
 
-async function mutateCatalog(path: string, method: "POST" | "PATCH", payload?: Record<string, unknown>) {
+async function mutateCatalog(path: string, method: "POST" | "PATCH" | "DELETE", payload?: Record<string, unknown>) {
   const accessToken = await getSessionAccessToken();
   const headers = new Headers();
 
@@ -81,7 +97,9 @@ async function mutateCatalog(path: string, method: "POST" | "PATCH", payload?: R
     };
   }
 
-  revalidatePath("/admin/settings/positions-titles");
+  revalidatePath("/admin/settings/job-positions");
+  revalidatePath("/admin/settings/job-titles");
+  revalidatePath("/admin/settings/job-levels");
   revalidatePath("/admin/hr/employees/new");
 
   return { ok: true };
@@ -133,16 +151,85 @@ export async function restorePositionAction(formData: FormData) {
 
 export async function createTitleAction(_state: CatalogFormState, formData: FormData): Promise<CatalogFormState> {
   try {
-    return mutateCatalog("/job-titles", "POST", {
-      code: readRequiredString(formData, "code"),
-      name: readRequiredString(formData, "name"),
-      rank: readOptionalNumber(formData, "rank"),
-      description: readOptionalString(formData, "description")
-    });
+    const names = formData.getAll("name");
+    const codes = formData.getAll("code");
+    const levelIds = formData.getAll("levelId");
+    const descriptions = formData.getAll("description");
+
+    if (names.length === 0) throw new Error("Missing name");
+
+    for (let index = 0; index < names.length; index += 1) {
+      const name = readEntryString(names[index]);
+      if (!name) throw new Error(`Missing name at row ${index + 1}`);
+
+      const code = readEntryString(codes[index]) ?? createGeneratedTitleCode(name, index);
+      const result = await mutateCatalog("/job-titles", "POST", {
+        code,
+        name,
+        levelId: readEntryString(levelIds[index]),
+        description: readEntryString(descriptions[index])
+      });
+
+      if (!result.ok) return result;
+    }
+
+    return { ok: true };
   } catch (error) {
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Không tạo được chức danh."
+    };
+  }
+}
+
+export async function deleteCatalogItemsAction(
+  kind: "position" | "title" | "level",
+  ids: string[]
+): Promise<CatalogFormState> {
+  try {
+    const uniqueIds = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+    if (uniqueIds.length === 0) return { ok: false, error: "Chưa chọn bản ghi cần xóa." };
+
+    const resource = kind === "position" ? "job-positions" : kind === "title" ? "job-titles" : "job-levels";
+    for (const id of uniqueIds) {
+      const result = await mutateCatalog(`/${resource}/${encodeURIComponent(id)}`, "DELETE");
+      if (!result.ok) return result;
+    }
+
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Không xóa được danh mục."
+    };
+  }
+}
+
+export async function createJobLevelAction(_state: CatalogFormState, formData: FormData): Promise<CatalogFormState> {
+  try {
+    const names = formData.getAll("name");
+    const descriptions = formData.getAll("description");
+
+    if (names.length === 0) throw new Error("Missing name");
+
+    for (let index = 0; index < names.length; index += 1) {
+      const name = readEntryString(names[index]);
+      if (!name) throw new Error(`Missing name at row ${index + 1}`);
+
+      const result = await mutateCatalog("/job-levels", "POST", {
+        name,
+        description: readEntryString(descriptions[index]),
+        sortOrder: index + 1
+      });
+
+      if (!result.ok) return result;
+    }
+
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Không tạo được cấp bậc."
     };
   }
 }
@@ -154,7 +241,7 @@ export async function updateTitleAction(_state: CatalogFormState, formData: Form
     return mutateCatalog(`/job-titles/${encodeURIComponent(id)}`, "PATCH", {
       code: readRequiredString(formData, "code"),
       name: readRequiredString(formData, "name"),
-      rank: readOptionalNumber(formData, "rank") ?? 0,
+      levelId: readOptionalString(formData, "levelId") ?? null,
       description: readOptionalString(formData, "description") ?? null
     });
   } catch (error) {

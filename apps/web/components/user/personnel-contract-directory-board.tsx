@@ -437,6 +437,7 @@ export function PersonnelContractDirectoryBoard({ data }: { data: PersonnelContr
               },
               {
                 key: "settings",
+                href: "/admin/settings/job-positions",
                 icon: <GearSix size={16} weight="duotone" aria-hidden="true" />,
                 label: "Cài đặt"
               }

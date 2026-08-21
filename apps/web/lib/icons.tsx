@@ -38,12 +38,15 @@ import {
   Delete01Icon,
   DollarCircleIcon,
   DollarReceive01Icon,
+  EaseCurveControlPointsIcon,
   EyeIcon,
   File02Icon,
   FileClockIcon,
   FileDownloadIcon,
   FileExportIcon,
+  FitToScreenIcon,
   Flag02Icon,
+  FlowConnectionIcon,
   FormIcon,
   FunnelIcon,
   Globe02Icon,
@@ -153,6 +156,7 @@ export const ClipboardText = createIcon(ClipboardListIcon);
 export const Clock = createIcon(Clock01Icon);
 export const Columns = createIcon(LayoutTwoColumnIcon);
 export const CurrencyDollar = createIcon(DollarCircleIcon);
+export const CurvePath = createIcon(EaseCurveControlPointsIcon);
 export const DotsThree = createIcon(MoreHorizontalIcon);
 export const DotsThreeVertical = createIcon(MoreVerticalIcon);
 export const EnvelopeSimple = createIcon(Mail01Icon);
@@ -163,7 +167,9 @@ export const FormTemplate = createIcon(FormIcon);
 export const FileClock = createIcon(FileClockIcon);
 export const FileDownload = createIcon(FileDownloadIcon);
 export const Flag = createIcon(Flag02Icon);
+export const FitToScreen = createIcon(FitToScreenIcon);
 export const FlowArrow = createIcon(ChartNetworkIcon);
+export const FlowConnection = createIcon(FlowConnectionIcon);
 export const FunnelSimple = createIcon(FunnelIcon);
 export const GearSix = createIcon(Settings02Icon);
 export const GenderMale = createIcon(MaleSymbolIcon);

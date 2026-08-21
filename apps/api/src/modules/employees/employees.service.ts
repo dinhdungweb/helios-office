@@ -7,8 +7,13 @@ import { KeycloakAdminService } from "../auth/keycloak-admin.service";
 import type {
   CreateDepartmentDto,
   CreateEmployeeDto,
+  CreateInternalPenaltyDto,
+  CreateJobLevelDto,
   CreateJobPositionDto,
   CreateJobTitleDto,
+  CreateWelfareBenefitDto,
+  CreateWelfarePackageDto,
+  CreateWorkplaceDto,
   LinkEmployeeAccountDto,
   UpdateDepartmentDto,
   UpdateEmployeeDto,
@@ -727,10 +732,338 @@ export class EmployeesService {
     return { ...positionData, employeeCount: _count.employees };
   }
 
+  async deleteJobPosition(id: string, actorId?: string) {
+    const position = await this.prisma.jobPosition.findUnique({
+      where: { id },
+      include: { _count: { select: { employees: true } } }
+    });
+
+    if (!position) throw new NotFoundException(`Job position ${id} was not found`);
+    if (position._count.employees > 0) {
+      throw new ConflictException("Job position is still assigned to employees");
+    }
+
+    await this.prisma.jobPosition.delete({ where: { id } });
+    await this.writeEmployeeAudit("job_position.delete", "JobPosition", id, position, null, actorId);
+    return { id, deleted: true };
+  }
+
+  async findJobLevels(includeArchived = false) {
+    return this.prisma.jobLevel.findMany({
+      where: includeArchived ? undefined : { status: JobCatalogStatus.active },
+      orderBy: [{ status: "asc" }, { sortOrder: "asc" }, { name: "asc" }]
+    });
+  }
+
+  async createJobLevel(dto: CreateJobLevelDto, actorId?: string) {
+    try {
+      const level = await this.prisma.jobLevel.create({
+        data: {
+          name: dto.name,
+          description: dto.description ?? null,
+          sortOrder: dto.sortOrder ?? 0
+        }
+      });
+
+      await this.writeEmployeeAudit("job_level.create", "JobLevel", level.id, null, level, actorId);
+      return level;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        throw new ConflictException("Job level name already exists");
+      }
+
+      throw error;
+    }
+  }
+
+  async deleteJobLevel(id: string, actorId?: string) {
+    const level = await this.prisma.jobLevel.findUnique({ where: { id } });
+    if (!level) throw new NotFoundException(`Job level ${id} was not found`);
+
+    await this.prisma.jobLevel.delete({ where: { id } });
+    await this.writeEmployeeAudit("job_level.delete", "JobLevel", id, level, null, actorId);
+    return { id, deleted: true };
+  }
+
+  async findWorkplaces(includeArchived = false) {
+    return this.prisma.workplace.findMany({
+      where: includeArchived ? undefined : { status: JobCatalogStatus.active },
+      include: {
+        department: {
+          select: { id: true, name: true }
+        }
+      },
+      orderBy: [{ status: "asc" }, { name: "asc" }]
+    });
+  }
+
+  async createWorkplace(dto: CreateWorkplaceDto, actorId?: string) {
+    try {
+      const workplace = await this.prisma.workplace.create({
+        data: {
+          name: dto.name,
+          addressLine: dto.addressLine ?? null,
+          administrativeArea: dto.administrativeArea ?? null,
+          departmentId: dto.departmentId ?? null,
+          description: dto.description ?? null
+        },
+        include: {
+          department: {
+            select: { id: true, name: true }
+          }
+        }
+      });
+
+      await this.writeEmployeeAudit("workplace.create", "Workplace", workplace.id, null, workplace, actorId);
+      return workplace;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        throw new ConflictException("Workplace name already exists");
+      }
+
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+        throw new BadRequestException("The selected department does not exist");
+      }
+
+      throw error;
+    }
+  }
+
+  async deleteWorkplace(id: string, actorId?: string) {
+    const workplace = await this.prisma.workplace.findUnique({
+      where: { id },
+      include: { department: { select: { id: true, name: true } } }
+    });
+    if (!workplace) throw new NotFoundException(`Workplace ${id} was not found`);
+
+    await this.prisma.workplace.delete({ where: { id } });
+    await this.writeEmployeeAudit("workplace.delete", "Workplace", id, workplace, null, actorId);
+    return { id, deleted: true };
+  }
+
+  async findInternalPenalties(includeArchived = false) {
+    return this.prisma.internalPenalty.findMany({
+      where: includeArchived ? undefined : { status: JobCatalogStatus.active },
+      include: {
+        createdBy: {
+          select: { id: true, fullName: true, avatarUrl: true }
+        }
+      },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }]
+    });
+  }
+
+  async createInternalPenalty(dto: CreateInternalPenaltyDto, actorId?: string) {
+    const penalty = await this.prisma.internalPenalty.create({
+      data: {
+        violation: dto.violation,
+        amount: dto.amount,
+        description: dto.description ?? null,
+        createdById: actorId ?? null
+      },
+      include: {
+        createdBy: {
+          select: { id: true, fullName: true, avatarUrl: true }
+        }
+      }
+    });
+
+    await this.writeEmployeeAudit(
+      "internal_penalty.create",
+      "InternalPenalty",
+      penalty.id,
+      null,
+      penalty,
+      actorId
+    );
+    return penalty;
+  }
+
+  async deleteInternalPenalty(id: string, actorId?: string) {
+    const penalty = await this.prisma.internalPenalty.findUnique({
+      where: { id },
+      include: {
+        createdBy: {
+          select: { id: true, fullName: true, avatarUrl: true }
+        }
+      }
+    });
+
+    if (!penalty) {
+      throw new NotFoundException(`Internal penalty ${id} was not found`);
+    }
+
+    await this.prisma.internalPenalty.delete({ where: { id } });
+    await this.writeEmployeeAudit(
+      "internal_penalty.delete",
+      "InternalPenalty",
+      id,
+      penalty,
+      null,
+      actorId
+    );
+
+    return { id, deleted: true };
+  }
+
+  async findWelfareBenefits(includeArchived = false) {
+    return this.prisma.welfareBenefit.findMany({
+      where: includeArchived ? undefined : { status: JobCatalogStatus.active },
+      include: {
+        createdBy: {
+          select: { id: true, fullName: true, avatarUrl: true }
+        }
+      },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }]
+    });
+  }
+
+  async createWelfareBenefit(dto: CreateWelfareBenefitDto, actorId?: string) {
+    const benefit = await this.prisma.welfareBenefit.create({
+      data: {
+        name: dto.name,
+        amount: dto.amount,
+        description: dto.description ?? null,
+        createdById: actorId ?? null
+      },
+      include: {
+        createdBy: {
+          select: { id: true, fullName: true, avatarUrl: true }
+        }
+      }
+    });
+
+    await this.writeEmployeeAudit(
+      "welfare_benefit.create",
+      "WelfareBenefit",
+      benefit.id,
+      null,
+      benefit,
+      actorId
+    );
+    return benefit;
+  }
+
+  async deleteWelfareBenefit(id: string, actorId?: string) {
+    const benefit = await this.prisma.welfareBenefit.findUnique({
+      where: { id },
+      include: {
+        createdBy: {
+          select: { id: true, fullName: true, avatarUrl: true }
+        }
+      }
+    });
+
+    if (!benefit) {
+      throw new NotFoundException(`Welfare benefit ${id} was not found`);
+    }
+
+    await this.prisma.welfareBenefit.delete({ where: { id } });
+    await this.writeEmployeeAudit(
+      "welfare_benefit.delete",
+      "WelfareBenefit",
+      id,
+      benefit,
+      null,
+      actorId
+    );
+
+    return { id, deleted: true };
+  }
+
+  async findWelfarePackages(includeArchived = false) {
+    return this.prisma.welfarePackage.findMany({
+      where: includeArchived ? undefined : { status: JobCatalogStatus.active },
+      include: {
+        createdBy: { select: { id: true, fullName: true, avatarUrl: true } },
+        position: { select: { id: true, name: true } },
+        jobTitle: { select: { id: true, name: true } },
+        jobLevel: { select: { id: true, name: true } },
+        items: {
+          include: { benefit: { select: { id: true, name: true } } },
+          orderBy: { createdAt: "asc" }
+        }
+      },
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }]
+    });
+  }
+
+  async createWelfarePackage(dto: CreateWelfarePackageDto, actorId?: string) {
+    const startDate = dto.startDate ? new Date(dto.startDate) : null;
+    const endDate = dto.endDate ? new Date(dto.endDate) : null;
+    if (startDate && endDate && endDate < startDate) {
+      throw new BadRequestException("End date must not be earlier than start date");
+    }
+
+    try {
+      const welfarePackage = await this.prisma.welfarePackage.create({
+        data: {
+          name: dto.name,
+          startDate,
+          endDate,
+          positionId: dto.positionId ?? null,
+          jobTitleId: dto.jobTitleId ?? null,
+          jobLevelId: dto.jobLevelId ?? null,
+          description: dto.description ?? null,
+          createdById: actorId ?? null,
+          items: {
+            create: dto.items.map((item) => ({
+              benefitId: item.benefitId ?? null,
+              amount: item.amount,
+              paymentMethod: item.paymentMethod ?? null
+            }))
+          }
+        },
+        include: {
+          createdBy: { select: { id: true, fullName: true, avatarUrl: true } },
+          position: { select: { id: true, name: true } },
+          jobTitle: { select: { id: true, name: true } },
+          jobLevel: { select: { id: true, name: true } },
+          items: { include: { benefit: { select: { id: true, name: true } } } }
+        }
+      });
+
+      await this.writeEmployeeAudit(
+        "welfare_package.create",
+        "WelfarePackage",
+        welfarePackage.id,
+        null,
+        welfarePackage,
+        actorId
+      );
+      return welfarePackage;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+        throw new BadRequestException("A selected catalog item does not exist");
+      }
+      throw error;
+    }
+  }
+
+  async deleteWelfarePackage(id: string, actorId?: string) {
+    const welfarePackage = await this.prisma.welfarePackage.findUnique({
+      where: { id },
+      include: { items: true }
+    });
+    if (!welfarePackage) throw new NotFoundException(`Welfare package ${id} was not found`);
+
+    await this.prisma.welfarePackage.delete({ where: { id } });
+    await this.writeEmployeeAudit(
+      "welfare_package.delete",
+      "WelfarePackage",
+      id,
+      welfarePackage,
+      null,
+      actorId
+    );
+    return { id, deleted: true };
+  }
+
   async findJobTitles(includeArchived = false) {
     const titles = await this.prisma.jobTitle.findMany({
       where: includeArchived ? undefined : { status: JobCatalogStatus.active },
       include: {
+        level: true,
         _count: {
           select: {
             employees: true
@@ -753,6 +1086,7 @@ export class EmployeesService {
           code: dto.code,
           name: dto.name,
           rank: dto.rank ?? 0,
+          levelId: dto.levelId ?? null,
           description: dto.description ?? null
         },
         include: {
@@ -804,6 +1138,7 @@ export class EmployeesService {
           code: dto.code,
           name: dto.name,
           rank: dto.rank,
+          levelId: dto.levelId,
           description: dto.description
         },
         include: {
@@ -914,6 +1249,22 @@ export class EmployeesService {
 
     const { _count, ...titleData } = title;
     return { ...titleData, employeeCount: _count.employees };
+  }
+
+  async deleteJobTitle(id: string, actorId?: string) {
+    const title = await this.prisma.jobTitle.findUnique({
+      where: { id },
+      include: { _count: { select: { employees: true } } }
+    });
+
+    if (!title) throw new NotFoundException(`Job title ${id} was not found`);
+    if (title._count.employees > 0) {
+      throw new ConflictException("Job title is still assigned to employees");
+    }
+
+    await this.prisma.jobTitle.delete({ where: { id } });
+    await this.writeEmployeeAudit("job_title.delete", "JobTitle", id, title, null, actorId);
+    return { id, deleted: true };
   }
 
   async findContracts() {

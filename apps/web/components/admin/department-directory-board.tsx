@@ -126,7 +126,12 @@ function buildDirectoryRows(departments: DepartmentRecord[]) {
     }[department.permissionStructure];
   };
 
-  const appendRows = (department: DepartmentRecord, depth: number, prefix: string) => {
+  const appendRows = (
+    department: DepartmentRecord,
+    depth: number,
+    prefix: string,
+    options?: { isCompanyRoot?: boolean; resetChildPrefix?: boolean }
+  ) => {
     if (visited.has(department.id)) {
       return;
     }
@@ -136,20 +141,34 @@ function buildDirectoryRows(departments: DepartmentRecord[]) {
       ...department,
       depth,
       displayTitle: withStructuredPrefix(prefix, department.name),
+      isCompanyRoot: options?.isCompanyRoot,
       permissionStructureLabel: permissionStructureFor(department)
     });
 
     const children = childrenByParentId.get(department.id) ?? [];
 
     children.forEach((child, index) => {
-      appendRows(child, depth + 1, `${prefix}.${index + 1}`);
+      appendRows(
+        child,
+        depth + 1,
+        options?.resetChildPrefix ? String(index + 1) : `${prefix}.${index + 1}`
+      );
     });
   };
 
   const roots = departments.filter((department) => !department.parentId || !departmentById.has(department.parentId));
+  let rootNumber = 1;
 
-  roots.forEach((department, index) => {
-    appendRows(department, 0, String(index + 1));
+  roots.forEach((department) => {
+    const isCompanyRoot = department.permissionStructure === "company";
+
+    if (isCompanyRoot) {
+      appendRows(department, 0, "A", { isCompanyRoot: true, resetChildPrefix: true });
+      return;
+    }
+
+    appendRows(department, 0, String(rootNumber));
+    rootNumber += 1;
   });
 
   for (const department of departments) {
@@ -655,7 +674,7 @@ export function DepartmentDirectoryBoard({ data }: { data: OrgChartData }) {
               },
               {
                 key: "settings",
-                href: "/admin/settings/org-chart?view=chart",
+                href: "/admin/settings/system",
                 icon: <GearSix size={16} weight="duotone" aria-hidden="true" />,
                 label: "Cài đặt"
               }

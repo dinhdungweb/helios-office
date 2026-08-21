@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { AccountAdminRole, AccountLifecycleStatus, EmployeeStatus } from "@prisma/client";
 import {
+  ArrayMinSize,
+  IsArray,
   IsBoolean,
   IsDateString,
   IsEmail,
@@ -438,6 +440,149 @@ export class UpdateJobPositionDto {
   description?: string | null;
 }
 
+export class CreateJobLevelDto {
+  @ApiProperty({ example: "Bậc 1" })
+  @IsString()
+  @MinLength(2)
+  name!: string;
+
+  @ApiPropertyOptional({ example: "Cấp bậc khởi đầu." })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
+}
+
+export class CreateWorkplaceDto {
+  @ApiProperty({ example: "Văn phòng Hà Nội" })
+  @IsString()
+  @MinLength(2)
+  name!: string;
+
+  @ApiPropertyOptional({ example: "123 Nguyễn Trãi" })
+  @IsOptional()
+  @IsString()
+  addressLine?: string;
+
+  @ApiPropertyOptional({ example: "Thanh Xuân, Hà Nội" })
+  @IsOptional()
+  @IsString()
+  administrativeArea?: string;
+
+  @ApiPropertyOptional({ example: "9d37433b-8bc2-483e-80b8-8aa732bd0fbb" })
+  @IsOptional()
+  @IsString()
+  departmentId?: string;
+
+  @ApiPropertyOptional({ example: "Văn phòng làm việc chính." })
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+export class CreateInternalPenaltyDto {
+  @ApiProperty({ example: "Đi muộn" })
+  @IsString()
+  @MinLength(2)
+  violation!: string;
+
+  @ApiProperty({ example: 50000, minimum: 0 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  amount!: number;
+
+  @ApiPropertyOptional({ example: "Áp dụng cho mỗi lần vi phạm." })
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+export class CreateWelfareBenefitDto {
+  @ApiProperty({ example: "Thưởng sinh nhật" })
+  @IsString()
+  @MinLength(2)
+  name!: string;
+
+  @ApiProperty({ example: 500000, minimum: 0 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  amount!: number;
+
+  @ApiPropertyOptional({ example: "Áp dụng cho nhân sự đang làm việc chính thức." })
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+export class CreateWelfarePackageItemDto {
+  @ApiPropertyOptional({ example: "9d37433b-8bc2-483e-80b8-8aa732bd0fbb" })
+  @IsOptional()
+  @IsString()
+  benefitId?: string;
+
+  @ApiProperty({ example: 500000, minimum: 0 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  amount!: number;
+
+  @ApiPropertyOptional({ example: "monthly" })
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
+}
+
+export class CreateWelfarePackageDto {
+  @ApiProperty({ example: "Gói phúc lợi nhân viên chính thức" })
+  @IsString()
+  @MinLength(2)
+  name!: string;
+
+  @ApiPropertyOptional({ example: "2026-08-01" })
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ example: "2026-12-31" })
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
+  @ApiPropertyOptional({ example: "9d37433b-8bc2-483e-80b8-8aa732bd0fbb" })
+  @IsOptional()
+  @IsString()
+  positionId?: string;
+
+  @ApiPropertyOptional({ example: "9d37433b-8bc2-483e-80b8-8aa732bd0fbb" })
+  @IsOptional()
+  @IsString()
+  jobTitleId?: string;
+
+  @ApiPropertyOptional({ example: "9d37433b-8bc2-483e-80b8-8aa732bd0fbb" })
+  @IsOptional()
+  @IsString()
+  jobLevelId?: string;
+
+  @ApiPropertyOptional({ example: "Áp dụng cho nhân viên chính thức." })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiProperty({ type: [CreateWelfarePackageItemDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => CreateWelfarePackageItemDto)
+  items!: CreateWelfarePackageItemDto[];
+}
+
 export class CreateJobTitleDto {
   @ApiProperty({ example: "TTL-MGR" })
   @IsString()
@@ -454,6 +599,11 @@ export class CreateJobTitleDto {
   @IsInt()
   @Min(0)
   rank?: number;
+
+  @ApiPropertyOptional({ example: "9d37433b-8bc2-483e-80b8-8aa732bd0fbb" })
+  @IsOptional()
+  @IsString()
+  levelId?: string;
 
   @ApiPropertyOptional({ example: "Quan ly phong ban va phe duyet nghiep vu trong bo phan." })
   @IsOptional()
@@ -479,6 +629,11 @@ export class UpdateJobTitleDto {
   @IsInt()
   @Min(0)
   rank?: number;
+
+  @ApiPropertyOptional({ example: "9d37433b-8bc2-483e-80b8-8aa732bd0fbb", nullable: true })
+  @IsOptional()
+  @IsString()
+  levelId?: string | null;
 
   @ApiPropertyOptional({ example: "Quan ly phong ban va phe duyet nghiep vu trong bo phan." })
   @IsOptional()

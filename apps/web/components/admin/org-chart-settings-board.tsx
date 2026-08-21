@@ -539,7 +539,7 @@ function PositionTitlePanel() {
           <h2 id="org-catalog-title">Vị trí & chức vụ</h2>
           <p>Danh mục này sẽ được nối DB ở bước Phase 3 tiếp theo.</p>
         </div>
-        <a className="secondary-button" href="/admin/settings/positions-titles">
+        <a className="secondary-button" href="/admin/settings/job-positions">
           <ArrowSquareOut size={16} weight="duotone" aria-hidden="true" />
           Mở danh mục
         </a>

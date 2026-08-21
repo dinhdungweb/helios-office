@@ -121,6 +121,12 @@ model UserAccount {
   updatedAt                DateTime               @updatedAt
 }
 
+enum ApprovalWorkflowStatus {
+  draft
+  active
+  archived
+}
+
 model UserPreference {
   id        String      @id @default(uuid())
   accountId String
@@ -244,6 +250,12 @@ model Employee {
   assetAssignments  AssetAssignment[]
   deviceAuthRequests DeviceAuthRequest[]
   auditLogs         AuditLog[]
+  createdInternalPenalties InternalPenalty[] @relation("InternalPenaltyCreator")
+  createdWelfareBenefits   WelfareBenefit[]   @relation("WelfareBenefitCreator")
+  createdWelfarePackages   WelfarePackage[]   @relation("WelfarePackageCreator")
+  followedApprovalWorkflows ApprovalWorkflowDefinition[] @relation("ApprovalWorkflowFollower")
+  createdApprovalWorkflows  ApprovalWorkflowDefinition[] @relation("ApprovalWorkflowCreator")
+  updatedApprovalWorkflows  ApprovalWorkflowDefinition[] @relation("ApprovalWorkflowUpdater")
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -254,7 +266,7 @@ model Employee {
 model Department {
   id                  String           @id @default(uuid())
   code                String           @unique
-  name                String           @unique
+  name                String
   parentId            String?
   headId              String?
   permissionStructure String           @default("department")
@@ -267,8 +279,11 @@ model Department {
   parent              Department?      @relation("DepartmentTree", fields: [parentId], references: [id])
   children            Department[]     @relation("DepartmentTree")
   employees           Employee[]
+  workplaces          Workplace[]
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
+
+  @@unique([parentId, name])
 }
 
 model EmployeeDocument {
@@ -294,6 +309,7 @@ model JobPosition {
   status      JobCatalogStatus @default(active)
   archivedAt  DateTime?
   employees   Employee[]
+  welfarePackages WelfarePackage[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 }
@@ -303,12 +319,121 @@ model JobTitle {
   code        String           @unique
   name        String           @unique
   rank        Int              @default(0)
+  levelId     String?
   description String?
   status      JobCatalogStatus @default(active)
   archivedAt  DateTime?
+  level       JobLevel?        @relation(fields: [levelId], references: [id], onDelete: SetNull)
   employees   Employee[]
+  welfarePackages WelfarePackage[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+
+  @@index([levelId])
+}
+
+model JobLevel {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  sortOrder   Int              @default(0)
+  status      JobCatalogStatus @default(active)
+  archivedAt  DateTime?
+  jobTitles   JobTitle[]
+  welfarePackages WelfarePackage[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Workplace {
+  id                 String           @id @default(uuid())
+  name               String           @unique
+  addressLine        String?
+  administrativeArea String?
+  departmentId       String?
+  description        String?
+  status             JobCatalogStatus @default(active)
+  archivedAt         DateTime?
+  department         Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([departmentId])
+}
+
+model InternalPenalty {
+  id          String           @id @default(uuid())
+  violation   String
+  amount      Int              @default(0)
+  description String?
+  status      JobCatalogStatus @default(active)
+  archivedAt  DateTime?
+  createdById String?
+  createdBy   Employee?        @relation("InternalPenaltyCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([createdById])
+  @@index([status])
+}
+
+model WelfareBenefit {
+  id          String           @id @default(uuid())
+  name        String
+  amount      Int              @default(0)
+  description String?
+  status      JobCatalogStatus @default(active)
+  archivedAt  DateTime?
+  createdById String?
+  createdBy   Employee?        @relation("WelfareBenefitCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  packageItems WelfarePackageItem[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([createdById])
+  @@index([status])
+}
+
+model WelfarePackage {
+  id          String           @id @default(uuid())
+  name        String
+  startDate   DateTime?
+  endDate     DateTime?
+  positionId  String?
+  jobTitleId  String?
+  jobLevelId  String?
+  description String?
+  status      JobCatalogStatus @default(active)
+  archivedAt  DateTime?
+  createdById String?
+  position    JobPosition?     @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  jobTitle    JobTitle?        @relation(fields: [jobTitleId], references: [id], onDelete: SetNull)
+  jobLevel    JobLevel?        @relation(fields: [jobLevelId], references: [id], onDelete: SetNull)
+  createdBy   Employee?        @relation("WelfarePackageCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  items       WelfarePackageItem[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([positionId])
+  @@index([jobTitleId])
+  @@index([jobLevelId])
+  @@index([createdById])
+  @@index([status])
+}
+
+model WelfarePackageItem {
+  id            String          @id @default(uuid())
+  packageId     String
+  benefitId     String?
+  amount        Int             @default(0)
+  paymentMethod String?
+  package       WelfarePackage  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  benefit       WelfareBenefit? @relation(fields: [benefitId], references: [id], onDelete: SetNull)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([packageId])
+  @@index([benefitId])
 }
 
 model Contract {
@@ -407,6 +532,37 @@ model AttendanceRecord {
   updatedAt  DateTime         @updatedAt
 
   @@unique([employeeId, workDate, source])
+}
+
+model ApprovalWorkflowDefinition {
+  id                            String                 @id @default(uuid())
+  code                          String?                @unique
+  name                          String
+  status                        ApprovalWorkflowStatus @default(active)
+  objectType                    String
+  subObject                     String                 @default("all")
+  versionMode                   Boolean                @default(true)
+  approvalType                  String                 @default("workflow")
+  followerId                    String?
+  showFlowInObject              Boolean                @default(false)
+  allowAttachmentsAfterApproved Boolean                @default(false)
+  allowDocumentChangesAfterApproved Boolean            @default(false)
+  allowDiscussionAfterApproved Boolean                 @default(true)
+  overdueAction                 String                 @default("none")
+  flowDefinition                Json
+  follower                      Employee?              @relation("ApprovalWorkflowFollower", fields: [followerId], references: [id], onDelete: SetNull)
+  createdById                   String?
+  createdBy                     Employee?              @relation("ApprovalWorkflowCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById                   String?
+  updatedBy                     Employee?              @relation("ApprovalWorkflowUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt                     DateTime                @default(now())
+  updatedAt                     DateTime                @updatedAt
+
+  @@index([status])
+  @@index([objectType])
+  @@index([followerId])
+  @@index([createdById])
+  @@index([updatedById])
 }
 
 model AttendanceDevice {

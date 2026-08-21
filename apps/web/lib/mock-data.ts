@@ -2536,7 +2536,7 @@ export const systemSettingItems: AdminSettingItem[] = [
     summary: "Định nghĩa danh mục vị trí công việc và chức vụ để gán vào hồ sơ nhân sự.",
     owner: "HR Admin",
     status: "configured",
-    href: "/admin/settings/positions-titles",
+    href: "/admin/settings/job-positions",
     controls: ["Vị trí", "Chức vụ", "Cấp bậc", "Hồ sơ"]
   },
   {

@@ -1,13 +1,17 @@
-import { PositionTitleSettingsBoard } from "@/components/admin/position-title-settings-board";
-import { UserFrame } from "@/components/user/user-frame";
-import { getPositionTitleData } from "@/lib/position-title-api";
+import type { Route } from "next";
+import { redirect } from "next/navigation";
 
-export default async function PositionTitleSettingsPage() {
-  const data = await getPositionTitleData();
+type PositionTitleSettingsPageProps = {
+  searchParams?: Promise<{ catalog?: string; q?: string }>;
+};
 
-  return (
-    <UserFrame activeModule="admin" showSearch title="Cài đặt vị trí & chức danh">
-      <PositionTitleSettingsBoard data={data} />
-    </UserFrame>
-  );
+export default async function PositionTitleSettingsPage({ searchParams }: PositionTitleSettingsPageProps) {
+  const params = searchParams ? await searchParams : undefined;
+  const target = params?.catalog === "level"
+    ? "/admin/settings/job-levels"
+    : params?.catalog === "title"
+      ? "/admin/settings/job-titles"
+      : "/admin/settings/job-positions";
+  const query = params?.q?.trim() ?? "";
+  redirect((query ? `${target}?q=${encodeURIComponent(query)}` : target) as Route);
 }

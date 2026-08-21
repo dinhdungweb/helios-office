@@ -732,7 +732,7 @@ export function AdminUserListBoard({ data }: { data: AccountAccessData }) {
               },
               {
                 key: "settings",
-                href: "/admin/settings/accounts/permissions",
+                href: "/admin/settings/system",
                 icon: <GearSix size={16} weight="duotone" aria-hidden="true" />,
                 label: "Cài đặt"
               }

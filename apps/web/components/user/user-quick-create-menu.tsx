@@ -44,7 +44,7 @@ const requestCreateItems = [
 
 const adminShortcutItems = [
   { label: "Phòng ban, chi nhánh" },
-  { label: "Khối nghiệp vụ", href: "/admin/settings/positions-titles" },
+  { label: "Khối nghiệp vụ", href: "/admin/settings/job-positions" },
   { label: "Loại phòng ban", href: "/admin/settings/org-chart" },
   { label: "Nhóm người dùng", href: "/admin/settings/accounts/groups/new" },
   { label: "Quản lý tiền tệ", href: "/admin/settings/currency/new" },
