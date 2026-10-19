@@ -12,9 +12,9 @@ export class CreateApprovalWorkflowDto {
   @MinLength(2)
   name!: string;
 
-  @ApiProperty({ enum: ["draft", "active"], example: "active" })
-  @IsIn(["draft", "active"])
-  status!: "draft" | "active";
+  @ApiProperty({ enum: ["draft", "active", "archived"], example: "active" })
+  @IsIn(["draft", "active", "archived"])
+  status!: "draft" | "active" | "archived";
 
   @ApiProperty({ example: "decision" })
   @IsString()

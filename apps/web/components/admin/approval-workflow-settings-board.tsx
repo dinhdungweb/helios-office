@@ -99,7 +99,7 @@ export function ApprovalWorkflowSettingsBoard({ data, query = "" }: { data: Appr
                   <td><strong>{item.name}</strong></td>
                   <td>{objectLabels[item.objectType] ?? item.objectType}</td>
                   <td>{item.subObject === "all" ? "Tất cả" : item.subObject}</td>
-                  <td><span className={`approval-workflow-status is-${item.status}`}>{item.status === "active" ? "Hoạt động" : item.status === "draft" ? "Bản nháp" : "Ngừng hoạt động"}</span></td>
+                  <td><span className={`approval-workflow-status is-${item.status}`}>{item.status === "active" ? "Hoạt động" : item.status === "draft" ? "Bản nháp" : "Tạm dừng"}</span></td>
                   <td><strong className="approval-workflow-version">{item.versionMode ? "Dùng thật" : "Thử nghiệm"}</strong></td>
                   <td>Quy trình duyệt</td>
                   <td>{item.follower ? <span className="approval-workflow-person" title={item.follower.fullName}>{initials(item.follower)}</span> : <UserCircle className="approval-workflow-follower-empty" size={26} aria-label="Chưa chọn" />}</td>

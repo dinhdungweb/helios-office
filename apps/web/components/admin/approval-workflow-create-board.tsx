@@ -2,10 +2,13 @@
 
 import { useActionState, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ApprovalCommunicationRichEditor } from "@/components/admin/approval-communication-rich-editor";
 import { FormCheckbox } from "@/components/ui/form-controls";
 import type { EmployeeDirectoryRecord } from "@/lib/employee-directory-api";
+import type { DepartmentRecord } from "@/lib/org-chart-api";
+import type { JobPositionRecord, JobTitleRecord } from "@/lib/position-title-api";
 import { createApprovalWorkflowAction, type ApprovalWorkflowFormState } from "@/lib/approval-workflow-actions";
-import { ArrowRight, Bell, BookmarkSimple, CaretDown, CheckCircle, CurvePath, EnvelopeSimple, FitToScreen, FlowConnection, MagnifyingGlass, Network, Plus, ShieldCheck, SquaresFour, User, WarningCircle, X } from "@/lib/icons";
+import { ArrowRight, ArrowSquareOut, Bell, BookmarkSimple, CaretDown, CheckCircle, CurvePath, EnvelopeSimple, FitToScreen, FlowConnection, MagnifyingGlass, Network, Paperclip, Plus, ShieldCheck, SquaresFour, User, WarningCircle, X } from "@/lib/icons";
 
 const initialState: ApprovalWorkflowFormState = { ok: false };
 
@@ -105,6 +108,44 @@ type ApprovalNodeConfig = {
   overdueAction: ApprovalNodeOverdueAction;
 };
 
+type NotificationNodeConfig = {
+  title: string;
+  recipientId: string;
+  content: string;
+};
+
+type EmailNodeConfig = {
+  title: string;
+  objectType: string;
+  senderId: string;
+  subject: string;
+  recipientId: string;
+  ccId: string;
+  bccId: string;
+  content: string;
+  attachmentNames: string[];
+};
+
+type CommunicationNodeConfig = NotificationNodeConfig | EmailNodeConfig;
+
+const createEmptyNotificationNodeConfig = (): NotificationNodeConfig => ({
+  title: "Gửi thông báo",
+  recipientId: "",
+  content: ""
+});
+
+const createEmptyEmailNodeConfig = (): EmailNodeConfig => ({
+  title: "Gửi email",
+  objectType: "",
+  senderId: "",
+  subject: "",
+  recipientId: "",
+  ccId: "",
+  bccId: "",
+  content: "",
+  attachmentNames: []
+});
+
 const createEmptyApprovalNodeConfig = (): ApprovalNodeConfig => ({
   name: "",
   code: "",
@@ -196,8 +237,17 @@ type WorkflowCanvasNode = {
   x: number;
   y: number;
   approvalConfig?: ApprovalNodeConfig;
+  notificationConfig?: NotificationNodeConfig;
+  emailConfig?: EmailNodeConfig;
   conditionConfig?: ConditionNodeConfig;
   conditionSlots?: ConditionSlot[];
+};
+
+type WorkflowSnapshot = {
+  nodes: WorkflowCanvasNode[];
+  edges: WorkflowCanvasEdge[];
+  startNodePosition: { x: number; y: number };
+  edgeStyle: WorkflowEdgeStyle;
 };
 
 type WorkflowCanvasEdge = {
@@ -231,6 +281,10 @@ type WorkflowNodeDrag = {
   maxX: number;
   maxY: number;
 };
+
+function cloneWorkflowSnapshot(snapshot: WorkflowSnapshot): WorkflowSnapshot {
+  return structuredClone(snapshot);
+}
 
 function buildStraightWorkflowPath(startX: number, startY: number, endX: number, endY: number) {
   if (Math.abs(endY - startY) < 1) return `M ${startX} ${startY} H ${endX}`;
@@ -632,6 +686,7 @@ type ApprovalAudienceOption = {
   value: string;
   label: string;
   meta: string;
+  group?: "dynamic" | "department" | "position" | "title";
   automatic?: boolean;
 };
 
@@ -649,6 +704,7 @@ function ApprovalNodeAudiencePicker({
   required = false,
   value,
   employees,
+  catalogOptions = [],
   hasError = false,
   onValueChange
 }: {
@@ -657,6 +713,7 @@ function ApprovalNodeAudiencePicker({
   required?: boolean;
   value: string;
   employees: EmployeeDirectoryRecord[];
+  catalogOptions?: ApprovalAudienceOption[];
   hasError?: boolean;
   onValueChange: (value: string) => void;
 }) {
@@ -670,12 +727,20 @@ function ApprovalNodeAudiencePicker({
       label: employee.fullName,
       meta: `${employee.code} · ${employee.department}`
     })), [employees]);
-  const allOptions = [...approvalDynamicAudienceOptions, ...userOptions];
+  const allOptions = [...approvalDynamicAudienceOptions, ...catalogOptions, ...userOptions];
   const selectedOption = allOptions.find((option) => option.value === value);
   const normalizedSearch = search.trim().toLocaleLowerCase("vi");
   const matchesSearch = (option: ApprovalAudienceOption) => !normalizedSearch
     || `${option.label} ${option.meta}`.toLocaleLowerCase("vi").includes(normalizedSearch);
   const dynamicOptions = approvalDynamicAudienceOptions.filter(matchesSearch);
+  const filteredCatalogGroups = [
+    { key: "department", label: "Phòng ban" },
+    { key: "position", label: "Vị trí" },
+    { key: "title", label: "Chức vụ" }
+  ].map((group) => ({
+    ...group,
+    options: catalogOptions.filter((option) => option.group === group.key && matchesSearch(option))
+  })).filter((group) => group.options.length > 0);
   const filteredUsers = userOptions.filter(matchesSearch);
 
   useEffect(() => {
@@ -758,6 +823,24 @@ function ApprovalNodeAudiencePicker({
                 ))}
               </section>
             ) : null}
+            {filteredCatalogGroups.map((group) => (
+              <section aria-label={group.label} key={group.key}>
+                <h5>{group.label}</h5>
+                {group.options.map((option) => (
+                  <button
+                    aria-selected={option.value === value}
+                    className={option.value === value ? "is-selected" : undefined}
+                    key={option.value}
+                    role="option"
+                    type="button"
+                    onClick={() => chooseOption(option)}
+                  >
+                    <Network size={18} aria-hidden="true" />
+                    <span><strong>{option.label}</strong><small>{option.meta}</small></span>
+                  </button>
+                ))}
+              </section>
+            ))}
             {filteredUsers.length > 0 ? (
               <section aria-label="Người dùng">
                 <h5>Người dùng</h5>
@@ -776,7 +859,7 @@ function ApprovalNodeAudiencePicker({
                 ))}
               </section>
             ) : null}
-            {dynamicOptions.length === 0 && filteredUsers.length === 0 ? <p>Không tìm thấy kết quả</p> : null}
+            {dynamicOptions.length === 0 && filteredCatalogGroups.length === 0 && filteredUsers.length === 0 ? <p>Không tìm thấy kết quả</p> : null}
           </div>
         </div>
       ) : null}
@@ -799,7 +882,7 @@ function WorkflowNodeContextMenu({
   onDelete: () => void;
   onDeleteIncomingEdges: () => void;
   onDuplicate: () => void;
-  onSettings: () => void;
+  onSettings?: () => void;
 }) {
   const [isSubmenuOpen, setIsSubmenuOpen] = useState(false);
   const [submenuLayout, setSubmenuLayout] = useState({ opensUp: false, maxHeight: 276 });
@@ -856,12 +939,12 @@ function WorkflowNodeContextMenu({
         }
       }}
     >
-      <button role="menuitem" type="button" onClick={onSettings} onKeyDown={(event) => {
+      {onSettings ? <button role="menuitem" type="button" onClick={onSettings} onKeyDown={(event) => {
         if (event.key === "ArrowDown" || event.key === "ArrowUp") {
           event.preventDefault();
           moveMenuFocus(event.currentTarget, event.key === "ArrowDown" ? 1 : -1);
         }
-      }}>Cài đặt</button>
+      }}>Cài đặt</button> : null}
       <button role="menuitem" type="button" onClick={onDuplicate} onKeyDown={(event) => {
         if (event.key === "ArrowDown" || event.key === "ArrowUp") {
           event.preventDefault();
@@ -1065,12 +1148,17 @@ function ConditionInlinePicker({
   useLayoutEffect(() => {
     if (!isOpen) return;
     updateMenuLayout();
-    const closeOnViewportChange = () => setIsOpen(false);
-    window.addEventListener("resize", closeOnViewportChange);
-    window.addEventListener("scroll", closeOnViewportChange, true);
+    const closeOnViewportResize = () => setIsOpen(false);
+    const closeOnExternalScroll = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Node && menuRef.current?.contains(target)) return;
+      setIsOpen(false);
+    };
+    window.addEventListener("resize", closeOnViewportResize);
+    window.addEventListener("scroll", closeOnExternalScroll, true);
     return () => {
-      window.removeEventListener("resize", closeOnViewportChange);
-      window.removeEventListener("scroll", closeOnViewportChange, true);
+      window.removeEventListener("resize", closeOnViewportResize);
+      window.removeEventListener("scroll", closeOnExternalScroll, true);
     };
   }, [isOpen, updateMenuLayout]);
 
@@ -1302,11 +1390,13 @@ function ConditionNodeSettingsModal({
 function ApprovalNodeSettingsModal({
   node,
   employees,
+  catalogOptions,
   onCancel,
   onSave
 }: {
   node: WorkflowCanvasNode;
   employees: EmployeeDirectoryRecord[];
+  catalogOptions: ApprovalAudienceOption[];
   onCancel: () => void;
   onSave: (config: ApprovalNodeConfig) => void;
 }) {
@@ -1335,6 +1425,7 @@ function ApprovalNodeSettingsModal({
     required = false
   ) => (
     <ApprovalNodeAudiencePicker
+      catalogOptions={catalogOptions}
       employees={employees}
       hasError={showValidation && required && !draft[field]}
       id={`approval-node-${field}`}
@@ -1412,7 +1503,206 @@ function ApprovalNodeSettingsModal({
   );
 }
 
-export function ApprovalWorkflowCreateBoard({ employees }: { employees: EmployeeDirectoryRecord[] }) {
+function hasCommunicationContent(value: string) {
+  if (/<(img|video|audio)\b/i.test(value)) return true;
+  return value
+    .replace(/<br\s*\/?\s*>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .trim().length > 0;
+}
+
+function sanitizeCommunicationContent(value: string) {
+  const documentValue = new DOMParser().parseFromString(value, "text/html");
+  documentValue.querySelectorAll("script, style, iframe, object, embed").forEach((element) => element.remove());
+  documentValue.body.querySelectorAll("*").forEach((element) => {
+    [...element.attributes].forEach((attribute) => {
+      const normalizedName = attribute.name.toLowerCase();
+      const normalizedValue = attribute.value.trim().toLowerCase();
+      if (normalizedName.startsWith("on") || ((normalizedName === "href" || normalizedName === "src") && normalizedValue.startsWith("javascript:"))) {
+        element.removeAttribute(attribute.name);
+      }
+    });
+  });
+  return documentValue.body.innerHTML.trim();
+}
+
+function CommunicationNodeSettingsModal({
+  node,
+  employees,
+  catalogOptions,
+  onCancel,
+  onSave
+}: {
+  node: WorkflowCanvasNode;
+  employees: EmployeeDirectoryRecord[];
+  catalogOptions: ApprovalAudienceOption[];
+  onCancel: () => void;
+  onSave: (config: CommunicationNodeConfig) => void;
+}) {
+  const isEmail = node.type === "email";
+  const [draft, setDraft] = useState<CommunicationNodeConfig>(() => isEmail
+    ? node.emailConfig ?? createEmptyEmailNodeConfig()
+    : node.notificationConfig ?? createEmptyNotificationNodeConfig());
+  const [showValidation, setShowValidation] = useState(false);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) onCancel();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onCancel]);
+
+  const updateDraft = (patch: Partial<EmailNodeConfig & NotificationNodeConfig>) => {
+    setDraft((current) => ({ ...current, ...patch }) as CommunicationNodeConfig);
+  };
+
+  const isValid = isEmail
+    ? Boolean(draft.title.trim()
+      && "senderId" in draft && draft.senderId
+      && "subject" in draft && draft.subject.trim()
+      && draft.recipientId
+      && hasCommunicationContent(draft.content))
+    : Boolean(draft.title.trim() && draft.recipientId && hasCommunicationContent(draft.content));
+
+  return (
+    <div
+      className="approval-node-modal-backdrop"
+      role="presentation"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onCancel();
+      }}
+    >
+      <section aria-labelledby="communication-node-modal-title" aria-modal="true" className="approval-node-modal communication-node-modal" role="dialog">
+        <header>
+          <h3 id="communication-node-modal-title">{isEmail ? "Gửi email" : "Gửi thông báo"}</h3>
+          <button aria-label="Đóng" type="button" onClick={onCancel}><X size={24} /></button>
+        </header>
+        <div className="approval-node-modal-body communication-node-modal-body">
+          <label className={`approval-workflow-floating-field has-value${showValidation && !draft.title.trim() ? " has-error" : ""}`}>
+            <span>Tiêu đề <b aria-hidden="true">*</b></span>
+            <input autoComplete="off" autoFocus placeholder="" value={draft.title} onChange={(event) => updateDraft({ title: event.target.value })} />
+          </label>
+
+          {isEmail && "objectType" in draft ? (
+            <ApprovalWorkflowPicker
+              groups={workflowObjectGroups}
+              id={`communication-object-${node.id}`}
+              label="Đối tượng"
+              name={`communication-object-${node.id}`}
+              placeholder="Chọn đối tượng"
+              value={draft.objectType}
+              onValueChange={(objectType) => updateDraft({ objectType })}
+            />
+          ) : null}
+
+          {isEmail && "senderId" in draft ? (
+            <ApprovalNodeAudiencePicker
+              catalogOptions={catalogOptions}
+              employees={employees}
+              hasError={showValidation && !draft.senderId}
+              id={`communication-sender-${node.id}`}
+              label="Người gửi"
+              required
+              value={draft.senderId}
+              onValueChange={(senderId) => updateDraft({ senderId })}
+            />
+          ) : null}
+
+          {isEmail && "subject" in draft ? (
+            <label className={`approval-workflow-floating-field${draft.subject ? " has-value" : ""}${showValidation && !draft.subject.trim() ? " has-error" : ""}`}>
+              <span>Tiêu đề mail <b aria-hidden="true">*</b></span>
+              <input autoComplete="off" placeholder="" value={draft.subject} onChange={(event) => updateDraft({ subject: event.target.value })} />
+            </label>
+          ) : null}
+
+          <ApprovalNodeAudiencePicker
+            catalogOptions={catalogOptions}
+            employees={employees}
+            hasError={showValidation && !draft.recipientId}
+            id={`communication-recipient-${node.id}`}
+            label={isEmail ? "Người nhận" : "Người nhận thông báo"}
+            required
+            value={draft.recipientId}
+            onValueChange={(recipientId) => updateDraft({ recipientId })}
+          />
+
+          {isEmail && "ccId" in draft ? (
+            <div className="communication-node-recipient-grid">
+              <ApprovalNodeAudiencePicker
+                catalogOptions={catalogOptions}
+                employees={employees}
+                id={`communication-cc-${node.id}`}
+                label="Cc"
+                value={draft.ccId}
+                onValueChange={(ccId) => updateDraft({ ccId })}
+              />
+              <ApprovalNodeAudiencePicker
+                catalogOptions={catalogOptions}
+                employees={employees}
+                id={`communication-bcc-${node.id}`}
+                label="Bcc"
+                value={draft.bccId}
+                onValueChange={(bccId) => updateDraft({ bccId })}
+              />
+            </div>
+          ) : null}
+
+          <div className="communication-node-content">
+            <span>Nội dung <b aria-hidden="true">*</b></span>
+            <ApprovalCommunicationRichEditor
+              hasError={showValidation && !hasCommunicationContent(draft.content)}
+              value={draft.content}
+              onChange={(content) => updateDraft({ content })}
+            />
+          </div>
+
+          {isEmail && "attachmentNames" in draft ? (
+            <label className="communication-node-attachments is-disabled">
+              <span><Paperclip size={18} aria-hidden="true" /> Đính kèm</span>
+              {/* Files cannot be persisted until the shared file service (CORE-11) exists. */}
+              <input aria-describedby={`communication-attachments-note-${node.id}`} disabled multiple type="file" />
+              <small id={`communication-attachments-note-${node.id}`}>Chưa hỗ trợ đính kèm file — sẽ mở khi có dịch vụ lưu trữ file.</small>
+              {draft.attachmentNames.length > 0 ? <small>{draft.attachmentNames.join(", ")}</small> : null}
+            </label>
+          ) : null}
+        </div>
+        <footer>
+          <button className="secondary-button" type="button" onClick={onCancel}>HỦY BỎ</button>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => {
+              if (!isValid) {
+                setShowValidation(true);
+                return;
+              }
+              onSave({ ...draft, title: draft.title.trim(), content: sanitizeCommunicationContent(draft.content) });
+            }}
+          >CẬP NHẬT</button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
+export function ApprovalWorkflowCreateBoard({
+  employees,
+  departments = [],
+  positions = [],
+  titles = []
+}: {
+  employees: EmployeeDirectoryRecord[];
+  departments?: DepartmentRecord[];
+  positions?: JobPositionRecord[];
+  titles?: JobTitleRecord[];
+}) {
   const [activeTab, setActiveTab] = useState<"general" | "flow">("general");
   const [displayStatus, setDisplayStatus] = useState("");
   const [followerId, setFollowerId] = useState("");
@@ -1426,10 +1716,12 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
   const [workflowEdges, setWorkflowEdges] = useState<WorkflowCanvasEdge[]>([]);
   const [workflowEdgePaths, setWorkflowEdgePaths] = useState<WorkflowEdgePath[]>([]);
   const [workflowEdgeStyle, setWorkflowEdgeStyle] = useState<WorkflowEdgeStyle>("curved");
+  const [canvasZoom, setCanvasZoom] = useState(1);
   const [connectionDraft, setConnectionDraft] = useState<WorkflowConnectionDraft | null>(null);
   const [startNodePosition, setStartNodePosition] = useState({ x: 60, y: 172 });
   const [nodeDrag, setNodeDrag] = useState<WorkflowNodeDrag | null>(null);
   const [editingApprovalNodeId, setEditingApprovalNodeId] = useState<string | null>(null);
+  const [editingCommunicationNodeId, setEditingCommunicationNodeId] = useState<string | null>(null);
   const [editingConditionSlot, setEditingConditionSlot] = useState<{ nodeId: string; slotId: string } | null>(null);
   const [nodeContextMenu, setNodeContextMenu] = useState<WorkflowNodeContextMenuState | null>(null);
   const followerPickerRef = useRef<HTMLDivElement | null>(null);
@@ -1440,6 +1732,11 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
   const edgeSequenceRef = useRef(0);
   const conditionSlotSequenceRef = useRef(0);
   const suppressNodeClickRef = useRef(false);
+  const snapshotRef = useRef<WorkflowSnapshot>({ nodes: [], edges: [], startNodePosition: { x: 60, y: 172 }, edgeStyle: "curved" });
+  const undoStackRef = useRef<WorkflowSnapshot[]>([]);
+  const redoStackRef = useRef<WorkflowSnapshot[]>([]);
+  const dragHistorySnapshotRef = useRef<WorkflowSnapshot | null>(null);
+  const [historyVersion, setHistoryVersion] = useState(0);
   const [state, formAction, isPending] = useActionState(createApprovalWorkflowAction, initialState);
   const activeEmployees = useMemo(
     () => employees.filter((item) => item.status === "active"),
@@ -1457,6 +1754,17 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
       `${item.fullName} ${item.code} ${item.department}`.toLocaleLowerCase("vi").includes(search)
     );
   }, [activeEmployees, followerSearch]);
+  const catalogAudienceOptions = useMemo<ApprovalAudienceOption[]>(() => [
+    ...departments
+      .filter((item) => item.status === "active")
+      .map((item) => ({ value: `department:${item.id}`, label: item.name, meta: `Phòng ban · ${item.code}`, group: "department" as const })),
+    ...positions
+      .filter((item) => item.status === "active")
+      .map((item) => ({ value: `position:${item.id}`, label: item.name, meta: `Vị trí · ${item.code}`, group: "position" as const })),
+    ...titles
+      .filter((item) => item.status === "active")
+      .map((item) => ({ value: `title:${item.id}`, label: item.name, meta: `Chức vụ · ${item.code}`, group: "title" as const }))
+  ], [departments, positions, titles]);
   const flowDefinition = useMemo(() => ({
     nodes: [
       { id: "start", type: "start", label: "Bắt đầu", x: startNodePosition.x, y: startNodePosition.y },
@@ -1467,6 +1775,8 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
         x: node.x,
         y: node.y,
         ...(node.approvalConfig ? { config: node.approvalConfig } : {}),
+        ...(node.notificationConfig ? { config: node.notificationConfig } : {}),
+        ...(node.emailConfig ? { config: node.emailConfig } : {}),
         ...(node.type === "condition" ? {
           conditions: getConditionSlots(node).map((slot) => ({ id: slot.id, config: slot.config ?? null }))
         } : {})
@@ -1481,6 +1791,50 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
       ? buildStraightWorkflowPath(connectionDraft.startX, connectionDraft.startY, connectionDraft.currentX, connectionDraft.currentY)
       : buildCurvedWorkflowPath(connectionDraft.startX, connectionDraft.startY, connectionDraft.currentX, connectionDraft.currentY);
   }, [connectionDraft, workflowEdgeStyle]);
+
+  useEffect(() => {
+    snapshotRef.current = cloneWorkflowSnapshot({
+      nodes: workflowNodes,
+      edges: workflowEdges,
+      startNodePosition,
+      edgeStyle: workflowEdgeStyle
+    });
+  }, [startNodePosition, workflowEdgeStyle, workflowEdges, workflowNodes]);
+
+  const commitWorkflowHistory = (snapshot: WorkflowSnapshot) => {
+    undoStackRef.current.push(snapshot);
+    if (undoStackRef.current.length > 60) undoStackRef.current.shift();
+    redoStackRef.current = [];
+    setHistoryVersion((current) => current + 1);
+  };
+
+  const pushWorkflowHistory = () => commitWorkflowHistory(cloneWorkflowSnapshot(snapshotRef.current));
+
+  const restoreWorkflowSnapshot = (snapshot: WorkflowSnapshot) => {
+    snapshotRef.current = cloneWorkflowSnapshot(snapshot);
+    setWorkflowNodes(snapshot.nodes);
+    setWorkflowEdges(snapshot.edges);
+    setStartNodePosition(snapshot.startNodePosition);
+    setWorkflowEdgeStyle(snapshot.edgeStyle);
+    setConnectionDraft(null);
+    setNodeContextMenu(null);
+  };
+
+  const undoWorkflowChange = () => {
+    const previous = undoStackRef.current.pop();
+    if (!previous) return;
+    redoStackRef.current.push(cloneWorkflowSnapshot(snapshotRef.current));
+    restoreWorkflowSnapshot(previous);
+    setHistoryVersion((current) => current + 1);
+  };
+
+  const redoWorkflowChange = () => {
+    const next = redoStackRef.current.pop();
+    if (!next) return;
+    undoStackRef.current.push(cloneWorkflowSnapshot(snapshotRef.current));
+    restoreWorkflowSnapshot(next);
+    setHistoryVersion((current) => current + 1);
+  };
 
   const updateWorkflowEdgePaths = useCallback(() => {
     const lane = workflowCanvasLaneRef.current;
@@ -1501,10 +1855,10 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
 
       const sourceRect = sourceHandle.getBoundingClientRect();
       const targetRect = targetNode.getBoundingClientRect();
-      const startX = sourceRect.left + sourceRect.width / 2 - laneRect.left;
-      const startY = sourceRect.top + sourceRect.height / 2 - laneRect.top;
-      const endX = targetRect.left - laneRect.left;
-      const endY = targetRect.top + targetRect.height / 2 - laneRect.top;
+      const startX = (sourceRect.left + sourceRect.width / 2 - laneRect.left) / canvasZoom;
+      const startY = (sourceRect.top + sourceRect.height / 2 - laneRect.top) / canvasZoom;
+      const endX = (targetRect.left - laneRect.left) / canvasZoom;
+      const endY = (targetRect.top + targetRect.height / 2 - laneRect.top) / canvasZoom;
 
       const labelAnchorX = startX + Math.min(120, Math.max(88, endX - startX) / 2);
 
@@ -1519,7 +1873,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
           : buildCurvedWorkflowPath(startX, startY, endX, endY)
       }];
     }));
-  }, [workflowEdgeStyle, workflowEdges]);
+  }, [canvasZoom, workflowEdgeStyle, workflowEdges]);
 
   useLayoutEffect(() => {
     updateWorkflowEdgePaths();
@@ -1578,8 +1932,8 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
 
       setConnectionDraft((current) => current ? {
         ...current,
-        currentX: event.clientX - laneRect.left,
-        currentY: event.clientY - laneRect.top
+        currentX: (event.clientX - laneRect.left) / canvasZoom,
+        currentY: (event.clientY - laneRect.top) / canvasZoom
       } : null);
     };
     const handlePointerUp = () => setConnectionDraft(null);
@@ -1590,7 +1944,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
       document.removeEventListener("pointermove", handlePointerMove);
       document.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [connectionDraft?.source]);
+  }, [canvasZoom, connectionDraft?.source]);
 
   useEffect(() => {
     if (!nodeDrag) return;
@@ -1598,9 +1952,14 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
     const handlePointerMove = (event: PointerEvent) => {
       if (Math.abs(event.clientX - nodeDrag.startClientX) > 4 || Math.abs(event.clientY - nodeDrag.startClientY) > 4) {
         suppressNodeClickRef.current = true;
+        // Record undo history only once the pointer actually drags, so a plain click adds no empty step.
+        if (dragHistorySnapshotRef.current) {
+          commitWorkflowHistory(dragHistorySnapshotRef.current);
+          dragHistorySnapshotRef.current = null;
+        }
       }
-      const x = Math.min(Math.max(nodeDrag.originX + event.clientX - nodeDrag.startClientX, 12), nodeDrag.maxX);
-      const y = Math.min(Math.max(nodeDrag.originY + event.clientY - nodeDrag.startClientY, 12), nodeDrag.maxY);
+      const x = Math.min(Math.max(nodeDrag.originX + (event.clientX - nodeDrag.startClientX) / canvasZoom, 12), nodeDrag.maxX);
+      const y = Math.min(Math.max(nodeDrag.originY + (event.clientY - nodeDrag.startClientY) / canvasZoom, 12), nodeDrag.maxY);
 
       if (nodeDrag.nodeId === "start") {
         setStartNodePosition({ x, y });
@@ -1619,7 +1978,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
       document.removeEventListener("pointermove", handlePointerMove);
       document.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [nodeDrag]);
+  }, [canvasZoom, nodeDrag]);
 
   const closeFollowerPicker = () => {
     setFollowerSearch("");
@@ -1635,6 +1994,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
     const option = workflowNodeOptions.find((item) => item.value === type);
     if (!option) return null;
 
+    pushWorkflowHistory();
     nodeSequenceRef.current += 1;
     const nodeId = `${type}-${nodeSequenceRef.current}`;
     setWorkflowNodes((current) => {
@@ -1659,6 +2019,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
     const nodeElement = lane?.querySelector<HTMLElement>(`[data-workflow-node-id="${nodeId}"]`);
     if (!lane || !nodeElement) return;
 
+    pushWorkflowHistory();
     const clampPosition = (x: number, y: number) => ({
       x: Math.min(Math.max(x, 12), lane.clientWidth - nodeElement.offsetWidth - 12),
       y: Math.min(Math.max(y, 12), lane.clientHeight - nodeElement.offsetHeight - 12)
@@ -1682,6 +2043,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
     if (!node) return;
 
     event.preventDefault();
+    dragHistorySnapshotRef.current = cloneWorkflowSnapshot(snapshotRef.current);
     suppressNodeClickRef.current = false;
     setNodeDrag({
       nodeId,
@@ -1699,8 +2061,8 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
     if (!laneRect) return;
 
     const handleRect = handle.getBoundingClientRect();
-    const startX = handleRect.left + handleRect.width / 2 - laneRect.left;
-    const startY = handleRect.top + handleRect.height / 2 - laneRect.top;
+    const startX = (handleRect.left + handleRect.width / 2 - laneRect.left) / canvasZoom;
+    const startY = (handleRect.top + handleRect.height / 2 - laneRect.top) / canvasZoom;
     setConnectionDraft({ source, branch, startX, startY, currentX: startX, currentY: startY });
   };
 
@@ -1711,6 +2073,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
       return;
     }
 
+    pushWorkflowHistory();
     edgeSequenceRef.current += 1;
     const edgeId = `edge-${edgeSequenceRef.current}`;
     setWorkflowEdges((current) => [
@@ -1728,6 +2091,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
   };
 
   const removeWorkflowEdge = (edgeId: string) => {
+    pushWorkflowHistory();
     setWorkflowEdges((current) => current.filter((edge) => edge.id !== edgeId));
   };
 
@@ -1738,6 +2102,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
     }
     const node = workflowNodes.find((item) => item.id === nodeId);
     if (node?.type === "approval") setEditingApprovalNodeId(nodeId);
+    if (node?.type === "notification" || node?.type === "email") setEditingCommunicationNodeId(nodeId);
   };
 
   const openConditionSlot = (nodeId: string, slotId: string) => {
@@ -1750,7 +2115,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
 
   const openWorkflowNodeContextMenu = (nodeId: string, event: React.MouseEvent<HTMLElement>, conditionSlotId?: string) => {
     const node = workflowNodes.find((item) => item.id === nodeId);
-    if (node?.type !== "approval" && node?.type !== "condition") return;
+    if (!node) return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -1772,6 +2137,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
     const sourceNode = workflowNodes.find((node) => node.id === nodeContextMenu.nodeId);
     if (!sourceNode) return;
 
+    pushWorkflowHistory();
     nodeSequenceRef.current += 1;
     const lane = workflowCanvasLaneRef.current;
     const nextX = Math.min(sourceNode.x + 32, Math.max(12, (lane?.clientWidth ?? sourceNode.x + 260) - 232));
@@ -1781,7 +2147,9 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
       id: `${sourceNode.type}-${nodeSequenceRef.current}`,
       x: nextX,
       y: nextY,
-      ...(sourceNode.approvalConfig ? { approvalConfig: { ...sourceNode.approvalConfig } } : {})
+      ...(sourceNode.approvalConfig ? { approvalConfig: { ...sourceNode.approvalConfig } } : {}),
+      ...(sourceNode.notificationConfig ? { notificationConfig: { ...sourceNode.notificationConfig } } : {}),
+      ...(sourceNode.emailConfig ? { emailConfig: { ...sourceNode.emailConfig, attachmentNames: [...sourceNode.emailConfig.attachmentNames] } } : {})
     }]);
     setNodeContextMenu(null);
   };
@@ -1789,15 +2157,18 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
   const deleteContextNode = () => {
     if (!nodeContextMenu) return;
     const nodeId = nodeContextMenu.nodeId;
+    pushWorkflowHistory();
     setWorkflowNodes((current) => current.filter((node) => node.id !== nodeId));
     setWorkflowEdges((current) => current.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
     setEditingApprovalNodeId((current) => current === nodeId ? null : current);
+    setEditingCommunicationNodeId((current) => current === nodeId ? null : current);
     setEditingConditionSlot((current) => current?.nodeId === nodeId ? null : current);
     setNodeContextMenu(null);
   };
 
   const deleteContextNodeIncomingEdges = () => {
     if (!nodeContextMenu) return;
+    pushWorkflowHistory();
     setWorkflowEdges((current) => current.filter((edge) => edge.target !== nodeContextMenu.nodeId));
     setNodeContextMenu(null);
   };
@@ -1843,13 +2214,54 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
   };
 
   const saveApprovalNodeConfig = (config: ApprovalNodeConfig) => {
+    pushWorkflowHistory();
     setWorkflowNodes((current) => current.map((node) => node.id === editingApprovalNodeId
       ? { ...node, label: config.name, approvalConfig: config }
       : node));
     setEditingApprovalNodeId(null);
   };
 
+  const saveCommunicationNodeConfig = (config: CommunicationNodeConfig) => {
+    pushWorkflowHistory();
+    setWorkflowNodes((current) => current.map((node) => {
+      if (node.id !== editingCommunicationNodeId) return node;
+      if (node.type === "notification") {
+        return { ...node, label: config.title, notificationConfig: config as NotificationNodeConfig };
+      }
+      if (node.type === "email") {
+        return { ...node, label: config.title, emailConfig: config as EmailNodeConfig };
+      }
+      return node;
+    }));
+    setEditingCommunicationNodeId(null);
+  };
+
+  const autoLayoutWorkflow = () => {
+    if (workflowNodes.length === 0) return;
+    pushWorkflowHistory();
+    setStartNodePosition({ x: 60, y: 172 });
+    setWorkflowNodes((current) => current.map((node, index) => ({
+      ...node,
+      x: 300 + (index % 4) * 260,
+      y: 96 + Math.floor(index / 4) * 190
+    })));
+  };
+
+  const fitWorkflowToViewport = () => {
+    const canvas = workflowCanvasRef.current;
+    const lane = workflowCanvasLaneRef.current;
+    if (!canvas || !lane) return;
+    const nextZoom = Math.min(1, Math.max(0.55, (canvas.clientWidth - 24) / 1440));
+    setCanvasZoom(nextZoom);
+    requestAnimationFrame(() => canvas.scrollTo({ left: 0, top: 0, behavior: "smooth" }));
+  };
+
+  const changeCanvasZoom = (delta: number) => {
+    setCanvasZoom((current) => Math.min(1.4, Math.max(0.55, Number((current + delta).toFixed(2)))));
+  };
+
   const addConditionSlot = (nodeId: string) => {
+    pushWorkflowHistory();
     conditionSlotSequenceRef.current += 1;
     setWorkflowNodes((current) => current.map((node) => node.id === nodeId
       ? {
@@ -1866,6 +2278,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
   const clearConditionSlot = (nodeId: string, slotId: string) => {
     const currentNode = workflowNodes.find((node) => node.id === nodeId);
     if (!currentNode) return;
+    pushWorkflowHistory();
     const currentSlots = getConditionSlots(currentNode);
     const slotIndex = currentSlots.findIndex((slot) => slot.id === slotId);
     const removedBranches: WorkflowBranch[] = [
@@ -1891,6 +2304,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
 
   const saveConditionNodeConfig = (config: ConditionNodeConfig) => {
     if (!editingConditionSlot) return;
+    pushWorkflowHistory();
     setWorkflowNodes((current) => current.map((node) => {
       if (node.id !== editingConditionSlot.nodeId) return node;
       return {
@@ -1905,11 +2319,14 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
   };
 
   const editingApprovalNode = workflowNodes.find((node) => node.id === editingApprovalNodeId);
+  const editingCommunicationNode = workflowNodes.find((node) => node.id === editingCommunicationNodeId);
   const editingConditionNode = workflowNodes.find((node) => node.id === editingConditionSlot?.nodeId);
   const editingConditionSlots = editingConditionNode?.type === "condition" ? getConditionSlots(editingConditionNode) : [];
   const editingConditionSlotIndex = editingConditionSlots.findIndex((slot) => slot.id === editingConditionSlot?.slotId);
   const editingConditionConfig = editingConditionSlotIndex >= 0 ? editingConditionSlots[editingConditionSlotIndex]?.config : undefined;
   const contextMenuNode = workflowNodes.find((node) => node.id === nodeContextMenu?.nodeId);
+  const canUndoWorkflow = historyVersion >= 0 && undoStackRef.current.length > 0;
+  const canRedoWorkflow = historyVersion >= 0 && redoStackRef.current.length > 0;
 
   return (
     <section className="approval-workflow-create-card" aria-labelledby="approval-workflow-create-title">
@@ -1924,7 +2341,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
           <h3><CaretDown size={17} aria-hidden="true" /> Thông tin chung</h3>
           <div className="approval-workflow-field-grid">
             <label className="approval-workflow-floating-field"><span>Mã quy trình</span><input name="code" placeholder="Mã quy trình" /></label>
-            <label className={`approval-workflow-floating-field approval-workflow-select${displayStatus ? " has-value" : ""}`}><span>Trạng thái <b aria-hidden="true">*</b></span><select name="displayStatus" required value={displayStatus} onChange={(event) => setDisplayStatus(event.target.value)}><option value="" disabled hidden></option><option value="active">Hoạt động</option><option value="draft">Bản nháp</option></select><CaretDown size={16} aria-hidden="true" /></label>
+            <label className={`approval-workflow-floating-field approval-workflow-select${displayStatus ? " has-value" : ""}`}><span>Trạng thái <b aria-hidden="true">*</b></span><select name="displayStatus" required value={displayStatus} onChange={(event) => setDisplayStatus(event.target.value)}><option value="" disabled hidden></option><option value="active">Hoạt động</option><option value="inactive">Tạm dừng</option></select><CaretDown size={16} aria-hidden="true" /></label>
             <label className="approval-workflow-floating-field is-wide"><span>Tên quy trình <b aria-hidden="true">*</b></span><input name="name" placeholder="Tên quy trình" required minLength={2} /></label>
             <div
               className={`approval-workflow-floating-field approval-workflow-follower-picker is-wide${followerId || isFollowerOpen ? " has-value" : ""}${isFollowerOpen ? " is-open" : ""}`}
@@ -2067,8 +2484,8 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
           <div className="approval-workflow-toolbar-shell" ref={nodePaletteRef}>
             <div className="approval-workflow-toolbar" aria-label="Công cụ sơ đồ">
               <div>
-                <button type="button" aria-label="Hoàn tác" data-tooltip="Hoàn tác"><ArrowRight className="is-reversed" size={16} /></button>
-                <button type="button" aria-label="Làm lại" data-tooltip="Làm lại"><ArrowRight size={16} /></button>
+                <button disabled={!canUndoWorkflow} type="button" aria-label="Hoàn tác" data-tooltip="Hoàn tác" onClick={undoWorkflowChange}><ArrowRight className="is-reversed" size={16} /></button>
+                <button disabled={!canRedoWorkflow} type="button" aria-label="Làm lại" data-tooltip="Làm lại" onClick={redoWorkflowChange}><ArrowRight size={16} /></button>
                 <button
                   aria-controls="approval-workflow-node-palette"
                   aria-expanded={isNodePaletteOpen}
@@ -2081,19 +2498,31 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
                 >
                   <SquaresFour size={16} />
                 </button>
-                <button type="button" aria-label="Tự động sắp xếp" data-tooltip="Tự động sắp xếp"><Network size={16} /></button>
+                <button type="button" aria-label="Tự động sắp xếp" data-tooltip="Tự động sắp xếp" onClick={autoLayoutWorkflow}><Network size={16} /></button>
               </div>
               <div>
+                <button
+                  type="button"
+                  aria-label="Toàn màn hình"
+                  data-tooltip="Toàn màn hình"
+                  onClick={() => workflowCanvasRef.current?.requestFullscreen?.()}
+                >
+                  <ArrowSquareOut size={16} />
+                </button>
                 <button
                   aria-label={`Đường nối dạng ${workflowEdgeStyle === "straight" ? "thẳng" : "cong"}; nhấn để chuyển sang dạng ${workflowEdgeStyle === "straight" ? "cong" : "thẳng"}`}
                   aria-pressed={workflowEdgeStyle === "curved"}
                   data-tooltip={`Đường nối dạng ${workflowEdgeStyle === "straight" ? "thẳng" : "cong"}`}
                   type="button"
-                  onClick={() => setWorkflowEdgeStyle((current) => current === "straight" ? "curved" : "straight")}
+                  onClick={() => {
+                    pushWorkflowHistory();
+                    setWorkflowEdgeStyle((current) => current === "straight" ? "curved" : "straight");
+                  }}
                 >{workflowEdgeStyle === "straight" ? <FlowConnection size={16} /> : <CurvePath size={16} />}</button>
-                <button type="button" aria-label="Thu vừa sơ đồ" data-tooltip="Thu vừa sơ đồ"><FitToScreen size={16} /></button>
-                <button type="button" aria-label="Phóng to" data-tooltip="Phóng to"><Plus size={16} /></button>
-                <button type="button" aria-label="Thu nhỏ" data-tooltip="Thu nhỏ">−</button>
+                <button type="button" aria-label="Thu vừa sơ đồ" data-tooltip="Thu vừa sơ đồ" onClick={fitWorkflowToViewport}><FitToScreen size={16} /></button>
+                <button disabled={canvasZoom >= 1.4} type="button" aria-label="Phóng to" data-tooltip={`Phóng to · ${Math.round(canvasZoom * 100)}%`} onClick={() => changeCanvasZoom(0.1)}><Plus size={16} /></button>
+                <button disabled={canvasZoom <= 0.55} type="button" aria-label="Thu nhỏ" data-tooltip={`Thu nhỏ · ${Math.round(canvasZoom * 100)}%`} onClick={() => changeCanvasZoom(-0.1)}>−</button>
+                <button type="button" aria-label="In sơ đồ" data-tooltip="In sơ đồ" onClick={() => window.print()}>⎙</button>
               </div>
             </div>
             {isNodePaletteOpen ? (
@@ -2122,7 +2551,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
             ) : null}
           </div>
           <div className="approval-workflow-canvas" aria-label="Sơ đồ quy trình duyệt" ref={workflowCanvasRef}>
-            <div className={`approval-workflow-canvas-lane${connectionDraft ? " is-connecting" : ""}`} ref={workflowCanvasLaneRef}>
+            <div className={`approval-workflow-canvas-lane${connectionDraft ? " is-connecting" : ""}`} ref={workflowCanvasLaneRef} style={{ zoom: canvasZoom }}>
               <svg className="approval-workflow-edge-layer" aria-label="Các đường nối quy trình">
                 {workflowEdgePaths.map((edge) => (
                   <g key={edge.id}>
@@ -2231,7 +2660,7 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
           <button className="secondary-button" disabled={isPending} name="intent" value="draft" type="submit">LƯU NHÁP</button>
         </footer>
       </form>
-      {nodeContextMenu && contextMenuNode?.type === "approval" ? (
+      {nodeContextMenu && contextMenuNode && contextMenuNode.type !== "condition" ? (
         <WorkflowNodeContextMenu
           state={nodeContextMenu}
           onAddNode={addNodeFromContextMenu}
@@ -2239,10 +2668,13 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
           onDelete={deleteContextNode}
           onDeleteIncomingEdges={deleteContextNodeIncomingEdges}
           onDuplicate={duplicateContextNode}
-          onSettings={() => {
-            setEditingApprovalNodeId(nodeContextMenu.nodeId);
-            setNodeContextMenu(null);
-          }}
+          onSettings={contextMenuNode.type === "approval" || contextMenuNode.type === "notification" || contextMenuNode.type === "email"
+            ? () => {
+                if (contextMenuNode.type === "approval") setEditingApprovalNodeId(nodeContextMenu.nodeId);
+                else setEditingCommunicationNodeId(nodeContextMenu.nodeId);
+                setNodeContextMenu(null);
+              }
+            : undefined}
         />
       ) : null}
       {nodeContextMenu && contextMenuNode?.type === "condition" ? (
@@ -2257,11 +2689,22 @@ export function ApprovalWorkflowCreateBoard({ employees }: { employees: Employee
       ) : null}
       {editingApprovalNode?.type === "approval" ? (
         <ApprovalNodeSettingsModal
+          catalogOptions={catalogAudienceOptions}
           employees={employees}
           key={editingApprovalNode.id}
           node={editingApprovalNode}
           onCancel={() => setEditingApprovalNodeId(null)}
           onSave={saveApprovalNodeConfig}
+        />
+      ) : null}
+      {editingCommunicationNode && (editingCommunicationNode.type === "notification" || editingCommunicationNode.type === "email") ? (
+        <CommunicationNodeSettingsModal
+          catalogOptions={catalogAudienceOptions}
+          employees={employees}
+          key={editingCommunicationNode.id}
+          node={editingCommunicationNode}
+          onCancel={() => setEditingCommunicationNodeId(null)}
+          onSave={saveCommunicationNodeConfig}
         />
       ) : null}
       {editingConditionNode?.type === "condition" ? (

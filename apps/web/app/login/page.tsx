@@ -24,11 +24,9 @@ function getLoginErrorMessage(value: string | string[] | undefined) {
     case "missing_credentials":
       return "Nhập tên đăng nhập và mật khẩu để tiếp tục.";
     case "provider":
-      return "Chưa kết nối được Keycloak. Kiểm tra lại Docker/Keycloak rồi thử lại.";
     case "auth_config":
-      return "Thiếu cấu hình đăng nhập. Kiểm tra biến môi trường Keycloak.";
     case "token":
-      return "Không nhận được phiên đăng nhập hợp lệ.";
+      return "Không thể đăng nhập lúc này. Vui lòng thử lại sau hoặc liên hệ quản trị viên.";
     case "session_expired":
       return "Phiên đăng nhập đã hết hạn. Đăng nhập lại để tiếp tục.";
     default:

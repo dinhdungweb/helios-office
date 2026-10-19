@@ -782,6 +782,11 @@
   border-color: var(--color-text-primary);
 }
 
+.approval-workflow-toolbar button:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
 .approval-workflow-toolbar .is-reversed { transform: rotate(180deg); }
 
 .approval-workflow-node-palette {
@@ -1582,6 +1587,218 @@
 
 .approval-node-modal > footer button { min-height: 40px; }
 
+.communication-node-modal {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.communication-node-modal-body {
+  gap: var(--space-8);
+}
+
+.communication-node-recipient-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-7);
+}
+
+.communication-node-content {
+  position: relative;
+  display: grid;
+  gap: var(--space-5);
+}
+
+.communication-node-content > span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.communication-rich-editor {
+  position: relative;
+  overflow: visible;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xs);
+}
+
+.communication-rich-editor:focus-within {
+  border-color: var(--color-text-primary);
+  outline: 2px solid var(--color-info-soft);
+  outline-offset: 1px;
+}
+
+.communication-rich-editor.has-error {
+  border-color: var(--color-danger);
+}
+
+.communication-rich-editor.is-expanded {
+  position: fixed;
+  z-index: 280;
+  inset: var(--space-8);
+  box-shadow: var(--shadow-popover);
+}
+
+.communication-rich-editor .mantine-RichTextEditor-root {
+  overflow: visible;
+  background: var(--color-surface-muted);
+  border: 0;
+  border-radius: inherit;
+  font: inherit;
+}
+
+.communication-rich-editor .mantine-RichTextEditor-toolbar {
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface-raised);
+  border: 0;
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.communication-rich-editor .mantine-RichTextEditor-controlsGroup {
+  border-color: var(--color-border-strong);
+}
+
+.communication-rich-editor .mantine-RichTextEditor-control {
+  color: var(--color-text-primary);
+}
+
+.communication-rich-editor .mantine-RichTextEditor-control:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: 1px;
+}
+
+.communication-rich-editor-menu {
+  position: absolute;
+  z-index: 4;
+  top: 42px;
+  left: var(--space-5);
+  display: grid;
+  min-width: 220px;
+  padding: var(--space-3);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-popover);
+}
+
+.communication-rich-editor-menu button {
+  min-height: 38px;
+  padding: 0 var(--space-7);
+  color: var(--color-text-primary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.communication-rich-editor-menu button:hover,
+.communication-rich-editor-menu button:focus-visible {
+  background: var(--color-surface-raised);
+  outline: none;
+}
+
+.communication-rich-editor-content {
+  min-height: 180px;
+  background: var(--color-surface-muted);
+}
+
+.communication-rich-editor-content .ProseMirror {
+  width: 100%;
+  min-height: 180px;
+  padding: var(--space-7);
+  overflow: auto;
+  color: var(--color-text-primary);
+  background: var(--color-surface-muted);
+  font: inherit;
+  line-height: var(--line-height-base);
+  outline: none;
+}
+
+.communication-rich-editor.is-expanded .mantine-RichTextEditor-root {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+}
+
+.communication-rich-editor.is-expanded .communication-rich-editor-content,
+.communication-rich-editor.is-expanded .communication-rich-editor-content .ProseMirror {
+  height: 100%;
+  min-height: 0;
+}
+
+.communication-rich-editor-content .ProseMirror p.is-editor-empty:first-child::before {
+  float: left;
+  height: 0;
+  color: var(--color-text-secondary);
+  content: attr(data-placeholder);
+  pointer-events: none;
+}
+
+.communication-rich-editor-content .ProseMirror p {
+  margin: 0 0 var(--space-5);
+}
+
+.communication-rich-editor-content .ProseMirror ul,
+.communication-rich-editor-content .ProseMirror ol {
+  margin: var(--space-5) 0;
+  padding-left: 24px;
+}
+
+.communication-rich-editor-content .ProseMirror h2,
+.communication-rich-editor-content .ProseMirror h3 {
+  margin: var(--space-6) 0 var(--space-5);
+  line-height: 1.35;
+}
+
+.communication-rich-editor-content .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+}
+
+.communication-node-attachments input:focus-visible {
+  border-color: var(--color-text-primary);
+  outline: 2px solid var(--color-info-soft);
+  outline-offset: 1px;
+}
+
+.communication-node-attachments {
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-7);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-xs);
+}
+
+.communication-node-attachments > span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  color: var(--color-text-secondary);
+}
+
+.communication-node-attachments small {
+  overflow-wrap: anywhere;
+  color: var(--color-text-secondary);
+}
+
+.communication-node-attachments.is-disabled input {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .communication-node-recipient-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .communication-rich-editor .mantine-RichTextEditor-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+}
+
 .condition-node-modal {
   width: min(730px, calc(100vw - 32px));
 }
@@ -1699,7 +1916,7 @@
 
 .condition-node-picker-menu {
   position: fixed;
-  z-index: 130;
+  z-index: 240;
   display: grid;
   overflow-y: auto;
   padding: var(--space-3) 0;

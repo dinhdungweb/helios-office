@@ -25,10 +25,15 @@ export async function createApprovalWorkflowAction(
     const name = String(formData.get("name") ?? "").trim();
     const objectType = String(formData.get("objectType") ?? "").trim();
     const approvalType = String(formData.get("approvalType") ?? "").trim();
+    const displayStatus = String(formData.get("displayStatus") ?? "").trim();
+    const requestedStatus = formData.get("intent") === "draft"
+      ? "draft"
+      : displayStatus === "inactive" ? "archived" : displayStatus === "active" ? "active" : "";
     const rawFlowDefinition = String(formData.get("flowDefinition") ?? "").trim();
     if (name.length < 2) return { ok: false, error: "Hãy nhập tên quy trình." };
     if (!objectType) return { ok: false, error: "Hãy chọn đối tượng áp dụng." };
     if (!approvalType) return { ok: false, error: "Hãy chọn loại quy trình." };
+    if (!requestedStatus) return { ok: false, error: "Hãy chọn trạng thái quy trình." };
 
     let flowDefinition: Record<string, unknown> = {
       nodes: [{ id: "start", type: "start", label: "Bắt đầu", x: 72, y: 160 }],
@@ -46,12 +51,19 @@ export async function createApprovalWorkflowAction(
       }
     }
 
+    if (requestedStatus === "active") {
+      const nodes = Array.isArray(flowDefinition.nodes) ? flowDefinition.nodes : [];
+      const edges = Array.isArray(flowDefinition.edges) ? flowDefinition.edges : [];
+      if (nodes.length < 2) return { ok: false, error: "Hãy thêm ít nhất một bước vào quy trình trước khi kích hoạt." };
+      if (!edges.some((edge) => edge && typeof edge === "object" && (edge as { source?: unknown }).source === "start")) {
+        return { ok: false, error: "Hãy nối bước Bắt đầu với bước đầu tiên trước khi kích hoạt." };
+      }
+    }
+
     const payload = {
       code: String(formData.get("code") ?? "").trim() || undefined,
       name,
-      status: formData.get("intent") === "draft"
-        ? "draft"
-        : formData.get("displayStatus") === "draft" ? "draft" : "active",
+      status: requestedStatus,
       objectType,
       subObject: String(formData.get("subObject") ?? "").trim() || undefined,
       versionMode: checked(formData, "versionMode"),
