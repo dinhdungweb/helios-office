@@ -1,0 +1,1618 @@
+# Helios Office — Backlog chức năng (nguồn sự thật duy nhất)
+#
+# Mục tiêu: đạt tương đương 1Office phần HRM + Workplace, không bỏ sót chức năng.
+# Kiểm tra: `npm run audit:features` (thêm `-- --module LV`, `-- --phase 3`, `-- --write`, `-- --strict`).
+#
+# Quy tắc:
+# - Mỗi chức năng nhỏ là một item có `id` dạng <MODULE>-<số>. Không xoá item; bỏ thì đặt `skipped` + `note`.
+# - status: todo | doing | partial | done | skipped
+#     partial = đã có một phần (API mock, thiếu guard, UI chưa nối, thiếu route...)
+#     done    = đạt Definition of Done bên dưới. Audit báo lỗi nếu item done mà thiếu route hoặc route không có guard.
+# - api: danh sách "METHOD /path" (bỏ tiền tố /api/v1, tham số viết :ten). Audit đối chiếu với controller thật.
+# - public: true khi route cố ý không cần đăng nhập (careers, quên mật khẩu, health).
+# - phase: mặc định lấy theo module, ghi đè ở item khi cần.
+# - Commit/nhánh ghi mã item: `feat(LV-03): ...`, `feat/LV-03-leave-balance`.
+#
+# Definition of Done (mọi item):
+#   [ ] Schema/migration (nếu cần)      [ ] API + DTO validate
+#   [ ] Guard + permission + phạm vi dữ liệu   [ ] Audit log cho mutation
+#   [ ] UI nối API thật, không mock     [ ] Test service tối thiểu
+#   [ ] Cập nhật status ở đây + docs/progress-changelog.md
+#
+# Lưu ý: đánh số phase theo docs/roadmap.md (khác Phase 0-10 trong docs/implementation-plan.md).
+
+version: 1
+
+phases:
+  0: Vá bảo mật & chuẩn hoá repo
+  1: Hạ tầng dùng chung (file, queue, realtime, audit, phạm vi quyền)
+  2: Ca làm việc, ngày lễ, engine tính công
+  3: Engine phê duyệt & đơn từ
+  4: Hồ sơ mở rộng & hợp đồng
+  5: Lương, bảo hiểm, thuế
+  6: Bảng tin & thông báo
+  7: Tuyển dụng, onboarding, đào tạo, KPI, tài sản
+  8: Công việc, tài liệu, lịch
+  9: Báo cáo, tích hợp, mobile, dọn nợ kỹ thuật
+  10: Ngoài phạm vi
+
+modules:
+  # ---------------------------------------------------------------------------
+  - code: CORE
+    name: Nền tảng & hạ tầng chung
+    phase: 1
+    items:
+      - id: CORE-01
+        title: Guard toàn cục (APP_GUARD) + decorator @Public cho route mở
+        phase: 0
+        status: todo
+      - id: CORE-02
+        title: Bổ sung guard cho approvals, payroll-cycles, leave-requests, posts, notifications, announcements
+        phase: 0
+        status: todo
+        note: Xem mục "Route API không có guard" trong báo cáo audit
+      - id: CORE-03
+        title: Proxy web chặn /hcns, /apps, /social, /personnel-profile-profile khi chưa đăng nhập
+        phase: 0
+        status: todo
+      - id: CORE-04
+        title: Helmet + rate limit (Throttler) cho API
+        phase: 0
+        status: todo
+      - id: CORE-05
+        title: Hợp nhất route trùng (4 route hồ sơ nhân sự, 2 route tài khoản) và redirect
+        phase: 0
+        status: todo
+      - id: CORE-06
+        title: Bỏ fallback mock-data âm thầm ở dashboard, hiển thị trạng thái lỗi tải dữ liệu
+        phase: 0
+        status: todo
+      - id: CORE-07
+        title: ESLint + Prettier cho web và api
+        phase: 0
+        status: todo
+      - id: CORE-08
+        title: CI chạy typecheck, test, audit:features --strict
+        phase: 0
+        status: todo
+      - id: CORE-09
+        title: .gitattributes chuẩn hoá line ending
+        phase: 0
+        status: todo
+      - id: CORE-10
+        title: Chuẩn phân trang/lọc/sắp xếp dùng chung cho mọi list API
+        status: todo
+      - id: CORE-11
+        title: File service MinIO (presign upload, tải, xoá)
+        api: ["POST /files/presign", "POST /files", "GET /files/:id", "DELETE /files/:id"]
+        status: todo
+      - id: CORE-12
+        title: Giới hạn loại/dung lượng file, quét file tải lên
+        status: todo
+        depends: [CORE-11]
+      - id: CORE-13
+        title: API xem audit log
+        api: ["GET /audit-logs", "GET /audit-logs/:id"]
+        status: todo
+      - id: CORE-14
+        title: Interceptor ghi audit log cho mọi mutation HR/công/lương/duyệt
+        status: partial
+        note: Một số service đã ghi audit thủ công
+      - id: CORE-15
+        title: Phạm vi dữ liệu theo quyền (bản thân/phòng ban/phòng ban con/toàn công ty)
+        status: todo
+      - id: CORE-16
+        title: BullMQ queue + worker nền
+        status: todo
+      - id: CORE-17
+        title: WebSocket gateway xác thực JWT
+        status: todo
+      - id: CORE-18
+        title: Import Excel chung (upload → validate → preview → commit)
+        api: ["POST /imports", "GET /imports/:id", "POST /imports/:id/commit"]
+        status: todo
+        depends: [CORE-11, CORE-16]
+      - id: CORE-19
+        title: Export Excel chung
+        api: ["POST /exports", "GET /exports/:id"]
+        status: todo
+        depends: [CORE-16]
+      - id: CORE-20
+        title: Health check
+        api: ["GET /health"]
+        public: true
+        status: todo
+      - id: CORE-21
+        title: Mã hoá trường nhạy cảm (CCCD, tài khoản ngân hàng, lương)
+        phase: 4
+        status: todo
+      - id: CORE-22
+        title: Tách globals.css (~24k dòng) theo component/màn hình
+        phase: 9
+        status: todo
+      - id: CORE-23
+        title: Tách component > 1500 dòng (approval-workflow-create-board, profile-board...)
+        phase: 9
+        status: todo
+      - id: CORE-24
+        title: Test cho web (component/e2e luồng chính)
+        phase: 9
+        status: todo
+
+  # ---------------------------------------------------------------------------
+  - code: AU
+    name: Đăng nhập, tài khoản, phân quyền
+    phase: 1
+    items:
+      - id: AU-01
+        title: Đăng nhập Keycloak, callback, refresh token, logout trên web
+        ui: /login
+        status: done
+      - id: AU-02
+        title: Thông tin user hiện tại
+        api: ["GET /auth/me"]
+        status: done
+      - id: AU-03
+        title: Tổng quan tài khoản
+        api: ["GET /account-access/summary"]
+        ui: /admin/settings/accounts
+        status: done
+      - id: AU-04
+        title: Danh sách và chi tiết tài khoản
+        api: ["GET /account-access/accounts", "GET /account-access/accounts/:id"]
+        status: done
+      - id: AU-05
+        title: Tạo và sửa tài khoản
+        api: ["POST /account-access/accounts", "PATCH /account-access/accounts/:id"]
+        status: done
+      - id: AU-06
+        title: Kích hoạt / đóng tài khoản
+        api: ["POST /account-access/accounts/:id/activate", "POST /account-access/accounts/:id/close"]
+        status: done
+      - id: AU-07
+        title: Gửi lại thư mời
+        api: ["POST /account-access/accounts/:id/resend-invite"]
+        status: done
+      - id: AU-08
+        title: Nhóm quyền CRUD + lưu trữ/khôi phục
+        api:
+          - "GET /account-access/groups"
+          - "POST /account-access/groups"
+          - "PATCH /account-access/groups/:id"
+          - "POST /account-access/groups/:id/archive"
+          - "POST /account-access/groups/:id/restore"
+          - "DELETE /account-access/groups/:id"
+        ui: /admin/settings/accounts/groups
+        status: done
+      - id: AU-09
+        title: Danh mục quyền CRUD
+        api:
+          - "GET /account-access/permissions"
+          - "POST /account-access/permissions"
+          - "PATCH /account-access/permissions/:key"
+          - "DELETE /account-access/permissions/:key"
+        ui: /admin/settings/accounts/permissions
+        status: done
+      - id: AU-10
+        title: Phạm vi dữ liệu trong quyền (scope) và áp vào guard
+        status: todo
+        depends: [CORE-15]
+      - id: AU-11
+        title: Ghi đè quyền riêng cho từng user
+        api: ["GET /account-access/accounts/:id/permission-overrides", "PUT /account-access/accounts/:id/permission-overrides"]
+        status: todo
+      - id: AU-12
+        title: Xem quyền hiệu lực của user
+        api: ["GET /account-access/accounts/:id/effective-permissions"]
+        status: todo
+      - id: AU-13
+        title: Đổi mật khẩu
+        api: ["POST /auth/change-password"]
+        status: todo
+      - id: AU-14
+        title: Quên mật khẩu / đặt lại mật khẩu
+        api: ["POST /auth/forgot-password"]
+        public: true
+        status: todo
+      - id: AU-15
+        title: Admin đặt lại mật khẩu cho user
+        api: ["POST /account-access/accounts/:id/reset-password"]
+        status: todo
+      - id: AU-16
+        title: Danh sách phiên đăng nhập và thu hồi phiên
+        api: ["GET /auth/sessions", "DELETE /auth/sessions/:id"]
+        status: todo
+      - id: AU-17
+        title: Buộc đăng xuất user
+        api: ["POST /account-access/accounts/:id/force-logout"]
+        status: todo
+      - id: AU-18
+        title: Chính sách 2FA (bắt buộc theo nhóm/vai trò)
+        api: ["GET /admin-settings/two-factor", "PATCH /admin-settings/two-factor"]
+        ui: /admin/settings/two-factor
+        status: partial
+        note: Có trang UI, chưa có API
+      - id: AU-19
+        title: Chính sách phiên (timeout, số phiên đồng thời)
+        api: ["GET /admin-settings/session", "PATCH /admin-settings/session"]
+        ui: /admin/settings/session
+        status: partial
+        note: Có trang UI, chưa có API
+      - id: AU-20
+        title: Lịch sử đăng nhập
+        api: ["GET /auth/login-history", "GET /account-access/accounts/:id/login-history"]
+        status: todo
+      - id: AU-21
+        title: Uỷ quyền duyệt thay khi vắng mặt
+        api: ["GET /delegations", "POST /delegations", "PATCH /delegations/:id", "DELETE /delegations/:id"]
+        phase: 3
+        status: todo
+      - id: AU-22
+        title: Tự khoá tài khoản khi nhân sự nghỉ việc
+        phase: 4
+        status: todo
+        depends: [HR-17]
+      - id: AU-23
+        title: SSO Google/Microsoft qua Keycloak identity provider
+        phase: 9
+        status: todo
+
+  # ---------------------------------------------------------------------------
+  - code: DV
+    name: Xác thực thiết bị & điểm chấm công
+    phase: 2
+    items:
+      - id: DV-01
+        title: Danh sách yêu cầu xác thực thiết bị
+        api: ["GET /device-auth/requests"]
+        ui: /admin/settings/accounts/device-auth
+        status: done
+      - id: DV-02
+        title: Duyệt / từ chối yêu cầu thiết bị
+        api: ["PATCH /device-auth/requests/:id/status"]
+        status: done
+      - id: DV-03
+        title: Xoá yêu cầu thiết bị
+        api: ["DELETE /device-auth/requests/:id"]
+        status: done
+      - id: DV-04
+        title: Chính sách xác thực thiết bị
+        api: ["GET /device-auth/policy", "PATCH /device-auth/policy"]
+        status: done
+      - id: DV-05
+        title: Nhân viên tự gửi yêu cầu đăng ký thiết bị và xem thiết bị của mình
+        api: ["POST /device-auth/my-requests", "GET /device-auth/my-devices"]
+        status: todo
+      - id: DV-06
+        title: Áp chính sách thiết bị khi check-in trên web/app
+        status: todo
+        depends: [AT-13]
+      - id: DV-07
+        title: Điểm chấm công hợp lệ (GPS + bán kính, wifi SSID/BSSID, dải IP)
+        api: ["GET /attendance-locations", "POST /attendance-locations", "PATCH /attendance-locations/:id", "DELETE /attendance-locations/:id"]
+        status: todo
+
+  # ---------------------------------------------------------------------------
+  - code: HR
+    name: Hồ sơ nhân sự & tổ chức
+    phase: 4
+    items:
+      - id: HR-01
+        title: Danh sách hồ sơ nhân sự
+        api: ["GET /employees"]
+        ui: /admin/hr/employees
+        status: done
+      - id: HR-02
+        title: Chi tiết hồ sơ nhân sự
+        api: ["GET /employees/:id"]
+        status: done
+      - id: HR-03
+        title: Tạo hồ sơ (tuỳ chọn cấp tài khoản kèm theo)
+        api: ["POST /employees"]
+        ui: /admin/hr/employees/new
+        status: done
+      - id: HR-04
+        title: Sửa hồ sơ, đổi phòng ban/vị trí/quản lý/trạng thái
+        api: ["PATCH /employees/:id"]
+        status: done
+      - id: HR-05
+        title: Liên kết / huỷ liên kết tài khoản với hồ sơ
+        api: ["PATCH /employees/:id/account"]
+        status: done
+      - id: HR-06
+        title: Tải tài liệu hồ sơ
+        api: ["GET /employees/:id/documents/:documentId"]
+        status: done
+      - id: HR-07
+        title: Upload / xoá tài liệu hồ sơ qua file service
+        api: ["POST /employees/:id/documents", "DELETE /employees/:id/documents/:documentId"]
+        status: partial
+        note: Hiện upload đi kèm server action tạo/sửa hồ sơ, chưa có route riêng và chưa dùng MinIO
+        depends: [CORE-11]
+      - id: HR-08
+        title: Sơ đồ tổ chức
+        api: ["GET /employees/org-chart"]
+        ui: /admin/settings/org-chart
+        status: done
+      - id: HR-09
+        title: Phòng ban CRUD + lưu trữ/khôi phục
+        api:
+          - "GET /departments"
+          - "POST /departments"
+          - "PATCH /departments/:id"
+          - "POST /departments/:id/archive"
+          - "POST /departments/:id/restore"
+          - "DELETE /departments/:id"
+        status: done
+      - id: HR-10
+        title: Vị trí công việc CRUD + lưu trữ/khôi phục
+        api:
+          - "GET /job-positions"
+          - "POST /job-positions"
+          - "PATCH /job-positions/:id"
+          - "POST /job-positions/:id/archive"
+          - "POST /job-positions/:id/restore"
+          - "DELETE /job-positions/:id"
+        ui: /admin/settings/job-positions
+        status: done
+      - id: HR-11
+        title: Chức danh CRUD + lưu trữ/khôi phục
+        api:
+          - "GET /job-titles"
+          - "POST /job-titles"
+          - "PATCH /job-titles/:id"
+          - "POST /job-titles/:id/archive"
+          - "POST /job-titles/:id/restore"
+          - "DELETE /job-titles/:id"
+        ui: /admin/settings/job-titles
+        status: done
+      - id: HR-12
+        title: Cấp bậc (thiếu sửa)
+        api: ["GET /job-levels", "POST /job-levels", "PATCH /job-levels/:id", "DELETE /job-levels/:id"]
+        ui: /admin/settings/job-levels
+        status: partial
+      - id: HR-13
+        title: Nơi làm việc (thiếu sửa)
+        api: ["GET /workplaces", "POST /workplaces", "PATCH /workplaces/:id", "DELETE /workplaces/:id"]
+        ui: /admin/settings/workplaces
+        status: partial
+      - id: HR-14
+        title: Danh mục kỷ luật nội bộ (thiếu sửa)
+        api: ["GET /internal-penalties", "POST /internal-penalties", "PATCH /internal-penalties/:id", "DELETE /internal-penalties/:id"]
+        ui: /admin/settings/internal-penalties
+        status: partial
+      - id: HR-15
+        title: Danh mục phúc lợi (thiếu sửa)
+        api: ["GET /welfare-benefits", "POST /welfare-benefits", "PATCH /welfare-benefits/:id", "DELETE /welfare-benefits/:id"]
+        ui: /admin/settings/welfare-benefits
+        status: partial
+      - id: HR-16
+        title: Gói phúc lợi (thiếu sửa)
+        api: ["GET /welfare-packages", "POST /welfare-packages", "PATCH /welfare-packages/:id", "DELETE /welfare-packages/:id"]
+        ui: /admin/settings/welfare-packages
+        status: partial
+      - id: HR-17
+        title: Cho nghỉ việc / chấm dứt (ngày nghỉ, lý do, bàn giao, khoá tài khoản)
+        api: ["POST /employees/:id/terminate"]
+        status: todo
+      - id: HR-18
+        title: Quá trình công tác (điều chuyển, thăng chức, đổi lương)
+        api: ["GET /employees/:id/work-history", "POST /employees/:id/work-history"]
+        status: todo
+      - id: HR-19
+        title: Quyết định điều chuyển/bổ nhiệm đi qua phê duyệt
+        status: todo
+        depends: [HR-18, AP-10]
+      - id: HR-20
+        title: Khen thưởng theo nhân sự
+        api: ["GET /employees/:id/rewards", "POST /employees/:id/rewards"]
+        status: todo
+      - id: HR-21
+        title: Kỷ luật theo nhân sự
+        api: ["GET /employees/:id/disciplines", "POST /employees/:id/disciplines"]
+        status: todo
+        depends: [HR-14]
+      - id: HR-22
+        title: Gán phúc lợi / gói phúc lợi cho nhân sự
+        api: ["GET /employees/:id/welfare", "POST /employees/:id/welfare"]
+        status: todo
+        depends: [HR-15, HR-16]
+      - id: HR-23
+        title: Người phụ thuộc / người thân
+        api: ["GET /employees/:id/dependents", "POST /employees/:id/dependents", "PATCH /employees/:id/dependents/:dependentId", "DELETE /employees/:id/dependents/:dependentId"]
+        status: todo
+      - id: HR-24
+        title: Bằng cấp, chứng chỉ
+        api: ["GET /employees/:id/qualifications", "POST /employees/:id/qualifications", "PATCH /employees/:id/qualifications/:qualificationId", "DELETE /employees/:id/qualifications/:qualificationId"]
+        status: todo
+      - id: HR-25
+        title: Kinh nghiệm làm việc trước đây
+        api: ["GET /employees/:id/experiences", "POST /employees/:id/experiences", "DELETE /employees/:id/experiences/:experienceId"]
+        status: todo
+      - id: HR-26
+        title: Tài khoản ngân hàng nhân sự (mã hoá)
+        api: ["GET /employees/:id/bank-accounts", "PUT /employees/:id/bank-accounts"]
+        status: todo
+        depends: [CORE-21]
+      - id: HR-27
+        title: Hồ sơ của tôi (bỏ mock ở profile-board)
+        api: ["GET /employees/me"]
+        ui: /user/profile
+        status: todo
+      - id: HR-28
+        title: Nhân viên gửi yêu cầu cập nhật hồ sơ, HR duyệt
+        api:
+          - "POST /employees/me/change-requests"
+          - "GET /employee-change-requests"
+          - "POST /employee-change-requests/:id/approve"
+          - "POST /employee-change-requests/:id/reject"
+        status: todo
+        depends: [HR-27]
+      - id: HR-29
+        title: Import hồ sơ từ Excel
+        api: ["POST /employees/import"]
+        status: todo
+        depends: [CORE-18]
+      - id: HR-30
+        title: Export hồ sơ ra Excel
+        api: ["GET /employees/export"]
+        status: todo
+        depends: [CORE-19]
+      - id: HR-31
+        title: Sinh nhật / kỷ niệm ngày vào làm sắp tới (đang mock)
+        api: ["GET /employees/upcoming-events"]
+        status: todo
+      - id: HR-32
+        title: Danh bạ nhân viên cho user thường (giới hạn trường)
+        api: ["GET /directory"]
+        ui: /apps/personnel-profile-profile
+        status: todo
+      - id: HR-33
+        title: Lọc / tìm kiếm / phân trang server-side cho danh sách hồ sơ
+        status: todo
+        depends: [CORE-10]
+      - id: HR-34
+        title: Lịch sử thay đổi của một hồ sơ
+        api: ["GET /employees/:id/audit"]
+        status: todo
+        depends: [CORE-13]
+      - id: HR-35
+        title: Trường tuỳ chỉnh cho hồ sơ
+        api: ["GET /employee-fields", "POST /employee-fields", "PATCH /employee-fields/:id", "DELETE /employee-fields/:id"]
+        phase: 9
+        status: todo
+
+  # ---------------------------------------------------------------------------
+  - code: CT
+    name: Hợp đồng lao động
+    phase: 4
+    items:
+      - id: CT-01
+        title: Danh sách hợp đồng
+        api: ["GET /contracts"]
+        ui: /apps/personnel-contract-contract
+        status: done
+      - id: CT-02
+        title: Chi tiết hợp đồng
+        api: ["GET /contracts/:id"]
+        ui: /apps/personnel-contract-contract/view
+        status: todo
+      - id: CT-03
+        title: Tạo hợp đồng
+        api: ["POST /contracts"]
+        ui: /apps/personnel-contract-contract/add
+        status: todo
+      - id: CT-04
+        title: Sửa hợp đồng
+        api: ["PATCH /contracts/:id"]
+        status: todo
+      - id: CT-05
+        title: Gia hạn hợp đồng
+        api: ["POST /contracts/:id/renew"]
+        status: todo
+      - id: CT-06
+        title: Chấm dứt hợp đồng
+        api: ["POST /contracts/:id/terminate"]
+        status: todo
+      - id: CT-07
+        title: Phụ lục hợp đồng
+        api: ["GET /contracts/:id/appendices", "POST /contracts/:id/appendices", "PATCH /contract-appendices/:id", "DELETE /contract-appendices/:id"]
+        status: todo
+      - id: CT-08
+        title: Danh mục loại hợp đồng
+        api: ["GET /contract-types", "POST /contract-types", "PATCH /contract-types/:id", "DELETE /contract-types/:id"]
+        status: todo
+      - id: CT-09
+        title: Trường lương trong hợp đồng (lương cơ bản, lương đóng BH, phụ cấp)
+        status: todo
+      - id: CT-10
+        title: Mẫu hợp đồng
+        api: ["GET /contract-templates", "POST /contract-templates", "PATCH /contract-templates/:id", "DELETE /contract-templates/:id"]
+        status: todo
+      - id: CT-11
+        title: Sinh file Word/PDF từ mẫu
+        api: ["POST /contracts/:id/render"]
+        status: todo
+        depends: [CT-10]
+      - id: CT-12
+        title: Upload bản scan hợp đồng đã ký
+        api: ["POST /contracts/:id/files"]
+        status: todo
+        depends: [CORE-11]
+      - id: CT-13
+        title: Cảnh báo hợp đồng sắp hết hạn (job hằng ngày + API)
+        api: ["GET /contracts/expiring"]
+        status: todo
+        depends: [CORE-16]
+      - id: CT-14
+        title: Hợp đồng của tôi
+        api: ["GET /contracts/me"]
+        status: todo
+      - id: CT-15
+        title: Import / export hợp đồng
+        status: todo
+        depends: [CORE-18, CORE-19]
+
+  # ---------------------------------------------------------------------------
+  - code: AT
+    name: Chấm công & ca làm việc
+    phase: 2
+    items:
+      - id: AT-01
+        title: Đồng bộ log từ máy chấm công
+        api: ["POST /attendance/sync"]
+        status: done
+      - id: AT-02
+        title: Danh sách bản ghi công
+        api: ["GET /attendance"]
+        status: done
+      - id: AT-03
+        title: Công của tôi
+        api: ["GET /attendance/me"]
+        ui: /user/attendance
+        status: done
+      - id: AT-04
+        title: Tổng hợp công
+        api: ["GET /attendance/summary"]
+        status: done
+      - id: AT-05
+        title: Danh mục ca làm việc
+        api: ["GET /shifts", "POST /shifts", "PATCH /shifts/:id", "DELETE /shifts/:id"]
+        status: todo
+      - id: AT-06
+        title: Ca qua đêm, ca linh hoạt, nghỉ giữa ca, ngưỡng đi muộn cho phép
+        status: todo
+        depends: [AT-05]
+      - id: AT-07
+        title: Xếp ca cho nhân sự / phòng ban
+        api: ["GET /shift-assignments", "POST /shift-assignments", "DELETE /shift-assignments/:id"]
+        status: todo
+        depends: [AT-05]
+      - id: AT-08
+        title: Xếp ca hàng loạt / theo lịch lặp
+        api: ["POST /shift-assignments/bulk"]
+        status: todo
+        depends: [AT-07]
+      - id: AT-09
+        title: Lịch ca của tôi
+        api: ["GET /shift-assignments/me"]
+        status: todo
+      - id: AT-10
+        title: Ngày lễ, ngày làm bù
+        api: ["GET /holidays", "POST /holidays", "PATCH /holidays/:id", "DELETE /holidays/:id"]
+        status: todo
+      - id: AT-11
+        title: Engine tính công (muộn, sớm, thiếu công, công thực tế theo ca)
+        status: todo
+        depends: [AT-05, AT-07, AT-10]
+      - id: AT-12
+        title: Tính lại công cho khoảng ngày
+        api: ["POST /attendance/recalculate"]
+        status: todo
+        depends: [AT-11]
+      - id: AT-13
+        title: Check-in / check-out trên web và app
+        api: ["POST /attendance/check-in", "POST /attendance/check-out"]
+        status: todo
+        depends: [DV-07]
+      - id: AT-14
+        title: Check-in kèm ảnh và toạ độ GPS
+        status: todo
+        depends: [AT-13, CORE-11]
+      - id: AT-15
+        title: HR sửa công thủ công (có lịch sử)
+        api: ["PATCH /attendance/:id"]
+        status: todo
+      - id: AT-16
+        title: Bảng công tháng toàn công ty
+        api: ["GET /attendance/timesheets"]
+        status: todo
+        depends: [AT-11]
+      - id: AT-17
+        title: Chốt / mở chốt bảng công tháng
+        api: ["POST /attendance/timesheets/:month/lock", "POST /attendance/timesheets/:month/unlock"]
+        status: todo
+        depends: [AT-16]
+      - id: AT-18
+        title: Export bảng công
+        api: ["GET /attendance/timesheets/:month/export"]
+        status: todo
+        depends: [AT-16, CORE-19]
+      - id: AT-19
+        title: Quản lý máy chấm công
+        api: ["GET /attendance-devices", "POST /attendance-devices", "PATCH /attendance-devices/:id", "DELETE /attendance-devices/:id"]
+        status: todo
+      - id: AT-20
+        title: Lỗi đồng bộ và mapping mã chấm công
+        api: ["GET /attendance/sync-errors", "POST /attendance/sync-errors/:id/resolve"]
+        status: todo
+      - id: AT-21
+        title: Xem log chấm công gốc
+        api: ["GET /attendance/raw-logs"]
+        status: todo
+      - id: AT-22
+        title: Cập nhật công khi đơn nghỉ/OT/đổi ca/giải trình được duyệt
+        phase: 3
+        status: todo
+        depends: [AT-11, AP-10]
+      - id: AT-23
+        title: Nhắc quên chấm công
+        status: todo
+        depends: [NT-05]
+      - id: AT-24
+        title: Bảng công tháng của tôi + xác nhận công
+        api: ["GET /attendance/me/timesheet", "POST /attendance/me/timesheet/:month/confirm"]
+        status: todo
+        depends: [AT-16]
+
+  # ---------------------------------------------------------------------------
+  - code: LV
+    name: Đơn từ & nghỉ phép
+    phase: 3
+    items:
+      - id: LV-01
+        title: Danh sách đơn nghỉ đọc từ DB
+        api: ["GET /leave-requests"]
+        status: partial
+        note: Đọc DB nhưng không có guard, UI chưa dùng
+      - id: LV-02
+        title: Tạo đơn (API chung cho mọi loại đơn)
+        api: ["POST /requests"]
+        status: todo
+        depends: [AP-10]
+      - id: LV-03
+        title: Danh sách đơn của tôi / cần tôi duyệt / tôi theo dõi
+        api: ["GET /requests"]
+        status: todo
+      - id: LV-04
+        title: Chi tiết đơn
+        api: ["GET /requests/:id"]
+        ui: /user/requests/detail
+        status: todo
+      - id: LV-05
+        title: Sửa đơn nháp / bị trả lại
+        api: ["PATCH /requests/:id"]
+        status: todo
+      - id: LV-06
+        title: Huỷ / rút lại đơn
+        api: ["POST /requests/:id/cancel", "POST /requests/:id/recall"]
+        status: todo
+      - id: LV-07
+        title: Bình luận trên đơn
+        api: ["GET /requests/:id/comments", "POST /requests/:id/comments"]
+        status: todo
+      - id: LV-08
+        title: Đính kèm file vào đơn
+        api: ["POST /requests/:id/attachments"]
+        status: todo
+        depends: [CORE-11]
+      - id: LV-09
+        title: Danh mục loại nghỉ (có lương/không lương, trừ phép, cần giấy tờ)
+        api: ["GET /leave-types", "POST /leave-types", "PATCH /leave-types/:id", "DELETE /leave-types/:id"]
+        status: todo
+      - id: LV-10
+        title: Quỹ phép của tôi
+        api: ["GET /leave-balances/me"]
+        status: todo
+        depends: [LV-09]
+      - id: LV-11
+        title: Quỹ phép toàn công ty
+        api: ["GET /leave-balances"]
+        status: todo
+      - id: LV-12
+        title: Điều chỉnh quỹ phép thủ công
+        api: ["POST /leave-balances/adjust"]
+        status: todo
+      - id: LV-13
+        title: Cộng phép tự động hằng tháng / theo thâm niên
+        status: todo
+        depends: [CORE-16, LV-11]
+      - id: LV-14
+        title: Chuyển phép tồn sang năm sau, hết hạn phép tồn
+        status: todo
+        depends: [LV-13]
+      - id: LV-15
+        title: Kiểm tra trùng ngày, vượt quỹ phép, nghỉ nửa ngày/theo giờ theo ca
+        status: todo
+        depends: [AT-05, LV-10]
+      - id: LV-16
+        title: Form đơn nghỉ phép nối API
+        ui: /user/requests/new
+        status: partial
+        note: Có UI, chưa gửi dữ liệu
+        depends: [LV-02]
+      - id: LV-17
+        title: Form vắng mặt / ra ngoài nối API
+        status: partial
+        depends: [LV-02]
+      - id: LV-18
+        title: Form làm thêm giờ (OT) nối API
+        status: partial
+        depends: [LV-02]
+      - id: LV-19
+        title: Form đổi ca nối API
+        status: partial
+        depends: [LV-02, AT-07]
+      - id: LV-20
+        title: Form giải trình check-in/out nối API
+        status: partial
+        depends: [LV-02]
+      - id: LV-21
+        title: Form nghỉ việc nối API, tự tạo offboarding
+        status: partial
+        depends: [LV-02, RC-15]
+      - id: LV-22
+        title: Đơn công tác
+        status: todo
+        depends: [LV-02]
+      - id: LV-23
+        title: Đề xuất chung (mua sắm, tạm ứng, thanh toán) với form động
+        status: todo
+        depends: [LV-02]
+      - id: LV-24
+        title: Trang danh sách đơn nối API (bỏ requestRows viết cứng)
+        ui: /user/requests
+        status: partial
+        depends: [LV-03]
+      - id: LV-25
+        title: Lịch nghỉ của phòng ban
+        api: ["GET /leave-requests/calendar"]
+        status: todo
+
+  # ---------------------------------------------------------------------------
+  - code: AP
+    name: Quy trình & engine phê duyệt
+    phase: 3
+    items:
+      - id: AP-01
+        title: Danh sách quy trình duyệt
+        api: ["GET /approval-workflows"]
+        ui: /admin/settings/approval-workflows
+        status: done
+      - id: AP-02
+        title: Tạo quy trình duyệt
+        api: ["POST /approval-workflows"]
+        ui: /admin/settings/approval-workflows/new
+        status: done
+      - id: AP-03
+        title: Xoá quy trình duyệt
+        api: ["DELETE /approval-workflows/:id"]
+        status: done
+      - id: AP-04
+        title: Sửa quy trình duyệt
+        api: ["PATCH /approval-workflows/:id"]
+        status: todo
+      - id: AP-05
+        title: Chi tiết quy trình duyệt
+        api: ["GET /approval-workflows/:id"]
+        status: todo
+      - id: AP-06
+        title: Phiên bản quy trình (versionMode)
+        api: ["GET /approval-workflows/:id/versions"]
+        status: todo
+      - id: AP-07
+        title: Nhân bản quy trình
+        api: ["POST /approval-workflows/:id/duplicate"]
+        status: todo
+      - id: AP-08
+        title: Bật / tắt quy trình
+        api: ["POST /approval-workflows/:id/activate", "POST /approval-workflows/:id/deactivate"]
+        status: todo
+      - id: AP-09
+        title: Node gửi thông báo / gửi email trong sơ đồ quy trình (rich editor, người nhận theo phòng ban/vị trí/chức vụ)
+        ui: /admin/settings/approval-workflows/new
+        status: done
+        note: Chỉ là cấu hình trên sơ đồ; việc gửi thật thuộc AP-23. Đính kèm file tách sang AP-26.
+      - id: AP-10
+        title: "Engine: chọn quy trình theo loại đối tượng + điều kiện, sinh các bước duyệt"
+        status: todo
+      - id: AP-11
+        title: "Engine: xác định người duyệt (quản lý trực tiếp, trưởng phòng, vị trí, người chỉ định)"
+        status: todo
+        depends: [AP-10]
+      - id: AP-12
+        title: "Engine: duyệt tuần tự / song song / một người đủ"
+        status: todo
+        depends: [AP-10]
+      - id: AP-13
+        title: Lưu bước và hành động duyệt (ApprovalStep / ApprovalAction)
+        status: todo
+      - id: AP-14
+        title: Hộp duyệt của tôi
+        api: ["GET /approvals"]
+        status: partial
+        note: Đang trả mock-data, không có guard
+      - id: AP-15
+        title: Duyệt / từ chối
+        api: ["POST /approvals/:id/decision"]
+        status: partial
+        note: Mock, không lưu DB, không có guard
+        depends: [AP-13]
+      - id: AP-16
+        title: Trả lại để bổ sung
+        api: ["POST /approvals/:id/return"]
+        status: todo
+      - id: AP-17
+        title: Chuyển tiếp người duyệt
+        api: ["POST /approvals/:id/forward"]
+        status: todo
+      - id: AP-18
+        title: Duyệt hàng loạt
+        api: ["POST /approvals/bulk"]
+        status: todo
+      - id: AP-19
+        title: Timeline lịch sử duyệt
+        api: ["GET /approvals/:id/timeline"]
+        status: todo
+        depends: [AP-13]
+      - id: AP-20
+        title: Người theo dõi đơn
+        status: todo
+      - id: AP-21
+        title: Nhắc và xử lý quá hạn theo overdueAction
+        status: todo
+        depends: [CORE-16]
+      - id: AP-22
+        title: Duyệt thay theo uỷ quyền
+        status: todo
+        depends: [AU-21]
+      - id: AP-23
+        title: Thông báo cho người duyệt và người tạo
+        status: todo
+        depends: [NT-05]
+      - id: AP-24
+        title: Trang cảnh báo duyệt cho admin nối dữ liệu thật
+        ui: /admin/approvals-alerts
+        status: partial
+        note: Đang fallback mock-data
+      - id: AP-25
+        title: Lọc HTML nội dung node thông báo/email phía server (khi lưu flowDefinition và trước khi gửi)
+        status: todo
+        note: Hiện chỉ lọc ở trình duyệt (sanitizeCommunicationContent)
+        depends: [AP-04]
+      - id: AP-26
+        title: Đính kèm file cho node gửi email
+        status: todo
+        note: Ô đính kèm đang khoá trên UI cho tới khi có file service
+        depends: [CORE-11]
+
+  # ---------------------------------------------------------------------------
+  - code: PY
+    name: Lương, bảo hiểm, thuế
+    phase: 5
+    items:
+      - id: PY-01
+        title: Danh sách kỳ lương
+        api: ["GET /payroll-cycles"]
+        status: partial
+        note: Đọc DB nhưng không có guard
+      - id: PY-02
+        title: Quy trình lương mẫu
+        api: ["GET /payroll-cycles/workflow"]
+        status: partial
+        note: Không có guard
+      - id: PY-03
+        title: Tạo / sửa kỳ lương
+        api: ["POST /payroll-cycles", "PATCH /payroll-cycles/:id"]
+        status: todo
+      - id: PY-04
+        title: Bảng lương chi tiết của kỳ
+        api: ["GET /payroll-cycles/:id/items"]
+        status: todo
+      - id: PY-05
+        title: Thành phần lương (thu nhập, khấu trừ, công thức)
+        api: ["GET /salary-components", "POST /salary-components", "PATCH /salary-components/:id", "DELETE /salary-components/:id"]
+        status: todo
+      - id: PY-06
+        title: Mẫu bảng lương + công thức
+        api: ["GET /payroll-templates", "POST /payroll-templates", "PATCH /payroll-templates/:id", "DELETE /payroll-templates/:id"]
+        status: todo
+        depends: [PY-05]
+      - id: PY-07
+        title: Hồ sơ lương nhân sự (lương cơ bản, phụ cấp, lịch sử thay đổi)
+        api: ["GET /employees/:id/salary-profiles", "POST /employees/:id/salary-profiles"]
+        status: todo
+      - id: PY-08
+        title: Tính lương từ công, OT, phép, thưởng phạt (chạy nền)
+        api: ["POST /payroll-cycles/:id/calculate"]
+        status: todo
+        depends: [AT-17, PY-06, PY-07, CORE-16]
+      - id: PY-09
+        title: Sửa tay dòng lương
+        api: ["PATCH /payroll-items/:id"]
+        status: todo
+      - id: PY-10
+        title: Chốt / trình duyệt / công bố kỳ lương
+        api: ["POST /payroll-cycles/:id/lock", "POST /payroll-cycles/:id/submit", "POST /payroll-cycles/:id/publish"]
+        status: todo
+        depends: [AP-10]
+      - id: PY-11
+        title: Cấu hình BHXH/BHYT/BHTN (tỷ lệ, mức trần)
+        api: ["GET /payroll-settings/insurance", "PATCH /payroll-settings/insurance"]
+        status: todo
+      - id: PY-12
+        title: Thuế TNCN luỹ tiến + giảm trừ gia cảnh
+        api: ["GET /payroll-settings/pit", "PATCH /payroll-settings/pit"]
+        status: todo
+        depends: [HR-23]
+      - id: PY-13
+        title: Thưởng / phạt / khấu trừ trong kỳ
+        api: ["GET /payroll-adjustments", "POST /payroll-adjustments", "DELETE /payroll-adjustments/:id"]
+        status: todo
+      - id: PY-14
+        title: Tạm ứng lương (đi qua phê duyệt)
+        api: ["GET /salary-advances", "POST /salary-advances"]
+        status: todo
+        depends: [AP-10]
+      - id: PY-15
+        title: Phiếu lương của tôi (bỏ dữ liệu viết cứng ở salary-board)
+        api: ["GET /payslips/me", "GET /payslips/me/:cycleId"]
+        ui: /user/payroll
+        status: todo
+        depends: [PY-10]
+      - id: PY-16
+        title: Gửi phiếu lương qua email
+        api: ["POST /payroll-cycles/:id/send-payslips"]
+        status: todo
+      - id: PY-17
+        title: Phản hồi / khiếu nại phiếu lương
+        api: ["POST /payslips/:id/feedback"]
+        status: todo
+      - id: PY-18
+        title: Import / export bảng lương
+        api: ["POST /payroll-cycles/:id/import", "GET /payroll-cycles/:id/export"]
+        status: todo
+        depends: [CORE-18, CORE-19]
+      - id: PY-19
+        title: Quyền xem lương theo phạm vi + mã hoá dữ liệu lương
+        status: todo
+        depends: [CORE-15, CORE-21]
+
+  # ---------------------------------------------------------------------------
+  - code: WP
+    name: Bảng tin & thông báo nội bộ
+    phase: 6
+    items:
+      - id: WP-01
+        title: Bảng tin
+        api: ["GET /posts"]
+        status: partial
+        note: Đang trả mock-data, không có guard
+      - id: WP-02
+        title: Tạo / sửa / xoá bài viết
+        api: ["POST /posts", "PATCH /posts/:id", "DELETE /posts/:id"]
+        status: todo
+      - id: WP-03
+        title: Ghim bài viết
+        api: ["POST /posts/:id/pin"]
+        status: todo
+      - id: WP-04
+        title: Phạm vi hiển thị bài viết (công ty / phòng ban / nhóm)
+        status: todo
+      - id: WP-05
+        title: Cảm xúc
+        api: ["POST /posts/:id/reactions", "DELETE /posts/:id/reactions"]
+        status: todo
+      - id: WP-06
+        title: Bình luận và trả lời
+        api: ["GET /posts/:id/comments", "POST /posts/:id/comments", "PATCH /comments/:id", "DELETE /comments/:id"]
+        status: todo
+      - id: WP-07
+        title: "@mention trong bài viết và bình luận"
+        status: todo
+        depends: [NT-05]
+      - id: WP-08
+        title: Đánh dấu đã xem + danh sách người đã xem
+        api: ["POST /posts/:id/read", "GET /posts/:id/readers"]
+        status: todo
+      - id: WP-09
+        title: Ảnh / file trong bài viết
+        status: todo
+        depends: [CORE-11]
+      - id: WP-10
+        title: Thông báo công ty
+        api: ["GET /announcements"]
+        status: partial
+        note: Đang trả mock-data, không có guard
+      - id: WP-11
+        title: Tạo / sửa / xoá thông báo công ty
+        api: ["POST /announcements", "PATCH /announcements/:id", "DELETE /announcements/:id"]
+        status: todo
+      - id: WP-12
+        title: Đối tượng nhận + bắt buộc xác nhận đã đọc
+        api: ["POST /announcements/:id/ack"]
+        status: todo
+      - id: WP-13
+        title: Thống kê ai đã / chưa đọc thông báo
+        api: ["GET /announcements/:id/acks"]
+        status: todo
+      - id: WP-14
+        title: Bình chọn / khảo sát
+        api: ["GET /polls", "POST /polls", "POST /polls/:id/vote"]
+        status: todo
+      - id: WP-15
+        title: Nhóm / cộng đồng
+        api: ["GET /communities", "POST /communities", "PATCH /communities/:id", "POST /communities/:id/members"]
+        status: todo
+      - id: WP-16
+        title: Widget sinh nhật, chúc mừng
+        status: todo
+        depends: [HR-31]
+      - id: WP-17
+        title: Kiểm duyệt bài viết theo cấu hình intranet
+        status: todo
+      - id: WP-18
+        title: Trang social và dashboard nối API thật
+        ui: /social
+        status: partial
+        note: UI dùng lib/mock-data
+
+  # ---------------------------------------------------------------------------
+  - code: NT
+    name: Thông báo hệ thống
+    phase: 6
+    items:
+      - id: NT-01
+        title: Số thông báo chưa đọc
+        api: ["GET /notifications/unread"]
+        status: partial
+        note: Đang trả mock-data, không có guard
+      - id: NT-02
+        title: Danh sách thông báo
+        api: ["GET /notifications"]
+        status: todo
+      - id: NT-03
+        title: Đánh dấu đã đọc / đọc tất cả
+        api: ["POST /notifications/:id/read", "POST /notifications/read-all"]
+        status: todo
+      - id: NT-04
+        title: Đẩy thông báo realtime qua WebSocket
+        phase: 1
+        status: todo
+        depends: [CORE-17]
+      - id: NT-05
+        title: Dịch vụ gửi thông báo dùng chung (fan-out qua BullMQ)
+        phase: 1
+        status: todo
+        depends: [CORE-16]
+      - id: NT-06
+        title: Kênh email cho thông báo
+        status: todo
+        depends: [NT-05]
+      - id: NT-07
+        title: Kênh web push
+        status: todo
+        depends: [MB-02]
+      - id: NT-08
+        title: Cài đặt nhận thông báo theo loại sự kiện
+        api: ["GET /notification-preferences", "PATCH /notification-preferences"]
+        status: todo
+
+  # ---------------------------------------------------------------------------
+  - code: RC
+    name: Tuyển dụng, onboarding, offboarding
+    phase: 7
+    items:
+      - id: RC-01
+        title: Yêu cầu tuyển dụng (đi qua phê duyệt)
+        api: ["GET /recruitment-requests", "POST /recruitment-requests"]
+        status: todo
+        depends: [AP-10]
+      - id: RC-02
+        title: Tin tuyển dụng
+        api: ["GET /job-postings", "POST /job-postings", "PATCH /job-postings/:id", "DELETE /job-postings/:id"]
+        status: todo
+      - id: RC-03
+        title: Trang tuyển dụng công khai
+        api: ["GET /public/jobs", "GET /public/jobs/:id"]
+        public: true
+        status: todo
+      - id: RC-04
+        title: Nộp hồ sơ ứng tuyển
+        api: ["POST /public/jobs/:id/apply"]
+        public: true
+        status: todo
+      - id: RC-05
+        title: Ứng viên
+        api: ["GET /candidates", "POST /candidates", "GET /candidates/:id", "PATCH /candidates/:id"]
+        status: todo
+      - id: RC-06
+        title: Pipeline kanban, chuyển vòng
+        api: ["POST /candidates/:id/move-stage"]
+        status: todo
+      - id: RC-07
+        title: Cấu hình vòng tuyển dụng
+        api: ["GET /recruitment-stages", "POST /recruitment-stages", "PATCH /recruitment-stages/:id"]
+        status: todo
+      - id: RC-08
+        title: Lịch phỏng vấn
+        api: ["GET /interviews", "POST /interviews", "PATCH /interviews/:id"]
+        status: todo
+      - id: RC-09
+        title: Đánh giá phỏng vấn
+        api: ["POST /interviews/:id/evaluations"]
+        status: todo
+      - id: RC-10
+        title: Gửi offer và email cho ứng viên
+        api: ["POST /candidates/:id/offer", "POST /candidates/:id/send-email"]
+        status: todo
+      - id: RC-11
+        title: Chuyển ứng viên thành nhân sự
+        api: ["POST /candidates/:id/convert-to-employee"]
+        status: todo
+        depends: [HR-03]
+      - id: RC-12
+        title: Kho ứng viên (talent pool)
+        status: todo
+      - id: RC-13
+        title: Mẫu checklist onboarding
+        api: ["GET /onboarding-templates", "POST /onboarding-templates", "PATCH /onboarding-templates/:id"]
+        status: todo
+      - id: RC-14
+        title: Checklist onboarding của nhân sự
+        api: ["GET /employees/:id/onboarding", "PATCH /onboarding-tasks/:id"]
+        status: todo
+        depends: [RC-13]
+      - id: RC-15
+        title: Checklist offboarding (bàn giao, thu hồi tài sản, khoá tài khoản)
+        api: ["GET /employees/:id/offboarding"]
+        status: todo
+        depends: [HR-17]
+
+  # ---------------------------------------------------------------------------
+  - code: TR
+    name: Đào tạo
+    phase: 7
+    items:
+      - id: TR-01
+        title: Khoá đào tạo
+        api: ["GET /training-courses", "POST /training-courses", "PATCH /training-courses/:id", "DELETE /training-courses/:id"]
+        status: todo
+        note: Đã có model TrainingCourse
+      - id: TR-02
+        title: Ghi danh học viên
+        api: ["POST /training-courses/:id/enroll", "GET /training-courses/:id/enrollments"]
+        status: todo
+      - id: TR-03
+        title: Điểm danh buổi học
+        api: ["POST /training-sessions/:id/attendance"]
+        status: todo
+      - id: TR-04
+        title: Kết quả và chứng chỉ
+        api: ["PATCH /training-enrollments/:id"]
+        status: todo
+      - id: TR-05
+        title: Kế hoạch đào tạo năm
+        api: ["GET /training-plans", "POST /training-plans", "PATCH /training-plans/:id"]
+        status: todo
+      - id: TR-06
+        title: Khoá học của tôi
+        api: ["GET /training-courses/me"]
+        status: todo
+      - id: TR-07
+        title: Tài liệu / bài giảng online
+        status: todo
+        depends: [CORE-11]
+      - id: TR-08
+        title: Khảo sát đánh giá sau khoá học
+        status: todo
+
+  # ---------------------------------------------------------------------------
+  - code: KP
+    name: KPI, OKR, đánh giá
+    phase: 7
+    items:
+      - id: KP-01
+        title: Mục tiêu OKR
+        api: ["GET /objectives", "POST /objectives", "PATCH /objectives/:id", "DELETE /objectives/:id"]
+        status: todo
+        note: Đã có model Objective
+      - id: KP-02
+        title: Key results
+        api: ["GET /objectives/:id/key-results", "POST /objectives/:id/key-results"]
+        status: todo
+      - id: KP-03
+        title: Check-in tiến độ
+        api: ["POST /objectives/:id/check-ins"]
+        status: todo
+      - id: KP-04
+        title: Cây mục tiêu công ty → phòng ban → cá nhân
+        api: ["GET /objectives/tree"]
+        status: todo
+      - id: KP-05
+        title: Mẫu KPI
+        api: ["GET /kpi-templates", "POST /kpi-templates", "PATCH /kpi-templates/:id"]
+        status: todo
+      - id: KP-06
+        title: Giao KPI theo kỳ
+        api: ["POST /kpi-assignments"]
+        status: todo
+      - id: KP-07
+        title: Tự đánh giá và quản lý chấm điểm
+        api: ["PATCH /kpi-assignments/:id/self-review", "PATCH /kpi-assignments/:id/manager-review"]
+        status: todo
+      - id: KP-08
+        title: Kỳ đánh giá nhân sự
+        api: ["GET /review-cycles", "POST /review-cycles", "PATCH /review-cycles/:id"]
+        status: todo
+      - id: KP-09
+        title: Đánh giá 360°
+        api: ["POST /review-cycles/:id/feedback"]
+        status: todo
+      - id: KP-10
+        title: Đưa kết quả KPI vào tính lương
+        status: todo
+        depends: [PY-08, KP-07]
+      - id: KP-11
+        title: KPI / OKR của tôi
+        api: ["GET /kpi-assignments/me"]
+        status: todo
+
+  # ---------------------------------------------------------------------------
+  - code: AS
+    name: Tài sản
+    phase: 7
+    items:
+      - id: AS-01
+        title: Danh mục loại tài sản
+        api: ["GET /asset-categories", "POST /asset-categories", "PATCH /asset-categories/:id"]
+        status: todo
+      - id: AS-02
+        title: Tài sản
+        api: ["GET /assets", "POST /assets", "GET /assets/:id", "PATCH /assets/:id"]
+        status: todo
+        note: Đã có model Asset, AssetAssignment
+      - id: AS-03
+        title: Cấp phát tài sản
+        api: ["POST /assets/:id/assign"]
+        status: todo
+      - id: AS-04
+        title: Thu hồi tài sản
+        api: ["POST /assets/:id/return"]
+        status: todo
+      - id: AS-05
+        title: Sửa chữa / bảo hành
+        api: ["POST /assets/:id/maintenance"]
+        status: todo
+      - id: AS-06
+        title: Thanh lý
+        api: ["POST /assets/:id/dispose"]
+        status: todo
+      - id: AS-07
+        title: Kiểm kê
+        api: ["GET /asset-audits", "POST /asset-audits"]
+        status: todo
+      - id: AS-08
+        title: Khấu hao tài sản
+        status: todo
+      - id: AS-09
+        title: Đề xuất cấp tài sản qua phê duyệt
+        status: todo
+        depends: [AP-10]
+      - id: AS-10
+        title: Tài sản của tôi
+        api: ["GET /assets/me"]
+        status: todo
+      - id: AS-11
+        title: Mã QR tài sản
+        api: ["GET /assets/:id/qr"]
+        status: todo
+
+  # ---------------------------------------------------------------------------
+  - code: TK
+    name: Công việc & dự án
+    phase: 8
+    items:
+      - id: TK-01
+        title: Dự án
+        api: ["GET /projects", "POST /projects", "GET /projects/:id", "PATCH /projects/:id", "DELETE /projects/:id"]
+        status: todo
+      - id: TK-02
+        title: Thành viên dự án
+        api: ["POST /projects/:id/members", "DELETE /projects/:id/members/:employeeId"]
+        status: todo
+      - id: TK-03
+        title: Công việc
+        api: ["GET /tasks", "POST /tasks", "GET /tasks/:id", "PATCH /tasks/:id", "DELETE /tasks/:id"]
+        status: todo
+      - id: TK-04
+        title: Giao việc, người theo dõi, hạn, độ ưu tiên
+        status: todo
+        depends: [TK-03]
+      - id: TK-05
+        title: Việc con và checklist
+        status: todo
+        depends: [TK-03]
+      - id: TK-06
+        title: Bình luận và file trên công việc
+        api: ["GET /tasks/:id/comments", "POST /tasks/:id/comments"]
+        status: todo
+      - id: TK-07
+        title: Kanban
+        api: ["GET /projects/:id/board"]
+        status: todo
+      - id: TK-08
+        title: Gantt / timeline
+        status: todo
+      - id: TK-09
+        title: Nhắc hạn và quá hạn
+        status: todo
+        depends: [NT-05]
+      - id: TK-10
+        title: Việc của tôi
+        api: ["GET /tasks/me"]
+        status: todo
+      - id: TK-11
+        title: Ghi nhận thời gian làm việc
+        api: ["POST /tasks/:id/time-logs"]
+        status: todo
+
+  # ---------------------------------------------------------------------------
+  - code: DC
+    name: Tài liệu & văn bản
+    phase: 8
+    items:
+      - id: DC-01
+        title: Thư mục tài liệu
+        api: ["GET /folders", "POST /folders", "PATCH /folders/:id", "DELETE /folders/:id"]
+        status: todo
+      - id: DC-02
+        title: Tài liệu
+        api: ["GET /documents", "POST /documents", "GET /documents/:id", "DELETE /documents/:id"]
+        status: todo
+        depends: [CORE-11]
+      - id: DC-03
+        title: Phân quyền / chia sẻ tài liệu
+        api: ["POST /documents/:id/share"]
+        status: todo
+      - id: DC-04
+        title: Phiên bản tài liệu
+        api: ["GET /documents/:id/versions"]
+        status: todo
+      - id: DC-05
+        title: Văn bản đến / đi
+        api: ["GET /official-letters", "POST /official-letters", "PATCH /official-letters/:id"]
+        status: todo
+      - id: DC-06
+        title: Trình ký văn bản qua engine phê duyệt
+        status: todo
+        depends: [AP-10]
+      - id: DC-07
+        title: Tìm kiếm toàn văn
+        status: todo
+
+  # ---------------------------------------------------------------------------
+  - code: CL
+    name: Lịch, phòng họp, đặt xe
+    phase: 8
+    items:
+      - id: CL-01
+        title: Lịch cá nhân / công ty
+        api: ["GET /calendar-events", "POST /calendar-events", "PATCH /calendar-events/:id", "DELETE /calendar-events/:id"]
+        status: todo
+      - id: CL-02
+        title: Mời tham dự và phản hồi
+        api: ["POST /calendar-events/:id/respond"]
+        status: todo
+      - id: CL-03
+        title: Phòng họp
+        api: ["GET /meeting-rooms", "POST /meeting-rooms", "PATCH /meeting-rooms/:id"]
+        status: todo
+      - id: CL-04
+        title: Đặt phòng họp (chặn trùng giờ)
+        api: ["GET /room-bookings", "POST /room-bookings", "DELETE /room-bookings/:id"]
+        status: todo
+      - id: CL-05
+        title: Đặt xe
+        api: ["GET /vehicles", "POST /vehicles", "POST /vehicle-bookings"]
+        status: todo
+      - id: CL-06
+        title: Đồng bộ Google / Outlook Calendar
+        phase: 9
+        status: todo
+
+  # ---------------------------------------------------------------------------
+  - code: RP
+    name: Báo cáo
+    phase: 9
+    items:
+      - id: RP-01
+        title: Dashboard điều hành
+        api: ["GET /reports/executive-dashboard"]
+        status: partial
+        note: Đang trả mock-data
+      - id: RP-02
+        title: Dashboard HCNS dùng dữ liệu thật
+        ui: /hcns
+        status: partial
+        note: Có fallback mock-data
+      - id: RP-03
+        title: Biến động nhân sự (vào / ra)
+        api: ["GET /reports/headcount"]
+        status: todo
+      - id: RP-04
+        title: Tỷ lệ nghỉ việc
+        api: ["GET /reports/turnover"]
+        status: todo
+      - id: RP-05
+        title: Cơ cấu nhân sự (phòng ban, độ tuổi, thâm niên, giới tính)
+        api: ["GET /reports/workforce-structure"]
+        status: todo
+      - id: RP-06
+        title: Báo cáo công, đi muộn, OT
+        api: ["GET /reports/attendance"]
+        status: todo
+        depends: [AT-11]
+      - id: RP-07
+        title: Báo cáo nghỉ phép
+        api: ["GET /reports/leave"]
+        status: todo
+      - id: RP-08
+        title: Báo cáo quỹ lương
+        api: ["GET /reports/payroll"]
+        status: todo
+        depends: [PY-08]
+      - id: RP-09
+        title: Báo cáo bảo hiểm và thuế TNCN
+        api: ["GET /reports/insurance", "GET /reports/pit"]
+        status: todo
+        depends: [PY-11, PY-12]
+      - id: RP-10
+        title: Hiệu quả tuyển dụng
+        api: ["GET /reports/recruitment"]
+        status: todo
+      - id: RP-11
+        title: Export Excel cho mọi báo cáo
+        status: todo
+        depends: [CORE-19]
+
+  # ---------------------------------------------------------------------------
+  - code: ST
+    name: Cài đặt hệ thống & tích hợp
+    phase: 9
+    items:
+      - id: ST-01
+        title: Danh sách và chi tiết cài đặt
+        api: ["GET /admin-settings", "GET /admin-settings/:id"]
+        ui: /admin/settings
+        status: partial
+        note: Còn dùng mock-data
+      - id: ST-02
+        title: Tổng quan cài đặt
+        api: ["GET /admin-settings/overview"]
+        status: partial
+        note: Còn dùng mock-data
+      - id: ST-03
+        title: Cài đặt hệ thống / module / vận hành
+        api: ["GET /admin-settings/system", "GET /admin-settings/modules", "GET /admin-settings/operations"]
+        ui: /admin/settings/system
+        status: partial
+        note: Còn dùng mock-data
+      - id: ST-04
+        title: Nhật ký sự kiện hệ thống
+        api: ["GET /admin-settings/events"]
+        status: partial
+        note: Thiếu lọc, export, thời hạn lưu trữ
+      - id: ST-05
+        title: Thông tin công ty
+        api: ["GET /admin-settings/company-info", "PATCH /admin-settings/company-info"]
+        ui: /admin/settings/company-info
+        status: done
+      - id: ST-06
+        title: Cấu hình intranet
+        api: ["GET /admin-settings/intranet", "PATCH /admin-settings/intranet"]
+        ui: /admin/settings/intranet
+        status: done
+      - id: ST-07
+        title: Cấu hình module
+        api: ["GET /admin-settings/module-config", "PATCH /admin-settings/module-config"]
+        status: done
+      - id: ST-08
+        title: SMTP (lưu, mã hoá secret, gửi thử)
+        api: ["GET /admin-settings/smtp", "PATCH /admin-settings/smtp", "POST /admin-settings/smtp/test"]
+        ui: /admin/settings/smtp
+        status: done
+      - id: ST-09
+        title: Tuỳ chọn giao diện của người dùng
+        api: ["GET /user-preferences/:scope", "PATCH /user-preferences/:scope", "DELETE /user-preferences/:scope"]
+        status: done
+      - id: ST-10
+        title: Tiền tệ
+        api: ["GET /currencies", "POST /currencies", "PATCH /currencies/:id"]
+        ui: /admin/settings/currency
+        status: partial
+        note: Có trang UI, chưa có API
+      - id: ST-11
+        title: Mẫu email / mẫu thông báo
+        api: ["GET /message-templates", "POST /message-templates", "PATCH /message-templates/:id"]
+        status: todo
+      - id: ST-12
+        title: API key cho hệ thống bên thứ ba (Open API)
+        api: ["GET /api-keys", "POST /api-keys", "DELETE /api-keys/:id"]
+        status: todo
+      - id: ST-13
+        title: Webhook
+        api: ["GET /webhooks", "POST /webhooks", "PATCH /webhooks/:id", "DELETE /webhooks/:id"]
+        status: todo
+        depends: [CORE-16]
+      - id: ST-14
+        title: Cấu hình đánh số mã tự động (mã nhân viên, mã hợp đồng...)
+        api: ["GET /admin-settings/numbering", "PATCH /admin-settings/numbering"]
+        status: todo
+      - id: ST-15
+        title: Đa ngôn ngữ (vi / en)
+        status: todo
+      - id: ST-16
+        title: Sao lưu / khôi phục dữ liệu
+        status: todo
+
+  # ---------------------------------------------------------------------------
+  - code: MB
+    name: Mobile & PWA
+    phase: 9
+    items:
+      - id: MB-01
+        title: Bottom nav và layout responsive
+        status: done
+      - id: MB-02
+        title: Đăng ký web push
+        api: ["POST /push-subscriptions", "DELETE /push-subscriptions/:id"]
+        status: todo
+        depends: [MB-03]
+      - id: MB-03
+        title: PWA manifest, service worker, offline cơ bản
+        status: todo
+      - id: MB-04
+        title: Màn hình check-in GPS / ảnh trên mobile
+        status: todo
+        depends: [AT-14]
+      - id: MB-05
+        title: Duyệt đơn nhanh trên mobile
+        status: todo
+        depends: [AP-15]
+      - id: MB-06
+        title: App native (React Native)
+        status: skipped
+        note: Đi đường PWA trước, xem lại sau khi MB-01..05 xong
+
+  # ---------------------------------------------------------------------------
+  - code: EX
+    name: Ngoài phạm vi HRM (1Office có)
+    phase: 10
+    items:
+      - id: EX-01
+        title: CRM (khách hàng, cơ hội, chăm sóc)
+        status: skipped
+        note: Ngoài mục tiêu intranet + HRM hiện tại
+      - id: EX-02
+        title: Bán hàng (báo giá, đơn hàng, hợp đồng khách hàng)
+        status: skipped
+        note: Ngoài mục tiêu intranet + HRM hiện tại
+      - id: EX-03
+        title: Tài chính (thu chi, công nợ)
+        status: skipped
+        note: Ngoài mục tiêu intranet + HRM hiện tại
+      - id: EX-04
+        title: Kho hàng
+        status: skipped
+        note: Ngoài mục tiêu intranet + HRM hiện tại

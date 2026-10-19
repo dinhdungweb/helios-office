@@ -13,6 +13,7 @@
     "build": "npm run build -w apps/web && npm run build -w apps/api",
     "typecheck": "npm run typecheck -w apps/web && npm run typecheck -w apps/api",
     "test": "npm run test -w apps/api",
+    "audit:features": "node scripts/audit-features.mjs",
     "prisma:generate": "npm run prisma:generate -w apps/api",
     "db:migrate": "npm run db:migrate -w apps/api",
     "db:seed": "npm run db:seed -w apps/api",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
+    "js-yaml": "^4.3.2",
     "typescript": "^5.9.3"
   },
   "engines": {
