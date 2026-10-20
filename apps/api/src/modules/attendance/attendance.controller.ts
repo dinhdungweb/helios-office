@@ -5,6 +5,7 @@ import { PermissionGuard } from "../auth/permission.guard";
 import { RequireAnyPermission } from "../auth/permissions.decorator";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { Public } from "../auth/public.decorator";
+import { SkipAudit } from "../../common/audit/skip-audit.decorator";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { AttendanceSyncDto } from "./attendance-sync.dto";
 import { AttendanceSyncGuard } from "./attendance-sync.guard";
@@ -44,6 +45,8 @@ export class AttendanceController {
   @Post("sync")
   // Called by the attendance machine app, which authenticates with ATTENDANCE_SYNC_TOKEN instead of a user session.
   @Public()
+  // Frequent machine batches; every punch is already kept in AttendanceRawLog.
+  @SkipAudit()
   @UseGuards(AttendanceSyncGuard)
   @ApiBearerAuth()
   @ApiOkResponse({ description: "Accept a retry-safe batch of raw punches from the Windows attendance sync app." })

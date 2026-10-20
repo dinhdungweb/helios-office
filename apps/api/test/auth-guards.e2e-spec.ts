@@ -205,6 +205,12 @@ describe("API authentication and permissions (e2e)", () => {
       },
       {
         method: "get",
+        path: "/api/v1/audit-logs",
+        allowed: ["token-system-admin"],
+        denied: ["token-no-permissions", "token-payroll-viewer", "token-approval-manager"]
+      },
+      {
+        method: "get",
         path: "/api/v1/posts",
         allowed: ["token-no-permissions"],
         denied: []

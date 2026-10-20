@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AccountLifecycleStatus, DepartmentStatus, JobCatalogStatus, Prisma } from "@prisma/client";
+import { AuditService } from "../../common/audit/audit.service";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { COMPANY_SCOPE, type ResolvedScope } from "../../common/data-scope/data-scope.types";
 import { PrismaService } from "../../common/prisma/prisma.service";
@@ -75,7 +76,8 @@ export class EmployeesService {
     private readonly keycloakAdmin: KeycloakAdminService,
     private readonly config: ConfigService,
     private readonly adminSettings: AdminSettingsService,
-    private readonly dataScope: DataScopeService
+    private readonly dataScope: DataScopeService,
+    private readonly audit: AuditService
   ) {}
 
   async findAll(scope: ResolvedScope = COMPANY_SCOPE) {
@@ -167,6 +169,7 @@ export class EmployeesService {
 
           await tx.auditLog.create({
             data: {
+              ...this.audit.contextFields(),
               actorId,
               action: "account.create",
               entityType: "UserAccount",
@@ -226,6 +229,7 @@ export class EmployeesService {
 
         await tx.auditLog.create({
           data: {
+            ...this.audit.contextFields(),
             actorId,
             action: "employee.create",
             entityType: "Employee",
@@ -1670,6 +1674,7 @@ export class EmployeesService {
   ) {
     await this.prisma.auditLog.create({
       data: {
+        ...this.audit.contextFields(),
         actorId,
         action,
         entityType,
@@ -1797,6 +1802,7 @@ export class EmployeesService {
   ) {
     await this.prisma.auditLog.create({
       data: {
+        ...this.audit.contextFields(),
         actorId,
         action,
         entityType,

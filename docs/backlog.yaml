@@ -101,11 +101,12 @@ modules:
       - id: CORE-13
         title: API xem audit log
         api: ["GET /audit-logs", "GET /audit-logs/:id"]
-        status: todo
+        status: partial
+        note: API xong (lọc entity/actor/action/source/khoảng ngày, phân trang, chỉ system.accounts.manage). Chưa có trang UI xem nhật ký
       - id: CORE-14
         title: Interceptor ghi audit log cho mọi mutation HR/công/lương/duyệt
-        status: partial
-        note: Một số service đã ghi audit thủ công
+        status: done
+        note: AuditService.contextFields() gắn tài khoản/IP/user-agent/request id vào 14 chỗ ghi audit ở service; AuditInterceptor ghi mục "http" cho mutation thành công chưa có audit (chỉ lưu tên trường body). @SkipAudit cho user-preferences và attendance/sync
       - id: CORE-15
         title: Phạm vi dữ liệu theo quyền (bản thân/phòng ban/phòng ban con/toàn công ty)
         status: done

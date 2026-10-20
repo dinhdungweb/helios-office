@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { AdminSettingStatus, Prisma } from "@prisma/client";
 import * as nodemailer from "nodemailer";
+import { AuditService } from "../../common/audit/audit.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { EncryptedSettingSecret, SettingsSecretService } from "../../common/settings-secret.service";
 import {
@@ -476,7 +477,8 @@ export class AdminSettingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly keycloakAdmin: KeycloakAdminService,
-    private readonly settingsSecrets: SettingsSecretService
+    private readonly settingsSecrets: SettingsSecretService,
+    private readonly audit: AuditService
   ) {}
 
   async findOverview() {
@@ -1705,6 +1707,7 @@ export class AdminSettingsService {
   private async writeAudit(action: string, entityId: string, beforeValue: unknown, afterValue: unknown, actorId?: string) {
     await this.prisma.auditLog.create({
       data: {
+        ...this.audit.contextFields(),
         actorId,
         action,
         entityType: "AdminSetting",

@@ -32,8 +32,8 @@ Chia thành 6 cụm, làm theo thứ tự. Mỗi cụm là một (hoặc vài) c
 
 | # | Item | Việc | Kiểm tra | Trạng thái |
 |---|---|---|---|---|
-| 7 | CORE-14 | Interceptor ghi audit cho mutation có decorator `@Audited(entity)`; gỡ code ghi audit thủ công trùng lặp | Unit + E2E: PATCH employee sinh 1 bản ghi audit | |
-| 8 | CORE-13 | `GET /audit-logs` (lọc entity, actor, khoảng ngày, phân trang), `GET /audit-logs/:id` — chỉ `system.accounts.manage` | E2E quyền | |
+| 7 | CORE-14 | Interceptor ghi audit cho mutation có decorator `@Audited(entity)`; gỡ code ghi audit thủ công trùng lặp | Unit + E2E: PATCH employee sinh 1 bản ghi audit | ✅ Đổi cách làm: giữ audit ở service (có before/after) + `contextFields()` (tài khoản, IP, UA, request id) + interceptor lưới an toàn cho mutation chưa có audit. Migration `audit_context`. 6 e2e; kiểm tra thật: tạo/xoá cấp bậc ghi đủ actor + request id |
+| 8 | CORE-13 | `GET /audit-logs` (lọc entity, actor, khoảng ngày, phân trang), `GET /audit-logs/:id` — chỉ `system.accounts.manage` | E2E quyền | ✅ API + e2e quyền; trang UI xem nhật ký để sau |
 
 ### 1c. Hàng đợi + thông báo
 

@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { SkipAudit } from "../../common/audit/skip-audit.decorator";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -7,6 +8,8 @@ import { UpdateUserPreferenceDto } from "./user-preferences.dto";
 import { UserPreferencesService } from "./user-preferences.service";
 
 @ApiTags("user-preferences")
+// UI preferences (sidebar, theme) are not business data; keep them out of the audit trail.
+@SkipAudit()
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @Controller("user-preferences")

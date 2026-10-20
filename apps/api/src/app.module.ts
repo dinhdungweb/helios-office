@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { resolve } from "node:path";
+import { AuditModule } from "./common/audit/audit.module";
 import { DataScopeModule } from "./common/data-scope/data-scope.module";
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { SessionThrottlerGuard } from "./common/throttle/session-throttler.guard";
@@ -11,6 +12,7 @@ import { AdminSettingsModule } from "./modules/admin-settings/admin-settings.mod
 import { AnnouncementsModule } from "./modules/announcements/announcements.module";
 import { ApprovalsModule } from "./modules/approvals/approvals.module";
 import { AttendanceModule } from "./modules/attendance/attendance.module";
+import { AuditLogsModule } from "./modules/audit-logs/audit-logs.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { JwtAuthGuard } from "./modules/auth/jwt-auth.guard";
 import { DeviceAuthModule } from "./modules/device-auth/device-auth.module";
@@ -38,10 +40,12 @@ import { UserPreferencesModule } from "./modules/user-preferences/user-preferenc
       ]
     }),
     PrismaModule,
+    AuditModule,
     DataScopeModule,
     AuthModule,
     AccountAccessModule,
     AdminSettingsModule,
+    AuditLogsModule,
     EmployeesModule,
     PostsModule,
     AnnouncementsModule,

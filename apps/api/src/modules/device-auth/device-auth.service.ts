@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { DeviceAuthStatus, type DeviceAuthRequest, type Prisma } from "@prisma/client";
+import { AuditService } from "../../common/audit/audit.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { UpdateDeviceAuthPolicyDto, UpdateDeviceAuthStatusDto } from "./device-auth.dto";
 
@@ -14,7 +15,10 @@ const defaultPolicy = {
 
 @Injectable()
 export class DeviceAuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService
+  ) {}
 
   async findRequests() {
     const requests = await this.prisma.deviceAuthRequest.findMany({
@@ -135,6 +139,7 @@ export class DeviceAuthService {
   ) {
     await this.prisma.auditLog.create({
       data: {
+        ...this.audit.contextFields(),
         actorId,
         action,
         entityType,

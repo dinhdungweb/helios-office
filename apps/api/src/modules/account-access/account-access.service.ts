@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AccountLifecycleStatus, PermissionGroupStatus, Prisma } from "@prisma/client";
+import { AuditService } from "../../common/audit/audit.service";
 import { parseScopeMap } from "../../common/data-scope/data-scope.types";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { AdminSettingsService } from "../admin-settings/admin-settings.service";
@@ -59,7 +60,8 @@ export class AccountAccessService {
     private readonly prisma: PrismaService,
     private readonly keycloakAdmin: KeycloakAdminService,
     private readonly config: ConfigService,
-    private readonly adminSettings: AdminSettingsService
+    private readonly adminSettings: AdminSettingsService,
+    private readonly audit: AuditService
   ) {}
 
   async findSummary() {
@@ -526,6 +528,7 @@ export class AccountAccessService {
 
         await this.prisma.auditLog.create({
           data: {
+            ...this.audit.contextFields(),
             actorId,
             action: "permission_group.create",
             entityType: "PermissionGroup",
@@ -597,6 +600,7 @@ export class AccountAccessService {
 
     await this.prisma.auditLog.create({
       data: {
+        ...this.audit.contextFields(),
         actorId,
         action: "permission_group.update",
         entityType: "PermissionGroup",
@@ -654,6 +658,7 @@ export class AccountAccessService {
 
     await this.prisma.auditLog.create({
       data: {
+        ...this.audit.contextFields(),
         actorId,
         action: "permission_group.archive",
         entityType: "PermissionGroup",
@@ -703,6 +708,7 @@ export class AccountAccessService {
 
     await this.prisma.auditLog.create({
       data: {
+        ...this.audit.contextFields(),
         actorId,
         action: "permission_group.restore",
         entityType: "PermissionGroup",
@@ -749,6 +755,7 @@ export class AccountAccessService {
 
     await this.prisma.auditLog.create({
       data: {
+        ...this.audit.contextFields(),
         actorId,
         action: "permission_group.delete",
         entityType: "PermissionGroup",
@@ -945,6 +952,7 @@ export class AccountAccessService {
   ) {
     await tx.auditLog.create({
       data: {
+        ...this.audit.contextFields(),
         actorId,
         action,
         entityType,
@@ -1098,6 +1106,7 @@ export class AccountAccessService {
   ) {
     await this.prisma.auditLog.create({
       data: {
+        ...this.audit.contextFields(),
         actorId,
         action,
         entityType,
@@ -1117,6 +1126,7 @@ export class AccountAccessService {
   ) {
     await this.prisma.auditLog.create({
       data: {
+        ...this.audit.contextFields(),
         actorId,
         action,
         entityType: "PermissionDefinition",

@@ -119,6 +119,7 @@ model UserAccount {
   activatedAt              DateTime?
   closedAt                 DateTime?
   preferences              UserPreference[]
+  auditLogs                AuditLog[]
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
 }
@@ -732,14 +733,27 @@ model Notification {
 }
 
 model AuditLog {
-  id          String   @id @default(uuid())
-  actorId     String?
-  action      String
-  entityType  String
-  entityId    String
-  beforeValue Json?
-  afterValue  Json?
-  ipAddress   String?
-  employee    Employee? @relation(fields: [actorId], references: [id])
-  createdAt   DateTime @default(now())
+  id             String   @id @default(uuid())
+  // Employee behind the action (null for accounts without an employee profile, e.g. admin).
+  actorId        String?
+  // Account that performed the action; always set for requests made by a signed-in user.
+  actorAccountId String?
+  actorAccount   UserAccount? @relation(fields: [actorAccountId], references: [id], onDelete: SetNull)
+  action         String
+  entityType     String
+  entityId       String
+  beforeValue    Json?
+  afterValue     Json?
+  ipAddress      String?
+  userAgent      String?
+  requestId      String?
+  // "domain": written by a service with before/after values; "http": safety-net entry written by
+  // AuditInterceptor for a mutation that recorded nothing itself.
+  source         String   @default("domain")
+  employee       Employee? @relation(fields: [actorId], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([actorAccountId])
 }
