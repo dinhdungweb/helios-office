@@ -1108,18 +1108,19 @@ modules:
       - id: NT-01
         title: Số thông báo chưa đọc
         api: ["GET /notifications/unread"]
-        status: partial
-        note: Đang trả mock-data. Khi nối DB phải lấy theo user đăng nhập, bỏ query userId (hiện ai cũng xem được thông báo của người khác)
+        status: done
+        note: Đọc DB theo tài khoản đăng nhập (bỏ query userId); trả 20 thông báo chưa đọc mới nhất
       - id: NT-02
         title: Danh sách thông báo + số chưa đọc của tài khoản đang đăng nhập
         api: ["GET /notifications", "GET /notifications/unread-count"]
         phase: 1
-        status: todo
+        status: done
       - id: NT-03
         title: Đánh dấu đã đọc / đọc tất cả
         api: ["POST /notifications/:id/read", "POST /notifications/read-all"]
         phase: 1
-        status: todo
+        status: done
+        note: Thông báo của người khác trả 404; không ghi audit (@SkipAudit)
       - id: NT-04
         title: Đẩy thông báo realtime qua WebSocket
         phase: 1
@@ -1127,8 +1128,10 @@ modules:
         depends: [CORE-17]
       - id: NT-05
         title: Dịch vụ gửi thông báo dùng chung (fan-out qua BullMQ)
+        api: ["POST /notifications/test"]
         phase: 1
-        status: todo
+        status: done
+        note: notify() → hàng đợi → worker (NotificationDeliveryService giải người nhận, bỏ actor, áp preference, sự kiện bắt buộc); Redis tắt thì ghi thẳng in-app. Danh mục 6 sự kiện. POST /notifications/test cho admin kiểm tra đường đi
         depends: [CORE-16]
       - id: NT-06
         title: Kênh email cho thông báo

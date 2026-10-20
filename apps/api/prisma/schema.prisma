@@ -120,6 +120,8 @@ model UserAccount {
   closedAt                 DateTime?
   preferences              UserPreference[]
   auditLogs                AuditLog[]
+  notifications            Notification[]
+  notificationPreferences  NotificationPreference[]
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
 }
@@ -722,14 +724,45 @@ model AssetAssignment {
   updatedAt  DateTime  @updatedAt
 }
 
+// In-app notification for one recipient account. See docs/design/notification.md.
 model Notification {
-  id        String    @id @default(uuid())
-  userId    String
+  id             String      @id @default(uuid())
+  accountId      String
+  account        UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  event          String
+  title          String
+  body           String?
+  // Path inside the web app that opens the related record.
+  link           String?
+  data           Json?
+  actorAccountId String?
+  readAt         DateTime?
+  createdAt      DateTime    @default(now())
+
+  @@index([accountId, readAt, createdAt])
+}
+
+// Per-account channel switches; event "*" is the account's default for every event.
+model NotificationPreference {
+  accountId String
+  account   UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   event     String
-  title     String
-  body      String?
-  readAt    DateTime?
-  createdAt DateTime  @default(now())
+  inApp     Boolean     @default(true)
+  email     Boolean     @default(false)
+  push      Boolean     @default(false)
+  updatedAt DateTime    @updatedAt
+
+  @@id([accountId, event])
+}
+
+// Catalog of notification events; defaults apply when an account has no preference.
+model NotificationEventType {
+  key          String  @id
+  module       String
+  label        String
+  defaultEmail Boolean @default(false)
+  // Users cannot turn these off (e.g. payslip published).
+  mandatory    Boolean @default(false)
 }
 
 model AuditLog {

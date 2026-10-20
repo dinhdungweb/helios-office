@@ -24,6 +24,7 @@ import {
 } from "../src/common/mock-data";
 import { DEFAULT_NEW_GRANT_SCOPE } from "../src/common/data-scope/data-scope.types";
 import { isScopablePermission } from "../src/common/data-scope/scopable-permissions";
+import { NOTIFICATION_EVENT_TYPES } from "../src/modules/notifications/notification-events";
 
 for (const envPath of [resolve(process.cwd(), ".env"), resolve(process.cwd(), "../../.env")]) {
   loadEnv({ path: envPath, quiet: true });
@@ -379,6 +380,16 @@ function seedPermissionKeys(permissionKeys: string[], sourceName: string) {
   }
 
   return permissionKeys;
+}
+
+async function seedNotificationEventTypes() {
+  for (const eventType of NOTIFICATION_EVENT_TYPES) {
+    await prisma.notificationEventType.upsert({
+      where: { key: eventType.key },
+      update: eventType,
+      create: eventType
+    });
+  }
 }
 
 // Sample groups get company-wide scope, matching what migration 20261020053407_data_scope
@@ -825,6 +836,7 @@ async function seedDeviceAuth() {
 async function main() {
   await seedPermissionDefinitions();
   await seedPermissionGroups();
+  await seedNotificationEventTypes();
   await prepareDepartmentTreeReset();
   await seedDepartments();
   await seedJobCatalog();
