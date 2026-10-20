@@ -8,6 +8,37 @@ File này dùng để theo dõi tiến độ triển khai Helios Office: đã l�
 - Ghi rõ phạm vi, file/module chính, trạng thái kiểm tra và việc tiếp theo.
 - Những phần chưa hoàn tất phải ghi là `Chưa xong` hoặc `Tiếp theo` để tránh nhầm là đã chạy thật.
 
+## 2026-10-20
+
+### Phase 0 (roadmap mới) - Vá bảo mật & chuẩn hoá repo
+
+Trạng thái: Đã triển khai và kiểm tra trên nhánh `feat/phase-0`, chưa merge vào `main`
+
+Từ mốc này, phạm vi và tiến độ theo dõi bằng `docs/backlog.yaml` (mã chức năng) và `docs/roadmap.md` (thứ tự phase). Plan chi tiết: `docs/plans/phase-0.md`.
+
+- AP-09: node gửi thông báo / email trong sơ đồ quy trình duyệt (rich editor Mantine/Tiptap, CSS Mantine nạp dạng layer chỉ ở editor).
+- CORE-01/02: mọi route API bắt buộc đăng nhập (`JwtAuthGuard` toàn cục, `@Public` cho ngoại lệ). Gắn quyền cho payroll, approvals, leave-requests; posts/announcements/notifications cần đăng nhập. Token hỏng trả 401 thay vì 500; không tới được Keycloak trả 503. WebSocket bị từ chối tới CORE-17.
+- CORE-03: proxy web bảo vệ mọi trang trừ `/login`, `/api/*`, file tĩnh.
+- CORE-04: helmet; rate limit theo token (không theo IP vì web SSR dùng chung IP), chạy trước xác thực.
+- CORE-05: giữ một bộ hồ sơ nhân sự `/apps/personnel-profile-profile`; `/admin/hr/employees` redirect; hộp thoại sửa hồ sơ + liên kết tài khoản chuyển sang bộ này.
+- CORE-06: dashboard không còn thay dữ liệu giả khi API lỗi; sinh nhật hiện trạng thái rỗng tới HR-31.
+- CORE-07: ESLint 9 (nợ cũ 89 cảnh báo, chặn tăng — CORE-26).
+- CORE-08: GitHub Actions CI. CORE-09: `.gitattributes` (LF).
+
+Kiểm tra:
+
+- `npm run typecheck`, `npm run lint`, `npm run test` (11 unit + 17 e2e), `npm run audit:features -- --strict`, `npm run build`: Pass trên máy local.
+- Chạy thật với Postgres/Keycloak Docker: admin truy cập đủ route; user thường bị 403 ở lương/phê duyệt/đơn từ; không token → 401; token máy chấm công qua guard.
+- Trình duyệt (Playwright): trang chưa đăng nhập về `/login`; route bộ A cũ redirect; sửa hồ sơ ở bộ B lưu được; dashboard hiện trạng thái rỗng.
+
+Chưa xong / ghi nhận:
+
+- CI chưa chạy trên GitHub (chưa push).
+- DB local seed cũ: user Keycloak `dungdd` không có tài khoản Helios → mọi API trả 401 (AU-24). Đăng nhập tạm bằng `admin`.
+- Lỗi hydration trên mọi trang (CORE-25); nút sửa hồ sơ cần ghim cột (HR-36).
+
+Tiếp theo: Phase 1 - Hạ tầng dùng chung. Cần viết trước `docs/design/data-scope.md`, `docs/design/notification.md`, `docs/design/file-storage.md`.
+
 ## 2026-07-11
 
 ### Phase 3 - Employee Directory Baseline
