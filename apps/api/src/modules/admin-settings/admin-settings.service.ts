@@ -948,18 +948,7 @@ export class AdminSettingsService {
     const testedAt = new Date().toISOString();
 
     try {
-      const transporter = nodemailer.createTransport({
-        host: payload.host,
-        port: payload.port,
-        secure: payload.security === "ssl",
-        requireTLS: payload.security === "starttls",
-        auth: payload.username
-          ? {
-              user: payload.username,
-              pass: payload.password
-            }
-          : undefined
-      });
+      const transporter = this.createSmtpTransport(payload);
 
       await transporter.verify();
       await transporter.sendMail({
@@ -1033,6 +1022,45 @@ export class AdminSettingsService {
         settings: this.resolveSmtpResponse(nextPayload, updated.status)
       };
     }
+  }
+
+  // Sends one email with the stored SMTP settings (notification emails, NT-06). When SMTP is
+  // switched off or incomplete it returns { sent: false, reason } instead of throwing, so a queued
+  // job is not retried for a configuration problem; transport errors throw and are retried.
+  async sendEmail(message: { to: string; subject: string; text: string; html: string }) {
+    const payload = this.readSmtpPayload((await this.ensureSmtpSetting()).payload);
+
+    if (!payload.enabled) {
+      return { sent: false as const, reason: "smtp_disabled" };
+    }
+
+    const missingFields = this.getMissingRequiredSmtpFields(payload);
+    if (missingFields.length > 0) {
+      return { sent: false as const, reason: `smtp_incomplete: ${missingFields.join(", ")}` };
+    }
+
+    const info = await this.createSmtpTransport(payload).sendMail({
+      from: { name: payload.fromName, address: payload.fromEmail },
+      replyTo: payload.replyTo || undefined,
+      ...message
+    });
+
+    return { sent: true as const, messageId: info.messageId };
+  }
+
+  private createSmtpTransport(payload: SmtpSettingsPayload) {
+    return nodemailer.createTransport({
+      host: payload.host,
+      port: payload.port,
+      secure: payload.security === "ssl",
+      requireTLS: payload.security === "starttls",
+      auth: payload.username
+        ? {
+            user: payload.username,
+            pass: payload.password
+          }
+        : undefined
+    });
   }
 
   async isSmtpEmailEnabled() {

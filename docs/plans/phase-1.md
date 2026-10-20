@@ -43,8 +43,8 @@ Chia thành 6 cụm, làm theo thứ tự. Mỗi cụm là một (hoặc vài) c
 | 10 | CORE-20 | `GET /health` (`@Public`): DB, Redis, heartbeat worker | Tắt Redis → báo degraded | ✅ Thật: worker chạy → ok; tắt worker 50s → degraded/worker down |
 | 11 | NT-05 | Migration `Notification(accountId, link, data, actorId)`, `NotificationPreference`, `NotificationEventType` + seed 4 sự kiện email mặc định; `NotificationsService.notify()` → job → worker | Unit: giải người nhận, bỏ trùng, áp preference | ✅ 8 unit. Thật: test → queue → worker → inbox; Redis không có → ghi thẳng in-app, health degraded |
 | 12 | NT-02, NT-03 | `GET /notifications`, `unread-count`, `POST :id/read`, `read-all` theo tài khoản đăng nhập; bỏ mock + query `userId` | E2E: không đọc được thông báo người khác (404) | ✅ Kiểm tra thật: khanglm đọc thông báo của admin → 404, gửi test → 403 |
-| 13 | CORE-17, NT-04 | Gateway xác thực handshake, room `account:<id>`; worker emit qua Redis emitter; route web `GET /api/auth/socket-token`; bỏ handler demo | Socket không token bị ngắt; có token nhận sự kiện | |
-| 14 | NT-06 | Hàng đợi `email` dùng SMTP đã cấu hình, retry 3 lần | Transport giả trong test | |
+| 13 | CORE-17, NT-04 | Gateway xác thực handshake, room `account:<id>`; worker emit qua Redis emitter; route web `GET /api/auth/socket-token`; bỏ handler demo | Socket không token bị ngắt; có token nhận sự kiện | ✅ 3 e2e (socket.io-client thật). Thật: admin nhận sau ~0,1s, người khác không nhận, không token → connect_error. Chưa có client UI |
+| 14 | NT-06 | Hàng đợi `email` dùng SMTP đã cấu hình, retry 3 lần | Transport giả trong test | ✅ 9 unit (mẫu email, processor, sendEmail). Thật: job email chạy, SMTP tắt → smtp_disabled, không retry. Test dựng toàn bộ WorkerModule (bắt lỗi thiếu provider) |
 
 ### 1d. Lưu trữ file
 
