@@ -2,6 +2,7 @@ import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request = require("supertest");
 import { AppModule } from "../src/app.module";
+import { configureApp } from "../src/app.setup";
 import { PrismaService } from "../src/common/prisma/prisma.service";
 import { AuthService } from "../src/modules/auth/auth.service";
 import type { AuthenticatedUser } from "../src/modules/auth/auth.types";
@@ -113,7 +114,7 @@ describe("API authentication and permissions (e2e)", () => {
       .compile();
 
     app = moduleRef.createNestApplication({ logger: false });
-    app.setGlobalPrefix("api/v1");
+    configureApp(app);
     await app.init();
 
     const authService = app.get(AuthService);

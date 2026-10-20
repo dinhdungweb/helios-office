@@ -55,11 +55,13 @@ modules:
       - id: CORE-03
         title: Proxy web chặn /hcns, /apps, /social, /personnel-profile-profile khi chưa đăng nhập
         phase: 0
-        status: todo
+        status: done
+        note: Matcher đảo ngược — mọi trang cần đăng nhập trừ /login, /api/*, file tĩnh
       - id: CORE-04
         title: Helmet + rate limit (Throttler) cho API
         phase: 0
-        status: todo
+        status: done
+        note: THROTTLE_LIMIT/THROTTLE_TTL_MS; đếm theo token, không theo IP. Cần cấu hình trust proxy khi đặt API sau reverse proxy
       - id: CORE-05
         title: Hợp nhất route trùng (4 route hồ sơ nhân sự, 2 route tài khoản) và redirect
         phase: 0

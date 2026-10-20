@@ -67,5 +67,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/user/:path*", "/admin/:path*"]
+  // Every page requires a session except the login page. Route handlers under /api do their own
+  // auth, and anything with a file extension (manifest, icons, Next assets) stays public.
+  matcher: ["/((?!api/|login|_next/|.*\\.).*)"]
 };

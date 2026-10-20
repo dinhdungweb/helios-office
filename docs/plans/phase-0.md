@@ -38,8 +38,8 @@ Quyền cho các route sắp gắn guard (đã duyệt 2026-10-19, bổ sung quy
 | 4 | CORE-02 | Gắn quyền theo bảng trên cho 6 controller; `@Public` cho `attendance/sync` | e2e: thiếu quyền → 403; audit báo 0 route không guard | ✅ |
 | 5 | — | Script audit hiểu guard toàn cục + `@Public`; liệt kê route public và route chỉ cần đăng nhập | `npm run audit:features` | ✅ |
 | 6 | — | Bộ test e2e API (supertest): mọi route không token → 401 trừ danh sách public; quyền của các route ở bảng trên | `npm run test` (14 test) | ✅ |
-| 7 | CORE-03 | Proxy web chặn thêm `/hcns`, `/apps`, `/social`, `/personnel-profile-profile` | Chưa đăng nhập → `/login` | |
-| 8 | CORE-04 | Helmet + `@nestjs/throttler` (giới hạn chung + chặt hơn cho `attendance/sync`) | Có security header; vượt ngưỡng → 429 | |
+| 7 | CORE-03 | Proxy web chặn thêm `/hcns`, `/apps`, `/social`, `/personnel-profile-profile` | Chưa đăng nhập → `/login` | ✅ Đảo ngược matcher: mọi trang trừ `/login`, `/api/*`, file tĩnh |
+| 8 | CORE-04 | Helmet + `@nestjs/throttler` (giới hạn chung + chặt hơn cho `attendance/sync`) | Có security header; vượt ngưỡng → 429 | ✅ Giới hạn theo token (web SSR dùng chung 1 IP), chạy trước xác thực; e2e 17 test |
 | 9 | CORE-05 | Gộp route trùng, redirect route cũ trong `next.config.ts` | Route cũ redirect về route chính | |
 | 10 | CORE-06 | Dashboard không âm thầm dùng mock-data khi API lỗi | Tắt API → thấy trạng thái lỗi | |
 | 11 | CORE-07 | ESLint cho web + api (bắt đầu ở mức cảnh báo) | `npm run lint` | |
