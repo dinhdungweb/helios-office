@@ -6,6 +6,8 @@ import { resolve } from "node:path";
 import { AuditModule } from "./common/audit/audit.module";
 import { DataScopeModule } from "./common/data-scope/data-scope.module";
 import { PrismaModule } from "./common/prisma/prisma.module";
+import { QueueModule } from "./common/queue/queue.module";
+import { HealthModule } from "./modules/health/health.module";
 import { SessionThrottlerGuard } from "./common/throttle/session-throttler.guard";
 import { AccountAccessModule } from "./modules/account-access/account-access.module";
 import { AdminSettingsModule } from "./modules/admin-settings/admin-settings.module";
@@ -40,12 +42,14 @@ import { UserPreferencesModule } from "./modules/user-preferences/user-preferenc
       ]
     }),
     PrismaModule,
+    QueueModule,
     AuditModule,
     DataScopeModule,
     AuthModule,
     AccountAccessModule,
     AdminSettingsModule,
     AuditLogsModule,
+    HealthModule,
     EmployeesModule,
     PostsModule,
     AnnouncementsModule,

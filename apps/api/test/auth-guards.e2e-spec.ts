@@ -13,7 +13,7 @@ import type { AuthenticatedUser } from "../src/modules/auth/auth.types";
 const SYNC_TOKEN = "e2e-attendance-sync-token";
 
 // Routes that authenticate without a user session. Adding to this list must be a deliberate decision.
-const PUBLIC_ROUTES = new Set(["POST /api/v1/attendance/sync"]);
+const PUBLIC_ROUTES = new Set(["POST /api/v1/attendance/sync", "GET /api/v1/health"]);
 
 type Route = { method: string; path: string };
 

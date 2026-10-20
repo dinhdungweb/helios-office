@@ -113,7 +113,8 @@ modules:
         note: DataScopeService + migration 20261020053407_data_scope (39 quyền có phạm vi; quyền cũ giữ company). Áp vào /employees; module khác dùng khi làm (Phase 2–5)
       - id: CORE-16
         title: BullMQ queue + worker nền
-        status: todo
+        status: done
+        note: QueueService (bullmq, kết nối Redis lười, báo QueueUnavailableError khi Redis tắt); worker process riêng src/worker.ts + heartbeat; npm run dev chạy thêm worker (scripts/dev-worker.cjs dùng lại output của API watcher)
       - id: CORE-17
         title: WebSocket gateway xác thực JWT
         status: todo
@@ -132,7 +133,8 @@ modules:
         title: Health check
         api: ["GET /health"]
         public: true
-        status: todo
+        status: done
+        note: database / redis / worker (heartbeat); 503 khi DB down, "degraded" khi Redis hoặc worker down
       - id: CORE-21
         title: Mã hoá trường nhạy cảm (CCCD, tài khoản ngân hàng, lương)
         phase: 4
