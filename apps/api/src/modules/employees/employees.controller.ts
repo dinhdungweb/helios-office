@@ -7,12 +7,13 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { PermissionGuard } from "../auth/permission.guard";
 import { RequireAnyPermission, RequirePermissions } from "../auth/permissions.decorator";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
+import { EMPLOYEE_DIRECTORY_KEYS, EMPLOYEE_MANAGE_KEYS } from "./employee-permissions";
 import { CreateEmployeeDto, LinkEmployeeAccountDto, UpdateEmployeeDto } from "./employees.dto";
 import { EmployeesService } from "./employees.service";
 
 // Same keys as the route decorators: the data scope is the widest one among those the caller holds.
-const DIRECTORY_KEYS = ["employees.department.manage", "system.accounts.manage"];
-const MANAGE_KEYS = ["employees.department.manage"];
+const DIRECTORY_KEYS = EMPLOYEE_DIRECTORY_KEYS;
+const MANAGE_KEYS = EMPLOYEE_MANAGE_KEYS;
 
 @ApiTags("employees")
 @UseGuards(JwtAuthGuard, PermissionGuard)

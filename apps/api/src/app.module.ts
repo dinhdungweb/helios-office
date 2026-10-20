@@ -5,6 +5,7 @@ import { ThrottlerModule } from "@nestjs/throttler";
 import { resolve } from "node:path";
 import { AuditModule } from "./common/audit/audit.module";
 import { DataScopeModule } from "./common/data-scope/data-scope.module";
+import { FilesModule } from "./common/files/files.module";
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { QueueModule } from "./common/queue/queue.module";
 import { HealthModule } from "./modules/health/health.module";
@@ -43,6 +44,7 @@ import { UserPreferencesModule } from "./modules/user-preferences/user-preferenc
     }),
     PrismaModule,
     QueueModule,
+    FilesModule,
     AuditModule,
     DataScopeModule,
     AuthModule,

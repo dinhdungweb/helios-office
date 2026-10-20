@@ -50,8 +50,8 @@ Chia thành 6 cụm, làm theo thứ tự. Mỗi cụm là một (hoặc vài) c
 
 | # | Item | Việc | Kiểm tra | Trạng thái |
 |---|---|---|---|---|
-| 15 | CORE-11 | `StoredFile`, `FilesModule` (S3 client tới MinIO), tạo bucket khi khởi động; `POST /files/presign`, `POST /files/:id/complete`, `GET /files/:id` (302), `DELETE /files/:id`, `POST /files` (multipart dự phòng) | E2E với MinIO local | |
-| 16 | CORE-12 | MIME + dung lượng theo purpose (ảnh 10MB, tài liệu 25MB), `FileAccessPolicy` theo purpose | Unit + E2E sai loại bị từ chối | |
+| 15 | CORE-11 | `StoredFile`, `FilesModule` (S3 client tới MinIO), tạo bucket khi khởi động; `POST /files/presign`, `POST /files/:id/complete`, `GET /files/:id` (302), `DELETE /files/:id`, `POST /files` (multipart dự phòng) | E2E với MinIO local | ✅ Bucket tạo lúc dùng đầu (không phải lúc khởi động, để API/CI chạy không cần MinIO). Thật với MinIO: presign → PUT → complete → tải về khớp byte → xoá |
+| 16 | CORE-12 | MIME + dung lượng theo purpose (ảnh 10MB, tài liệu 25MB), `FileAccessPolicy` theo purpose | Unit + E2E sai loại bị từ chối | ✅ 12 unit; thật: .exe → 400, purpose chưa có policy → 403, user không quyền → 403/404. Quét virus + dọn file pending để sau |
 | 17 | HR-07 | Script chuyển `EmployeeDocument.content` lên MinIO; route tài liệu hồ sơ chuyển sang file service; web upload qua presign; hạ giới hạn body về 1MB | Tải lại tài liệu cũ sau migrate khớp checksum | |
 
 ### 1e. Import / export

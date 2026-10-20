@@ -92,11 +92,13 @@ modules:
         note: Helper ListQueryDto/pageArgs/sortArgs/paginated (common/pagination) đã có + test; áp vào từng list API khi làm (GET /employees giữ dạng mảng tới HR-33 vì 8 chỗ trên web đang dùng)
       - id: CORE-11
         title: File service MinIO (presign upload, tải, xoá)
-        api: ["POST /files/presign", "POST /files", "GET /files/:id", "DELETE /files/:id"]
-        status: todo
+        api: ["POST /files/presign", "POST /files/:id/complete", "POST /files", "GET /files/:id", "DELETE /files/:id"]
+        status: done
+        note: MinIO/S3 (bucket tạo lúc dùng đầu, API chạy được khi MinIO tắt); presign PUT 10 phút, tải qua redirect 5 phút; FileAccessPolicy theo purpose, purpose chưa có policy bị từ chối; chính sách đầu tiên employee_document theo phạm vi dữ liệu
       - id: CORE-12
         title: Giới hạn loại/dung lượng file, quét file tải lên
-        status: todo
+        status: partial
+        note: Đã có MIME + dung lượng theo purpose (ảnh 10MB, tài liệu 25MB, FILE_MAX_*), kiểm lại bằng HEAD khi complete. Chưa có quét virus và job dọn file pending quá 24h
         depends: [CORE-11]
       - id: CORE-13
         title: API xem audit log
