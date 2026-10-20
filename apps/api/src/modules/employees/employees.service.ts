@@ -3,11 +3,13 @@ import { ConfigService } from "@nestjs/config";
 import { AccountLifecycleStatus, DepartmentStatus, JobCatalogStatus, Prisma } from "@prisma/client";
 import { AuditService } from "../../common/audit/audit.service";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
+import { ObjectStorageService } from "../../common/files/object-storage.service";
 import { COMPANY_SCOPE, type ResolvedScope } from "../../common/data-scope/data-scope.types";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { AdminSettingsService } from "../admin-settings/admin-settings.service";
 import { KeycloakAdminService } from "../auth/keycloak-admin.service";
 import type {
+  AttachEmployeeDocumentDto,
   CreateDepartmentDto,
   CreateEmployeeDto,
   CreateInternalPenaltyDto,
@@ -77,7 +79,8 @@ export class EmployeesService {
     private readonly config: ConfigService,
     private readonly adminSettings: AdminSettingsService,
     private readonly dataScope: DataScopeService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly storage: ObjectStorageService
   ) {}
 
   async findAll(scope: ResolvedScope = COMPANY_SCOPE) {
@@ -117,14 +120,80 @@ export class EmployeesService {
   async getDocument(employeeId: string, documentId: string, scope: ResolvedScope = COMPANY_SCOPE) {
     await this.dataScope.assertEmployeeInScope(scope, employeeId);
     const document = await this.prisma.employeeDocument.findFirst({
-      where: { id: documentId, employeeId }
+      where: { id: documentId, employeeId },
+      include: { file: true }
     });
 
-    if (!document) {
+    if (!document || (document.file && document.file.status !== "ready")) {
       throw new NotFoundException(`Document ${documentId} was not found`);
     }
 
     return document;
+  }
+
+  // Links a file uploaded through /files (purpose employee_document, owner = this employee) to a
+  // profile field. The bytes never pass through this API (docs/design/file-storage.md §3).
+  async attachDocument(employeeId: string, dto: AttachEmployeeDocumentDto, actorId: string | undefined, scope: ResolvedScope) {
+    await this.dataScope.assertEmployeeInScope(scope, employeeId);
+    const file = await this.prisma.storedFile.findUnique({ where: { id: dto.fileId }, include: { employeeDocument: true } });
+
+    if (!file || file.status !== "ready" || file.purpose !== "employee_document" || file.ownerType !== "Employee" || file.ownerId !== employeeId) {
+      throw new BadRequestException("File is not an uploaded document of this employee");
+    }
+    if (file.employeeDocument) {
+      throw new ConflictException("File is already attached");
+    }
+
+    const document = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.employeeDocument.create({
+        data: { employeeId, fieldName: dto.fieldName, fileName: file.fileName, mimeType: file.mimeType, size: file.size, fileId: file.id },
+        select: { id: true, fieldName: true, fileName: true, mimeType: true, size: true, createdAt: true }
+      });
+      await tx.auditLog.create({
+        data: {
+          ...this.audit.contextFields(),
+          actorId,
+          action: "employee.document.attach",
+          entityType: "Employee",
+          entityId: employeeId,
+          afterValue: this.toAuditJson({ document: created, fileId: file.id })
+        }
+      });
+      return created;
+    });
+
+    return document;
+  }
+
+  async removeDocument(employeeId: string, documentId: string, actorId: string | undefined, scope: ResolvedScope) {
+    const document = await this.getDocument(employeeId, documentId, scope);
+
+    if (document.file) {
+      await this.storage.delete(document.file.objectKey);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.employeeDocument.delete({ where: { id: document.id } });
+      if (document.file) {
+        await tx.storedFile.update({ where: { id: document.file.id }, data: { status: "deleted", deletedAt: new Date() } });
+      }
+      await tx.auditLog.create({
+        data: {
+          ...this.audit.contextFields(),
+          actorId,
+          action: "employee.document.remove",
+          entityType: "Employee",
+          entityId: employeeId,
+          beforeValue: this.toAuditJson({ id: document.id, fieldName: document.fieldName, fileName: document.fileName, fileId: document.fileId })
+        }
+      });
+    });
+
+    return { id: document.id, deleted: true };
+  }
+
+  downloadUrl(file: { objectKey: string; fileName: string; mimeType: string }) {
+    return this.storage.presignDownload(file.objectKey, file.fileName, file.mimeType);
   }
 
   async create(dto: CreateEmployeeDto, actorId?: string, scope: ResolvedScope = COMPANY_SCOPE) {
@@ -211,19 +280,6 @@ export class EmployeesService {
               endDate: dto.contract.endDate ? new Date(dto.contract.endDate) : null,
               status: "active"
             }
-          });
-        }
-
-        if (dto.documents?.length) {
-          await tx.employeeDocument.createMany({
-            data: dto.documents.map((document) => ({
-              employeeId: employee.id,
-              fieldName: document.fieldName,
-              fileName: document.fileName,
-              mimeType: document.mimeType || "application/octet-stream",
-              size: document.size,
-              content: Buffer.from(document.contentBase64, "base64")
-            }))
           });
         }
 

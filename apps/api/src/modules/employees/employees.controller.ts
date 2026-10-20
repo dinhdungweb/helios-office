@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Res, UseGuards } from "@nestjs/common";
 import type { Response } from "express";
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -8,7 +8,7 @@ import { PermissionGuard } from "../auth/permission.guard";
 import { RequireAnyPermission, RequirePermissions } from "../auth/permissions.decorator";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { EMPLOYEE_DIRECTORY_KEYS, EMPLOYEE_MANAGE_KEYS } from "./employee-permissions";
-import { CreateEmployeeDto, LinkEmployeeAccountDto, UpdateEmployeeDto } from "./employees.dto";
+import { AttachEmployeeDocumentDto, CreateEmployeeDto, LinkEmployeeAccountDto, UpdateEmployeeDto } from "./employees.dto";
 import { EmployeesService } from "./employees.service";
 
 // Same keys as the route decorators: the data scope is the widest one among those the caller holds.
@@ -73,10 +73,33 @@ export class EmployeesController {
   ) {
     const scope = await this.dataScope.resolve(user, DIRECTORY_KEYS);
     const document = await this.employeesService.getDocument(id, documentId, scope);
+
+    if (document.file) {
+      response.redirect(302, await this.employeesService.downloadUrl(document.file));
+      return;
+    }
+
+    // Legacy documents stored their bytes in Postgres before object storage (HR-07).
     response.setHeader("Content-Type", document.mimeType);
     response.setHeader("Content-Length", document.size.toString());
     response.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(document.fileName)}`);
     response.send(document.content);
+  }
+
+  @Post(":id/documents")
+  @RequirePermissions(...MANAGE_KEYS)
+  @ApiOkResponse({ description: "Attach a file uploaded through /files (purpose employee_document) to the profile." })
+  async attachDocument(@Param("id") id: string, @Body() body: AttachEmployeeDocumentDto, @CurrentUser() user: AuthenticatedUser) {
+    const scope = await this.dataScope.resolve(user, MANAGE_KEYS);
+    return this.employeesService.attachDocument(id, body, user.account?.employeeId ?? undefined, scope);
+  }
+
+  @Delete(":id/documents/:documentId")
+  @RequirePermissions(...MANAGE_KEYS)
+  @ApiOkResponse({ description: "Remove a profile document and its stored file." })
+  async removeDocument(@Param("id") id: string, @Param("documentId") documentId: string, @CurrentUser() user: AuthenticatedUser) {
+    const scope = await this.dataScope.resolve(user, MANAGE_KEYS);
+    return this.employeesService.removeDocument(id, documentId, user.account?.employeeId ?? undefined, scope);
   }
 
   @Get(":id")

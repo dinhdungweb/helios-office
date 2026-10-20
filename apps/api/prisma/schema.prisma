@@ -320,6 +320,7 @@ model StoredFile {
   status       StoredFileStatus @default(pending)
   uploadedById String?
   uploadedBy   UserAccount?     @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  employeeDocument EmployeeDocument?
   createdAt    DateTime         @default(now())
   deletedAt    DateTime?
 
@@ -334,7 +335,10 @@ model EmployeeDocument {
   fileName   String
   mimeType   String
   size       Int
-  content    Bytes
+  // Legacy rows kept the bytes in Postgres; new documents live in object storage (fileId).
+  content    Bytes?
+  fileId     String?     @unique
+  file       StoredFile? @relation(fields: [fileId], references: [id])
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
 

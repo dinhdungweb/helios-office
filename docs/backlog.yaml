@@ -357,7 +357,7 @@ modules:
         title: Upload / xoá tài liệu hồ sơ qua file service
         api: ["POST /employees/:id/documents", "DELETE /employees/:id/documents/:documentId"]
         status: partial
-        note: Hiện upload đi kèm server action tạo/sửa hồ sơ, chưa có route riêng và chưa dùng MinIO
+        note: API attach/xoá qua file service (MinIO) + web tạo hồ sơ upload qua presign đã xong (2026-10-20); còn thiếu UI xem/xoá tài liệu trong trang hồ sơ
         depends: [CORE-11]
       - id: HR-08
         title: Sơ đồ tổ chức

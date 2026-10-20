@@ -32,8 +32,10 @@ export function configureApp(app: INestApplication) {
       crossOriginResourcePolicy: { policy: "same-site" }
     })
   );
-  app.use(json({ limit: "25mb" }));
-  app.use(urlencoded({ extended: true, limit: "25mb" }));
+  // Files no longer travel in JSON bodies (they go straight to object storage via /files), so the
+  // limit drops from 25mb. 2mb still fits the largest attendance sync batch (5,000 punches).
+  app.use(json({ limit: "2mb" }));
+  app.use(urlencoded({ extended: true, limit: "2mb" }));
 
   app.setGlobalPrefix("api/v1");
   app.enableCors({

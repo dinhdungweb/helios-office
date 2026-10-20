@@ -9,7 +9,7 @@
     "start:worker:dev": "node scripts/dev-worker.cjs",
     "build": "nest build",
     "typecheck": "tsc --noEmit",
-    "test": "jest --passWithNoTests",
+    "test": "jest --passWithNoTests --maxWorkers=2",
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "ts-node prisma/seed.ts",
