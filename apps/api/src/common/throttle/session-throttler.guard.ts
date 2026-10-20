@@ -5,9 +5,15 @@ import { createHash } from "node:crypto";
 // The web app renders on the server, so every user's API calls arrive from the Next.js server's IP.
 // Counting per IP would make the whole company share one quota; count per bearer token instead and
 // fall back to the client IP only for requests without one.
+type TrackedRequest = {
+  headers?: { authorization?: unknown };
+  ip?: string;
+  ips?: string[];
+};
+
 @Injectable()
 export class SessionThrottlerGuard extends ThrottlerGuard {
-  protected async getTracker(req: Record<string, any>): Promise<string> {
+  protected async getTracker(req: TrackedRequest): Promise<string> {
     const authorization = req.headers?.authorization;
 
     if (typeof authorization === "string" && /^Bearer\s+\S+/i.test(authorization)) {

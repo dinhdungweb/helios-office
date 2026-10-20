@@ -12,6 +12,7 @@
     "dev:api": "npm run start:dev -w apps/api",
     "build": "npm run build -w apps/web && npm run build -w apps/api",
     "typecheck": "npm run typecheck -w apps/web && npm run typecheck -w apps/api",
+    "lint": "eslint . --max-warnings 89",
     "test": "npm run test -w apps/api && npm run test:e2e -w apps/api",
     "audit:features": "node scripts/audit-features.mjs",
     "prisma:generate": "npm run prisma:generate -w apps/api",
@@ -20,9 +21,14 @@
     "keycloak:bootstrap": "npm run keycloak:bootstrap -w apps/api"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "concurrently": "^9.2.1",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.10",
+    "globals": "^16.5.0",
     "js-yaml": "^4.3.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.0"
   },
   "engines": {
     "node": ">=22.12.0",

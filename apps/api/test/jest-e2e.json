@@ -3,7 +3,13 @@
   "rootDir": ".",
   "testRegex": ".*\\.e2e-spec\\.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": { "allowJs": true }, "diagnostics": { "ignoreCodes": ["TS151001"] } }]
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": { "allowJs": true, "esModuleInterop": true },
+        "diagnostics": { "ignoreCodes": ["TS151001"] }
+      }
+    ]
   },
   "transformIgnorePatterns": ["node_modules/(?!jose/)"],
   "testEnvironment": "node"

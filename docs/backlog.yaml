@@ -75,11 +75,13 @@ modules:
       - id: CORE-07
         title: ESLint + Prettier cho web và api
         phase: 0
-        status: todo
+        status: done
+        note: ESLint 9 flat config ở root (Next core-web-vitals cho web, typescript-eslint cho api). Nợ cũ hạ thành cảnh báo, chặn tăng bằng --max-warnings (CORE-26). Chưa thêm Prettier để tránh diff định dạng toàn repo
       - id: CORE-08
         title: CI chạy typecheck, test, audit:features --strict
         phase: 0
-        status: todo
+        status: done
+        note: .github/workflows/ci.yml (typecheck, lint, test unit+e2e, audit --strict, build). Đã chạy đủ các bước trên máy local; cần push để xác nhận trên GitHub
       - id: CORE-09
         title: .gitattributes chuẩn hoá line ending
         phase: 0
@@ -144,6 +146,11 @@ modules:
         title: Test cho web (component/e2e luồng chính)
         phase: 9
         status: todo
+      - id: CORE-26
+        title: Dọn nợ ESLint (89 cảnh báo khi bật lint) và nâng các quy tắc tạm hạ trở lại "error"
+        phase: 9
+        status: todo
+        note: Chủ yếu react-hooks/set-state-in-effect (27) và <a> thay vì <Link> (22). Hạ --max-warnings trong npm run lint mỗi khi dọn bớt
       - id: CORE-25
         title: Sửa lỗi hydration mismatch xuất hiện trên mọi trang dùng khung chung
         status: todo
