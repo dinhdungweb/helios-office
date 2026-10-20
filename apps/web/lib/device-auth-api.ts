@@ -1,9 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
-import {
-  deviceAuthPolicy as fallbackPolicy,
-  deviceAuthRequests as fallbackRequests
-} from "@/lib/mock-data";
+import { deviceAuthPolicy as fallbackPolicy } from "@/lib/mock-data";
 
 export type DeviceAuthStatus = "pending" | "approved" | "rejected" | "locked";
 
@@ -99,7 +96,8 @@ export async function getDeviceAuthData(): Promise<DeviceAuthData> {
     };
   } catch (error) {
     return {
-      requests: fallbackRequests,
+      requests: [],
+      // The page shows an "API not connected" banner; the default policy only keeps the form renderable.
       policy: fallbackPolicy,
       source: "unavailable",
       error: error instanceof Error ? error.message : "Cannot reach device auth API"

@@ -440,6 +440,7 @@ function BirthdayPanel({ data }: { data: HcnsDashboardData }) {
         </div>
       </header>
       <div className="hcns-dashboard-birthday-list">
+        {data.movement.birthdays.length === 0 ? <p className="account-empty-state">Chưa có dữ liệu sinh nhật sắp tới.</p> : null}
         {data.movement.birthdays.map((birthday) => (
           <article key={`${birthday.name}-${birthday.date}`}>
             <span>{birthday.initials}</span>

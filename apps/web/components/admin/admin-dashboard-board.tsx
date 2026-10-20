@@ -254,9 +254,11 @@ function InternalCommunication({ data }: { data: AdminDashboardData }) {
             <small>{announcement.time} · {announcement.audience}</small>
           </article>
         ))}
+        {data.internal.announcements.length === 0 ? <p className="account-empty-state">Chưa có thông báo nội bộ.</p> : null}
       </div>
 
       <div className="admin-dashboard-birthday-list" aria-label="Sự kiện sắp tới">
+        {data.internal.birthdays.length === 0 ? <p className="account-empty-state">Chưa có dữ liệu sinh nhật sắp tới.</p> : null}
         {data.internal.birthdays.map((birthday) => (
           <article key={`${birthday.name}-${birthday.date}`}>
             <span>{birthday.initials}</span>

@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
-import { birthdays as fallbackBirthdays } from "@/lib/mock-data";
 
 type FetchResult<T> = {
   error?: string;
@@ -501,7 +500,8 @@ function buildMovement(employees: EmployeeRecord[]) {
     }));
 
   return {
-    birthdays: fallbackBirthdays.slice(0, 4),
+    // No birthday API yet (backlog HR-31); show an empty state instead of sample people.
+    birthdays: [],
     newHires,
     newHiresThisMonth: activeEmployees.filter((employee) => isThisMonth(employee.startDate)).length,
     probationEnding,

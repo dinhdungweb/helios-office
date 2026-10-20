@@ -70,7 +70,8 @@ modules:
       - id: CORE-06
         title: Bỏ fallback mock-data âm thầm ở dashboard, hiển thị trạng thái lỗi tải dữ liệu
         phase: 0
-        status: todo
+        status: done
+        note: Dashboard admin/HCNS, cảnh báo duyệt, device-auth không còn thay dữ liệu giả khi API lỗi; sinh nhật hiện trạng thái rỗng tới HR-31. Mock phía API (posts, announcements...) thuộc WP/NT
       - id: CORE-07
         title: ESLint + Prettier cho web và api
         phase: 0
@@ -143,6 +144,10 @@ modules:
         title: Test cho web (component/e2e luồng chính)
         phase: 9
         status: todo
+      - id: CORE-25
+        title: Sửa lỗi hydration mismatch xuất hiện trên mọi trang dùng khung chung
+        status: todo
+        note: Phát hiện 2026-10-20 khi chạy thử; console báo "A tree hydrated but some attributes ... didn't match"
 
   # ---------------------------------------------------------------------------
   - code: AU
@@ -261,6 +266,10 @@ modules:
         title: SSO Google/Microsoft qua Keycloak identity provider
         phase: 9
         status: todo
+      - id: AU-24
+        title: Chặn đăng nhập và báo lỗi rõ khi user Keycloak chưa gắn tài khoản Helios
+        status: todo
+        note: Hiện vẫn vào được giao diện nhưng mọi API trả 401 (gặp với dungdd khi DB seed cũ)
 
   # ---------------------------------------------------------------------------
   - code: DV
@@ -481,6 +490,11 @@ modules:
         api: ["GET /employees/:id/audit"]
         status: todo
         depends: [CORE-13]
+      - id: HR-36
+        title: Ghim cột thao tác (nút sửa) bên phải bảng danh sách nhân sự
+        ui: /apps/personnel-profile-profile
+        status: todo
+        note: Bảng rộng, phải cuộn ngang mới thấy nút sửa
       - id: HR-35
         title: Trường tuỳ chỉnh cho hồ sơ
         api: ["GET /employee-fields", "POST /employee-fields", "PATCH /employee-fields/:id", "DELETE /employee-fields/:id"]

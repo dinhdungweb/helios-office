@@ -12533,6 +12533,11 @@
   border-top: 1px solid var(--color-border-subtle);
 }
 
+.admin-dashboard-birthday-list > .account-empty-state,
+.hcns-dashboard-birthday-list > .account-empty-state {
+  grid-column: 1 / -1;
+}
+
 .admin-dashboard-news-list strong,
 .admin-dashboard-news-list small,
 .admin-dashboard-operation-list strong,

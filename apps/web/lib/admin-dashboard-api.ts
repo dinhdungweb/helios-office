@@ -1,6 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
-import { announcements as fallbackAnnouncements, birthdays as fallbackBirthdays } from "@/lib/mock-data";
 
 type AccountSummary = {
   totalAccounts: number;
@@ -348,7 +347,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   const attendanceSummary = attendanceResult.value;
   const deviceRequests = deviceResult.value ?? [];
   const settings = settingsResult.value;
-  const announcements = announcementResult.value ?? fallbackAnnouncements;
+  const announcements = announcementResult.value ?? [];
   const errors = [
     accountResult,
     employeeResult,
@@ -414,7 +413,8 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     },
     internal: {
       announcements: announcements.slice(0, 3),
-      birthdays: fallbackBirthdays.slice(0, 3),
+      // No birthday API yet (backlog HR-31); show an empty state instead of sample people.
+      birthdays: [],
       averageReadRate: announcements.length
         ? Math.round(announcements.reduce((sum, announcement) => sum + announcement.readRate, 0) / announcements.length)
         : 0,

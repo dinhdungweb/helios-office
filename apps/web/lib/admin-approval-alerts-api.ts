@@ -1,9 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
-import {
-  adminOperationEvents as fallbackOperationEvents,
-  deviceAuthRequests as fallbackDeviceRequests
-} from "@/lib/mock-data";
 
 type FetchResult<T> = {
   error?: string;
@@ -420,13 +416,7 @@ function buildSystemNotifications(settings: AdminSettingsPayload | null): AdminS
       status: event.severity,
       time: event.time,
       title: event.action
-    })) ?? fallbackOperationEvents.map((event) => ({
-      id: `event-${event.id}`,
-      description: `${event.actor} · ${event.target}`,
-      status: event.severity as AdminSystemNotification["status"],
-      time: event.time,
-      title: event.action
-    }));
+    })) ?? [];
   const releaseNote: AdminSystemNotification = {
     id: "release-note",
     description: "Bổ sung trung tâm phê duyệt và cảnh báo cho tài khoản Admin.",
@@ -501,7 +491,7 @@ export async function getAdminApprovalAlertsData(): Promise<AdminApprovalAlertsD
   ]);
 
   const leaveRequests = leaveResult.value ?? [];
-  const deviceRequests = deviceResult.value ?? fallbackDeviceRequests;
+  const deviceRequests = deviceResult.value ?? [];
   const employees = employeeResult.value ?? [];
   const attendance = attendanceResult.value;
   const settings = settingsResult.value;

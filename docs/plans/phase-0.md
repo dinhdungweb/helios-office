@@ -41,7 +41,7 @@ Quyền cho các route sắp gắn guard (đã duyệt 2026-10-19, bổ sung quy
 | 7 | CORE-03 | Proxy web chặn thêm `/hcns`, `/apps`, `/social`, `/personnel-profile-profile` | Chưa đăng nhập → `/login` | ✅ Đảo ngược matcher: mọi trang trừ `/login`, `/api/*`, file tĩnh |
 | 8 | CORE-04 | Helmet + `@nestjs/throttler` (giới hạn chung + chặt hơn cho `attendance/sync`) | Có security header; vượt ngưỡng → 429 | ✅ Giới hạn theo token (web SSR dùng chung 1 IP), chạy trước xác thực; e2e 17 test |
 | 9 | CORE-05 | Gộp route trùng, redirect route cũ trong `next.config.ts` | Route cũ redirect về route chính | ✅ Giữ bộ B `/apps/personnel-profile-profile`; chuyển hộp thoại sửa của bộ A sang bộ B rồi xoá bộ A |
-| 10 | CORE-06 | Dashboard không âm thầm dùng mock-data khi API lỗi | Tắt API → thấy trạng thái lỗi | |
+| 10 | CORE-06 | Dashboard không âm thầm dùng mock-data khi API lỗi | Tắt API → thấy trạng thái lỗi | ✅ Bỏ 6 fallback mock ở 4 file lib; thêm trạng thái rỗng; kiểm tra bằng trình duyệt |
 | 11 | CORE-07 | ESLint cho web + api (bắt đầu ở mức cảnh báo) | `npm run lint` | |
 | 12 | CORE-08 | GitHub Actions: typecheck, test, build, `audit:features --strict` | CI xanh trên nhánh | |
 
