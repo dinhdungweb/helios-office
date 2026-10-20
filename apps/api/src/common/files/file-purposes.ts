@@ -12,7 +12,10 @@ export const DOCUMENT_MIME_TYPES = [
   ...IMAGE_MIME_TYPES
 ] as const;
 
-export type FileKind = "image" | "document";
+// Imports accept .xlsx only; exports are always generated as .xlsx.
+export const SPREADSHEET_MIME_TYPES = ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"] as const;
+
+export type FileKind = "image" | "document" | "spreadsheet";
 
 export const FILE_PURPOSES = {
   employee_document: { kind: "document", ownerType: "Employee" },
@@ -21,7 +24,10 @@ export const FILE_PURPOSES = {
   checkin_photo: { kind: "image", ownerType: "AttendanceRecord" },
   post_media: { kind: "image", ownerType: "Post" },
   workflow_attachment: { kind: "document", ownerType: "ApprovalWorkflowDefinition" },
-  document: { kind: "document", ownerType: "Document" }
+  document: { kind: "document", ownerType: "Document" },
+  // Owned by the account that uploads / requests them (docs/design/import-export.md).
+  import_file: { kind: "spreadsheet", ownerType: "UserAccount" },
+  export_file: { kind: "spreadsheet", ownerType: "UserAccount" }
 } as const satisfies Record<string, { kind: FileKind; ownerType: string }>;
 
 export type FilePurpose = keyof typeof FILE_PURPOSES;
@@ -31,10 +37,12 @@ export function isFilePurpose(value: unknown): value is FilePurpose {
 }
 
 export function allowedMimeTypes(purpose: FilePurpose): readonly string[] {
-  return FILE_PURPOSES[purpose].kind === "image" ? IMAGE_MIME_TYPES : DOCUMENT_MIME_TYPES;
+  const kind: FileKind = FILE_PURPOSES[purpose].kind;
+  return kind === "image" ? IMAGE_MIME_TYPES : kind === "spreadsheet" ? SPREADSHEET_MIME_TYPES : DOCUMENT_MIME_TYPES;
 }
 
 export function maxBytes(purpose: FilePurpose, limitsMb: { image: number; document: number }) {
+  // Spreadsheets share the document limit.
   return (FILE_PURPOSES[purpose].kind === "image" ? limitsMb.image : limitsMb.document) * 1024 * 1024;
 }
 

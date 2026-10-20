@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import { AuditModule } from "./common/audit/audit.module";
 import { DataScopeModule } from "./common/data-scope/data-scope.module";
 import { FilesModule } from "./common/files/files.module";
+import { ImportExportModule } from "./common/import-export/import-export.module";
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { QueueModule } from "./common/queue/queue.module";
 import { HealthModule } from "./modules/health/health.module";
@@ -20,6 +21,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { JwtAuthGuard } from "./modules/auth/jwt-auth.guard";
 import { DeviceAuthModule } from "./modules/device-auth/device-auth.module";
 import { EmployeesModule } from "./modules/employees/employees.module";
+import { EmployeeTransferModule } from "./modules/employees/employee-transfer.module";
 import { LeaveRequestsModule } from "./modules/leave-requests/leave-requests.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { PayrollModule } from "./modules/payroll/payroll.module";
@@ -45,6 +47,7 @@ import { UserPreferencesModule } from "./modules/user-preferences/user-preferenc
     PrismaModule,
     QueueModule,
     FilesModule,
+    ImportExportModule,
     AuditModule,
     DataScopeModule,
     AuthModule,
@@ -53,6 +56,7 @@ import { UserPreferencesModule } from "./modules/user-preferences/user-preferenc
     AuditLogsModule,
     HealthModule,
     EmployeesModule,
+    EmployeeTransferModule,
     PostsModule,
     AnnouncementsModule,
     ApprovalsModule,

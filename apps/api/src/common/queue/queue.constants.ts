@@ -1,6 +1,8 @@
 // Queue names shared by the API (producer) and the worker process (consumer).
 export const NOTIFICATIONS_QUEUE = "notifications";
 export const EMAIL_QUEUE = "email";
+export const IMPORTS_QUEUE = "imports";
+export const EXPORTS_QUEUE = "exports";
 
 export const QUEUE_PREFIX = "helios";
 

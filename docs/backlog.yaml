@@ -123,13 +123,15 @@ modules:
         note: Token xác thực ở middleware handshake (socket không hợp lệ không mở được), room account:<id>, ngắt khi token hết hạn; Redis adapter cho API, worker phát qua @socket.io/redis-emitter
       - id: CORE-18
         title: Import Excel chung (upload → validate → preview → commit)
-        api: ["POST /imports", "GET /imports/:id", "POST /imports/:id/commit"]
-        status: todo
+        api: ["GET /imports/types", "GET /imports/templates/:type", "POST /imports", "GET /imports/:id", "POST /imports/:id/commit"]
+        status: partial
+        note: API + worker + handler mẫu (job_positions) xong 2026-10-20, docs/design/import-export.md; còn UI hộp thoại import dùng chung
         depends: [CORE-11, CORE-16]
       - id: CORE-19
         title: Export Excel chung
-        api: ["POST /exports", "GET /exports/:id"]
-        status: todo
+        api: ["GET /exports/types", "POST /exports", "GET /exports/:id"]
+        status: partial
+        note: API + worker + handler employees xong 2026-10-20; còn UI nút export dùng chung
         depends: [CORE-16]
       - id: CORE-20
         title: Health check
@@ -485,8 +487,9 @@ modules:
         depends: [CORE-18]
       - id: HR-30
         title: Export hồ sơ ra Excel
-        api: ["GET /employees/export"]
-        status: todo
+        api: ["POST /exports"]
+        status: partial
+        note: Handler export type "employees" (theo phạm vi dữ liệu, lọc status/departmentId) qua khung CORE-19; chưa có nút trên danh bạ
         depends: [CORE-19]
       - id: HR-31
         title: Sinh nhật / kỷ niệm ngày vào làm sắp tới (đang mock)

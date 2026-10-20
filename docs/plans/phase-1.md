@@ -58,8 +58,8 @@ Chia thành 6 cụm, làm theo thứ tự. Mỗi cụm là một (hoặc vài) c
 
 | # | Item | Việc | Kiểm tra | Trạng thái |
 |---|---|---|---|---|
-| 18 | CORE-18 | Khung import: upload file (1d) → job validate → preview lỗi theo dòng → commit | Unit với file Excel mẫu | |
-| 19 | CORE-19 | Khung export: job sinh xlsx → StoredFile → link tải | E2E | |
+| 18 | CORE-18 | Khung import: upload file (1d) → job validate → preview lỗi theo dòng → commit | Unit với file Excel mẫu | 🔄 API + worker xong: `ImportJob`, registry handler, đọc cột theo tiêu đề (bỏ dấu/hoa thường), lỗi theo đúng số dòng Excel, commit nguyên tử trong 1 transaction; handler mẫu `job_positions`. 7 unit (exceljs) + 4 e2e; thật: mẫu → upload → 4 dòng (2 lỗi) → 409 → skipInvalid → tạo 2 vị trí. Còn UI |
+| 19 | CORE-19 | Khung export: job sinh xlsx → StoredFile → link tải | E2E | 🔄 API + worker xong: `ExportJob`, phạm vi chốt lúc yêu cầu, file `export_file` chỉ chủ sở hữu tải; handler `employees` (HR-30). 4 e2e; thật: 4 dòng, tải về mở được, người khác 404/403. Còn UI |
 
 ### 1f. Tài khoản & sửa lỗi
 

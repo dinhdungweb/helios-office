@@ -85,6 +85,16 @@ export class ObjectStorageService {
     }
   }
 
+  // Reads a whole object into memory; for server-side processing of small files (imports).
+  async get(objectKey: string) {
+    try {
+      const result = await this.internal.send(new GetObjectCommand({ Bucket: this.bucket, Key: objectKey }));
+      return Buffer.from(await result.Body!.transformToByteArray());
+    } catch (error) {
+      throw this.unavailable(error);
+    }
+  }
+
   async delete(objectKey: string) {
     try {
       await this.internal.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: objectKey }));

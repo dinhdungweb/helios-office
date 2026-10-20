@@ -125,15 +125,13 @@ export class FilesService {
       throw new ForbiddenException("You may not upload this file");
     }
 
-    const now = new Date();
     const id = randomUUID();
-    const month = String(now.getUTCMonth() + 1).padStart(2, "0");
 
     return this.prisma.storedFile.create({
       data: {
         id,
         bucket: this.storage.bucket,
-        objectKey: `${request.purpose}/${now.getUTCFullYear()}/${month}/${id}-${safeFileSlug(request.fileName)}`,
+        objectKey: this.objectKey(request.purpose, id, request.fileName),
         fileName: request.fileName,
         mimeType: request.mimeType,
         size: request.size,
@@ -142,6 +140,36 @@ export class FilesService {
         uploadedById: user.account?.id
       }
     });
+  }
+
+  // Stores a file the server produced itself (exports, reports): no upload policy, ready at once.
+  async saveGenerated(input: { purpose: FilePurpose; ownerId: string; fileName: string; mimeType: string; body: Buffer; createdById?: string }) {
+    const id = randomUUID();
+    const objectKey = this.objectKey(input.purpose, id, input.fileName);
+    const { etag } = await this.storage.put(objectKey, input.body, input.mimeType);
+
+    return this.prisma.storedFile.create({
+      data: {
+        id,
+        bucket: this.storage.bucket,
+        objectKey,
+        fileName: input.fileName,
+        mimeType: input.mimeType,
+        size: input.body.length,
+        checksum: etag,
+        purpose: input.purpose,
+        ownerType: FILE_PURPOSES[input.purpose].ownerType,
+        ownerId: input.ownerId,
+        status: "ready",
+        uploadedById: input.createdById
+      }
+    });
+  }
+
+  private objectKey(purpose: FilePurpose, id: string, fileName: string) {
+    const now = new Date();
+    const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+    return `${purpose}/${now.getUTCFullYear()}/${month}/${id}-${safeFileSlug(fileName)}`;
   }
 
   private async findForUploader(user: AuthenticatedUser, fileId: string) {

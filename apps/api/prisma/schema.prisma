@@ -123,6 +123,8 @@ model UserAccount {
   notifications            Notification[]
   notificationPreferences  NotificationPreference[]
   uploadedFiles            StoredFile[]
+  importJobs               ImportJob[]
+  exportJobs               ExportJob[]
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
 }
@@ -321,6 +323,8 @@ model StoredFile {
   uploadedById String?
   uploadedBy   UserAccount?     @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
   employeeDocument EmployeeDocument?
+  importJobs   ImportJob[]      @relation("ImportJobFile")
+  exportJob    ExportJob?       @relation("ExportJobFile")
   createdAt    DateTime         @default(now())
   deletedAt    DateTime?
 
@@ -343,6 +347,67 @@ model EmployeeDocument {
   createdAt  DateTime @default(now())
 
   @@index([employeeId, fieldName])
+}
+
+enum ImportJobStatus {
+  validating
+  validated
+  invalid
+  committing
+  committed
+  failed
+}
+
+// One spreadsheet import (docs/design/import-export.md): the worker validates every row into
+// `rows`/`errors`, the user reviews the preview, then commit writes the valid rows.
+model ImportJob {
+  id          String          @id @default(uuid())
+  type        String
+  status      ImportJobStatus @default(validating)
+  fileId      String
+  file        StoredFile      @relation("ImportJobFile", fields: [fileId], references: [id])
+  createdById String
+  createdBy   UserAccount     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  // Data scope of the creator when the job was created, reused by the worker.
+  scope       Json
+  totalRows   Int             @default(0)
+  validRows   Int             @default(0)
+  // [{ row, column?, message }]
+  errors      Json?
+  // Normalised valid rows: [{ row, data }]
+  rows        Json?
+  // Handler summary after commit, e.g. { created, updated }.
+  result      Json?
+  error       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  committedAt DateTime?
+
+  @@index([createdById, createdAt])
+}
+
+enum ExportJobStatus {
+  running
+  ready
+  failed
+}
+
+model ExportJob {
+  id          String          @id @default(uuid())
+  type        String
+  status      ExportJobStatus @default(running)
+  params      Json?
+  scope       Json
+  fileId      String?         @unique
+  file        StoredFile?     @relation("ExportJobFile", fields: [fileId], references: [id])
+  createdById String
+  createdBy   UserAccount     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  rowCount    Int?
+  error       String?
+  createdAt   DateTime        @default(now())
+  finishedAt  DateTime?
+
+  @@index([createdById, createdAt])
 }
 
 model JobPosition {
