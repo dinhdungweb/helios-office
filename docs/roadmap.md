@@ -15,7 +15,7 @@ Cập nhật bảng này mỗi khi bắt đầu hoặc đóng một phase.
 | Phase | Tên | Trạng thái | Plan chi tiết | Ngày đóng |
 |---|---|---|---|---|
 | 0 | Vá bảo mật & chuẩn hoá repo | Xong, chờ merge `feat/phase-0` + CI trên GitHub | [phase-0.md](plans/phase-0.md) | |
-| 1 | Hạ tầng dùng chung | Đang thiết kế ([data-scope](design/data-scope.md) đã chốt; [file-storage](design/file-storage.md), [notification](design/notification.md) nháp) | — | |
+| 1 | Hạ tầng dùng chung | Thiết kế đã chốt ([data-scope](design/data-scope.md), [file-storage](design/file-storage.md), [notification](design/notification.md)); chờ đóng Phase 0 | — | |
 | 2 | Ca làm việc & engine tính công | Chưa bắt đầu | — | |
 | 3 | Engine phê duyệt & đơn từ | Chưa bắt đầu | — | |
 | 4 | Hồ sơ mở rộng & hợp đồng | Chưa bắt đầu | — | |

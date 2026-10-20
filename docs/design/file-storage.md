@@ -1,6 +1,6 @@
 # Thiết kế: Lưu trữ file (MinIO / S3)
 
-Backlog: `CORE-11`, `CORE-12` (và mở khoá `HR-07`, `CT-12`, `LV-08`, `AP-26`, `WP-09`, `AT-14`, `DC-*`) · Phase 1 · Trạng thái: **Bản nháp**
+Backlog: `CORE-11`, `CORE-12` (và mở khoá `HR-07`, `CT-12`, `LV-08`, `AP-26`, `WP-09`, `AT-14`, `DC-*`) · Phase 1 · Trạng thái: **Đã chốt 2026-10-20** (xem mục 9)
 
 ## 1. Hiện trạng
 
@@ -103,7 +103,7 @@ Migration + script `npm run files:migrate-employee-documents`:
 - Unit: kiểm tra MIME/dung lượng, sinh object key, policy theo purpose.
 - E2E (MinIO thật trong CI qua service container): presign → PUT → complete → GET trả 302; người ngoài phạm vi nhận 404; file sai loại bị từ chối ở presign; `complete` khi object chưa tồn tại trả 409.
 
-## 9. Câu hỏi cần chốt
+## 9. Quyết định đã chốt (2026-10-20)
 
-1. Giới hạn dung lượng mặc định (ảnh 10MB, tài liệu 25MB) có phù hợp?
-2. Có cần giữ phiên bản khi thay file (ví dụ hợp đồng ký lại) ngay từ đầu, hay để `DC-04` làm sau? Đề xuất: **để sau**.
+1. **Ảnh tối đa 10MB, tài liệu tối đa 25MB**, chỉnh được qua biến môi trường `FILE_MAX_IMAGE_MB`, `FILE_MAX_DOCUMENT_MB`.
+2. **Chưa làm phiên bản file** ở Phase 1; thay file = tạo `StoredFile` mới, file cũ chuyển `deleted`. Phiên bản để `DC-04`.

@@ -1,6 +1,6 @@
 # Thiết kế: Thông báo (in-app, realtime, email, push)
 
-Backlog: `NT-02` → `NT-08`, `CORE-16`, `CORE-17` (và phục vụ `AP-23`, `AT-23`, `TK-09`, `WP-07`, `CT-13`) · Phase 1 · Trạng thái: **Bản nháp**
+Backlog: `NT-02` → `NT-08`, `CORE-16`, `CORE-17` (và phục vụ `AP-23`, `AT-23`, `TK-09`, `WP-07`, `CT-13`) · Phase 1 · Trạng thái: **Đã chốt 2026-10-20** (xem mục 9)
 
 ## 1. Hiện trạng
 
@@ -108,7 +108,9 @@ flowchart LR
 ## 7. Hạ tầng BullMQ (`CORE-16`)
 
 - Module `QueueModule` dùng `REDIS_URL`; hàng đợi: `notifications`, `email`, sau này `imports`, `reports`, `payroll`.
-- Worker chạy **trong cùng process API** lúc đầu (công ty 200 người, tải thấp); tách process riêng khi cần bằng biến `RUN_WORKERS`.
+- Worker chạy **process riêng ngay từ đầu** (đã chốt): entry point `apps/api/src/worker.ts` dùng `NestFactory.createApplicationContext(WorkerModule)` — không mở cổng HTTP, dùng chung Prisma, cấu hình SMTP và `AuthService`. Script `npm run start:worker` / `start:worker:dev`; `npm run dev` ở root chạy thêm tiến trình `worker` bên cạnh `web` và `api`.
+- API chỉ **đẩy job**; mọi xử lý (giải người nhận, ghi DB, gửi email) nằm ở worker. Emit socket từ worker qua `@socket.io/redis-emitter` (worker không giữ kết nối socket; API giữ, nghe qua Redis adapter).
+- Health: worker ghi heartbeat vào Redis; `GET /health` (CORE-20) báo worker còn sống hay không.
 - Bull Board (giao diện xem hàng đợi) chỉ cho `system_admin`, để sau.
 - Khi Redis không chạy: API vẫn khởi động, `notify()` ghi log lỗi và ghi thẳng `Notification` vào DB (không email/realtime) để không mất thông báo trong app.
 
@@ -118,7 +120,7 @@ flowchart LR
 - E2E: `notify` → bản ghi xuất hiện ở `GET /notifications` của đúng người, không xuất hiện ở người khác; `POST /notifications/:id/read` của người khác → 404; socket không token bị ngắt, socket có token nhận `notification.created`.
 - Email: dùng transport giả trong test, kiểm tra nội dung và người nhận.
 
-## 9. Câu hỏi cần chốt
+## 9. Quyết định đã chốt (2026-10-20)
 
-1. Mặc định gửi **email** cho những sự kiện nào? Đề xuất bật mặc định: có đơn cần duyệt, đơn được duyệt/từ chối, phiếu lương đã công bố (bắt buộc), hợp đồng sắp hết hạn (cho HR). Còn lại chỉ in-app.
-2. Worker chạy chung process API giai đoạn đầu? Đề xuất: **Có**.
+1. **Email mặc định bật** cho: `approval.assigned` (có đơn cần duyệt), `request.approved` / `request.rejected` (đơn được duyệt / từ chối), `payslip.published` (**bắt buộc**, không tắt được), `contract.expiring` (cho HR). Các sự kiện khác chỉ in-app; người dùng tự bật email nếu muốn.
+2. **Worker chạy process riêng** ngay từ đầu (xem mục 7).
