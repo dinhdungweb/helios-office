@@ -205,8 +205,6 @@ export async function createEmployeeProfileAction(
   const employee = (await response.json()) as { id?: string };
 
   revalidatePath("/admin/settings/accounts");
-  revalidatePath("/admin/hr/employees");
-  revalidatePath("/admin/hr/employees/new");
   revalidatePath("/hcns/employees");
   revalidatePath("/hcns/employees/new");
   revalidatePath("/apps/personnel-profile-profile");

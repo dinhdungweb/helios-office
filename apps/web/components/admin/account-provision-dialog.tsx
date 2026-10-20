@@ -84,7 +84,7 @@ function DialogForm({
           className="account-dialog-empty"
           title="Không còn hồ sơ nhân sự chờ cấp tài khoản"
           action={
-            <a className="primary-button" href="/admin/hr/employees/new">
+            <a className="primary-button" href="/apps/personnel-profile-profile/add">
               <Plus size={16} weight="duotone" aria-hidden="true" />
               Tạo hồ sơ nhân sự
             </a>

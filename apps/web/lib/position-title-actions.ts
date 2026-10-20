@@ -100,7 +100,7 @@ async function mutateCatalog(path: string, method: "POST" | "PATCH" | "DELETE", 
   revalidatePath("/admin/settings/job-positions");
   revalidatePath("/admin/settings/job-titles");
   revalidatePath("/admin/settings/job-levels");
-  revalidatePath("/admin/hr/employees/new");
+  revalidatePath("/apps/personnel-profile-profile/add");
 
   return { ok: true };
 }

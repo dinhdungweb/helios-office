@@ -91,7 +91,7 @@ function SystemOverview({ data }: { data: AdminDashboardData }) {
       <div className="admin-dashboard-system-grid">
         <MetricCard
           detail={`${data.system.activeEmployees} đang hoạt động`}
-          href="/admin/hr/employees"
+          href="/apps/personnel-profile-profile"
           icon={Users}
           label="Tổng nhân sự"
           value={data.system.totalEmployees}
@@ -271,7 +271,7 @@ function InternalCommunication({ data }: { data: AdminDashboardData }) {
 
 function QuickAccess() {
   const links = [
-    { label: "Thêm nhân sự", href: "/admin/hr/employees/new", icon: Users },
+    { label: "Thêm nhân sự", href: "/apps/personnel-profile-profile/add", icon: Users },
     { label: "Phân quyền", href: "/admin/settings/accounts/groups", icon: ShieldCheck },
     { label: "Xác thực thiết bị", href: "/admin/settings/accounts/device-auth", icon: Bell },
     { label: "Cấu hình hệ thống", href: "/admin/settings", icon: SlidersHorizontal }
@@ -345,7 +345,7 @@ export function AdminDashboardBoard({ data }: AdminDashboardBoardProps) {
             <Key size={16} weight="duotone" aria-hidden="true" />
             Tài khoản
           </a>
-          <a className="primary-button" href="/admin/hr/employees/new">
+          <a className="primary-button" href="/apps/personnel-profile-profile/add">
             <Users size={16} weight="duotone" aria-hidden="true" />
             Thêm nhân sự
           </a>

@@ -78,7 +78,7 @@ async function mutateDepartment(path: string, method: "DELETE" | "POST" | "PATCH
   }
 
   revalidatePath("/admin/settings/org-chart");
-  revalidatePath("/admin/hr/employees/new");
+  revalidatePath("/apps/personnel-profile-profile/add");
 
   return { ok: true };
 }

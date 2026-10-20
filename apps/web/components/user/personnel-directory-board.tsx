@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { EmployeeEditorDialog } from "@/components/admin/employee-editor-dialog";
 import { ResponsiveToolbarActionMenu } from "@/components/admin/responsive-toolbar-action-menu";
 import { FormCheckbox } from "@/components/ui/form-controls";
 import { ListPagination } from "@/components/ui/list-pagination";
@@ -84,6 +85,7 @@ export function PersonnelDirectoryBoard({ data }: { data: EmployeeDirectoryData 
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(() => new Set());
   const [isBulkMenuOpen, setIsBulkMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [editingEmployee, setEditingEmployee] = useState<EmployeeDirectoryRecord | null>(null);
   const bulkMenuRef = useRef<HTMLDivElement | null>(null);
   const filteredEmployees = useMemo(
     () => data.employees.filter((employee) => matchesFilter(employee, activeFilter)),
@@ -399,6 +401,7 @@ export function PersonnelDirectoryBoard({ data }: { data: EmployeeDirectoryData 
               <th scope="col">Ngày sinh</th>
               <th scope="col">Giới tính</th>
               <th scope="col">Ngày tạo TK HOffice</th>
+              <th scope="col"><span className="sr-only">Tác vụ</span></th>
             </tr>
           </thead>
           <tbody>
@@ -430,11 +433,22 @@ export function PersonnelDirectoryBoard({ data }: { data: EmployeeDirectoryData 
                 <td>--</td>
                 <td>--</td>
                 <td>{formatDate(accountCreatedDate(employee))}</td>
+                <td>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    aria-label={`Sửa hồ sơ ${employee.fullName}`}
+                    title="Sửa hồ sơ"
+                    onClick={() => setEditingEmployee(employee)}
+                  >
+                    <PencilSimple size={16} weight="duotone" aria-hidden="true" />
+                  </button>
+                </td>
               </tr>
             ))}
             {visibleEmployees.length === 0 ? (
               <tr>
-                <td colSpan={13}>
+                <td colSpan={14}>
                   <span className="account-empty-state">Không có nhân sự ở trạng thái này.</span>
                 </td>
               </tr>
@@ -442,6 +456,15 @@ export function PersonnelDirectoryBoard({ data }: { data: EmployeeDirectoryData 
           </tbody>
         </table>
       </div>
+
+      {editingEmployee ? (
+        <EmployeeEditorDialog
+          key={editingEmployee.id}
+          data={data}
+          employee={editingEmployee}
+          onClose={() => setEditingEmployee(null)}
+        />
+      ) : null}
     </main>
   );
 }

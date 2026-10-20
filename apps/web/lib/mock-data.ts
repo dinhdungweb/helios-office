@@ -2547,7 +2547,7 @@ export const systemSettingItems: AdminSettingItem[] = [
     summary: "Quản lý hồ sơ nhân viên, phòng ban, quản lý trực tiếp và liên kết tài khoản đăng nhập.",
     owner: "HR Admin",
     status: "configured",
-    href: "/admin/hr/employees",
+    href: "/apps/personnel-profile-profile",
     controls: ["Hồ sơ", "Phòng ban", "Quản lý", "Tài khoản"]
   },
   {

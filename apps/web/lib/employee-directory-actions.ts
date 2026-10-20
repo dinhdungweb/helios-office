@@ -78,11 +78,9 @@ async function mutationJson(path: string, body: unknown) {
 }
 
 function revalidateEmployeeDirectory() {
-  revalidatePath("/admin/hr/employees");
   revalidatePath("/hcns/employees");
   revalidatePath("/admin/settings/accounts");
   revalidatePath("/admin/settings/accounts/groups");
-  revalidatePath("/admin/hr/employees/new");
   revalidatePath("/hcns/employees/new");
   revalidatePath("/apps/personnel-profile-profile");
   revalidatePath("/apps/personnel-profile-profile/add");

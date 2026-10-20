@@ -65,7 +65,8 @@ modules:
       - id: CORE-05
         title: Hợp nhất route trùng (4 route hồ sơ nhân sự, 2 route tài khoản) và redirect
         phase: 0
-        status: todo
+        status: done
+        note: Giữ bộ /apps/personnel-profile-profile; /admin/hr/employees(/new) redirect về đó. Hộp thoại sửa hồ sơ + liên kết tài khoản chuyển sang employee-editor-dialog.tsx
       - id: CORE-06
         title: Bỏ fallback mock-data âm thầm ở dashboard, hiển thị trạng thái lỗi tải dữ liệu
         phase: 0
@@ -304,7 +305,7 @@ modules:
       - id: HR-01
         title: Danh sách hồ sơ nhân sự
         api: ["GET /employees"]
-        ui: /admin/hr/employees
+        ui: /apps/personnel-profile-profile
         status: done
       - id: HR-02
         title: Chi tiết hồ sơ nhân sự
@@ -313,7 +314,7 @@ modules:
       - id: HR-03
         title: Tạo hồ sơ (tuỳ chọn cấp tài khoản kèm theo)
         api: ["POST /employees"]
-        ui: /admin/hr/employees/new
+        ui: /apps/personnel-profile-profile/add
         status: done
       - id: HR-04
         title: Sửa hồ sơ, đổi phòng ban/vị trí/quản lý/trạng thái
