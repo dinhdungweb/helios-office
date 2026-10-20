@@ -124,14 +124,14 @@ modules:
       - id: CORE-18
         title: Import Excel chung (upload → validate → preview → commit)
         api: ["GET /imports/types", "GET /imports/templates/:type", "POST /imports", "GET /imports/:id", "POST /imports/:id/commit"]
-        status: partial
-        note: API + worker + handler mẫu (job_positions) xong 2026-10-20, docs/design/import-export.md; còn UI hộp thoại import dùng chung
+        status: done
+        note: docs/design/import-export.md. UI dùng chung components/ui/import-dialog.tsx (mẫu → upload → lỗi theo dòng + xem trước → nhập), đang dùng ở danh mục vị trí (job_positions). Chưa dọn file import cũ (cùng CORE-12)
         depends: [CORE-11, CORE-16]
       - id: CORE-19
         title: Export Excel chung
         api: ["GET /exports/types", "POST /exports", "GET /exports/:id"]
-        status: partial
-        note: API + worker + handler employees xong 2026-10-20; còn UI nút export dùng chung
+        status: done
+        note: Hook dùng chung components/ui/use-server-export.tsx; file do worker tạo theo phạm vi dữ liệu, link tải 5 phút. Chưa dọn file export cũ (cùng CORE-12)
         depends: [CORE-16]
       - id: CORE-20
         title: Health check
@@ -387,6 +387,7 @@ modules:
           - "DELETE /job-positions/:id"
         ui: /admin/settings/job-positions
         status: done
+        note: Import Excel (tạo/cập nhật theo mã) qua khung CORE-18, type job_positions
       - id: HR-11
         title: Chức danh CRUD + lưu trữ/khôi phục
         api:
@@ -488,8 +489,8 @@ modules:
       - id: HR-30
         title: Export hồ sơ ra Excel
         api: ["POST /exports"]
-        status: partial
-        note: Handler export type "employees" (theo phạm vi dữ liệu, lọc status/departmentId) qua khung CORE-19; chưa có nút trên danh bạ
+        status: done
+        note: POST /exports type "employees" (phạm vi dữ liệu, lọc status — nhận danh sách — và departmentId); nút Export trên thanh công cụ danh bạ theo tab đang chọn. Export các dòng đang chọn vẫn là CSV phía trình duyệt
         depends: [CORE-19]
       - id: HR-31
         title: Sinh nhật / kỷ niệm ngày vào làm sắp tới (đang mock)

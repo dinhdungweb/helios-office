@@ -2,7 +2,8 @@ import { Global, Module, OnModuleInit } from "@nestjs/common";
 import { FilesService } from "../files/files.service";
 import { AccountFilePolicy } from "./account-file.policy";
 import { ExportsService } from "./exports.service";
-import { ExportsController, ImportsController } from "./import-export.controller";
+import { ExportsController } from "./exports.controller";
+import { ImportsController } from "./imports.controller";
 import { ImportExportRegistry } from "./import-export.registry";
 import { ImportsService } from "./imports.service";
 

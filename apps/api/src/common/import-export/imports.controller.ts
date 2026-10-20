@@ -3,10 +3,9 @@ import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import type { AuthenticatedUser } from "../../modules/auth/auth.types";
 import { CurrentUser } from "../../modules/auth/current-user.decorator";
-import { CommitImportDto, CreateExportDto, CreateImportDto } from "./import-export.dto";
+import { CommitImportDto, CreateImportDto } from "./import-export.dto";
 import { ImportExportRegistry } from "./import-export.registry";
 import { ImportsService } from "./imports.service";
-import { ExportsService } from "./exports.service";
 import { XLSX_MIME_TYPE } from "./spreadsheet";
 
 // Any signed-in user (global JwtAuthGuard); the permission each type needs is checked by the
@@ -51,33 +50,5 @@ export class ImportsController {
   @ApiOkResponse({ description: "Writes the valid rows; 409 when there are errors and skipInvalid is not set." })
   commit(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string, @Body() body: CommitImportDto) {
     return this.imports.commit(user, id, body.skipInvalid ?? false);
-  }
-}
-
-@ApiTags("exports")
-@ApiBearerAuth()
-@Controller("exports")
-export class ExportsController {
-  constructor(
-    private readonly exports: ExportsService,
-    private readonly registry: ImportExportRegistry
-  ) {}
-
-  @Get("types")
-  @ApiOkResponse({ description: "Export types the caller may use." })
-  types(@CurrentUser() user: AuthenticatedUser) {
-    return this.registry.available(user).exports;
-  }
-
-  @Post()
-  @ApiOkResponse({ description: "Starts building the .xlsx within the caller's data scope; poll GET /exports/:id." })
-  create(@CurrentUser() user: AuthenticatedUser, @Body() body: CreateExportDto) {
-    return this.exports.create(user, body);
-  }
-
-  @Get(":id")
-  @ApiOkResponse({ description: "Status and, once ready, a 5-minute download URL." })
-  get(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
-    return this.exports.get(user, id);
   }
 }

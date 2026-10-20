@@ -6,7 +6,8 @@ import type { ExportHandler, TransferContext } from "../../common/import-export/
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { EMPLOYEE_DIRECTORY_KEYS } from "./employee-permissions";
 
-type EmployeeExportParams = { status?: EmployeeStatus; departmentId?: string };
+// status: one status or a comma-separated list ("active,onboarding,offboarding").
+type EmployeeExportParams = { statuses?: EmployeeStatus[]; departmentId?: string };
 
 const STATUS_LABELS: Record<EmployeeStatus, string> = {
   active: "Đang làm việc",
@@ -51,8 +52,9 @@ export class EmployeeExportHandler implements ExportHandler<EmployeeExportParams
     const result: EmployeeExportParams = {};
 
     if (input.status !== undefined) {
-      if (typeof input.status !== "string" || !(input.status in STATUS_LABELS)) throw new BadRequestException("Unknown employee status");
-      result.status = input.status as EmployeeStatus;
+      const statuses = typeof input.status === "string" ? input.status.split(",").map((status) => status.trim()) : [];
+      if (statuses.length === 0 || statuses.some((status) => !(status in STATUS_LABELS))) throw new BadRequestException("Unknown employee status");
+      result.statuses = statuses as EmployeeStatus[];
     }
     if (input.departmentId !== undefined) {
       if (typeof input.departmentId !== "string" || !input.departmentId) throw new BadRequestException("departmentId must be a string");
@@ -63,7 +65,7 @@ export class EmployeeExportHandler implements ExportHandler<EmployeeExportParams
 
   async rows(params: EmployeeExportParams, context: TransferContext) {
     const filters: Prisma.EmployeeWhereInput[] = [this.dataScope.employeeWhere(context.scope)];
-    if (params.status) filters.push({ status: params.status });
+    if (params.statuses) filters.push({ status: { in: params.statuses } });
     if (params.departmentId) filters.push({ departmentId: params.departmentId });
 
     const employees = await this.prisma.employee.findMany({

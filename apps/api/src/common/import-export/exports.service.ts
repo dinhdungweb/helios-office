@@ -81,7 +81,8 @@ export class ExportsService {
 
     try {
       const handler = this.registry.exportHandler(job.type);
-      const params = handler.parseParams(job.params ?? {});
+      // Stored already parsed by create(); parsing again could drop normalised keys.
+      const params = (job.params ?? {}) as Record<string, unknown>;
       const rows = await handler.rows(params, { accountId: job.createdById, employeeId: null, scope: job.scope as unknown as ResolvedScope });
       const file = await this.files.saveGenerated({
         purpose: "export_file",

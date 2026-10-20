@@ -58,7 +58,7 @@ function matches(employee: (typeof employees)[number], where: Prisma.EmployeeWhe
     return (where.departmentId.in as string[]).includes(employee.departmentId);
   }
   if (typeof where.departmentId === "string") return employee.departmentId === where.departmentId;
-  if (typeof where.status === "string") return employee.status === where.status;
+  if (where.status && typeof where.status === "object" && "in" in where.status) return (where.status.in as string[]).includes(employee.status);
   return Object.keys(where).length === 0;
 }
 
@@ -269,7 +269,7 @@ describe("Import / export (e2e)", () => {
     });
 
     it("applies filters within a company-wide scope", async () => {
-      const created = await call("post", "/exports", "token-company").send({ type: "employees", params: { status: "resigned" } }).expect(201);
+      const created = await call("post", "/exports", "token-company").send({ type: "employees", params: { status: "resigned,offboarding" } }).expect(201);
       await runQueued();
       expect((await call("get", `/exports/${created.body.id}`, "token-company")).body.rowCount).toBe(1);
     });
