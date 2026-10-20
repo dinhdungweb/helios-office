@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { resolve } from "node:path";
+import { DataScopeModule } from "./common/data-scope/data-scope.module";
 import { PrismaModule } from "./common/prisma/prisma.module";
 import { SessionThrottlerGuard } from "./common/throttle/session-throttler.guard";
 import { AccountAccessModule } from "./modules/account-access/account-access.module";
@@ -37,6 +38,7 @@ import { UserPreferencesModule } from "./modules/user-preferences/user-preferenc
       ]
     }),
     PrismaModule,
+    DataScopeModule,
     AuthModule,
     AccountAccessModule,
     AdminSettingsModule,

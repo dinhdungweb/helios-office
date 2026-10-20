@@ -88,7 +88,8 @@ modules:
         status: done
       - id: CORE-10
         title: Chuẩn phân trang/lọc/sắp xếp dùng chung cho mọi list API
-        status: todo
+        status: partial
+        note: Helper ListQueryDto/pageArgs/sortArgs/paginated (common/pagination) đã có + test; áp vào từng list API khi làm (GET /employees giữ dạng mảng tới HR-33 vì 8 chỗ trên web đang dùng)
       - id: CORE-11
         title: File service MinIO (presign upload, tải, xoá)
         api: ["POST /files/presign", "POST /files", "GET /files/:id", "DELETE /files/:id"]
@@ -107,7 +108,8 @@ modules:
         note: Một số service đã ghi audit thủ công
       - id: CORE-15
         title: Phạm vi dữ liệu theo quyền (bản thân/phòng ban/phòng ban con/toàn công ty)
-        status: todo
+        status: done
+        note: DataScopeService + migration 20261020053407_data_scope (39 quyền có phạm vi; quyền cũ giữ company). Áp vào /employees; module khác dùng khi làm (Phase 2–5)
       - id: CORE-16
         title: BullMQ queue + worker nền
         status: todo
@@ -212,7 +214,8 @@ modules:
         status: done
       - id: AU-10
         title: Phạm vi dữ liệu trong quyền (scope) và áp vào guard
-        status: todo
+        status: partial
+        note: API đã lọc theo phạm vi; còn dropdown chọn phạm vi trong ma trận nhóm quyền (task 6 phase-1)
         depends: [CORE-15]
       - id: AU-11
         title: Ghi đè quyền riêng cho từng user

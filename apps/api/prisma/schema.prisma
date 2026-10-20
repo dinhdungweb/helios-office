@@ -109,6 +109,8 @@ model UserAccount {
   permissionGroup          PermissionGroup?       @relation(fields: [permissionGroupId], references: [id])
   customPermissionsEnabled Boolean                @default(false)
   customPermissions        Json?
+  // { "<permission key>": "self" | "department" | "department_tree" | "branch" | "company" } for custom grants
+  customPermissionScopes   Json?
   customPermissionNote     String?
   passwordResetRequired    Boolean                @default(false)
   temporaryPasswordIssuedAt DateTime?
@@ -147,6 +149,8 @@ model PermissionGroup {
   roleScope   AccountAdminRole      @default(user)
   licensePlan LicensePlan           @default(standard)
   permissions String[]
+  // Data scope per scopable permission key; see docs/design/data-scope.md
+  permissionScopes Json                  @default("{}")
   status      PermissionGroupStatus @default(active)
   archivedAt  DateTime?
   accounts    UserAccount[]
@@ -160,6 +164,9 @@ model PermissionDefinition {
   label       String
   description String?
   adminOnly   Boolean  @default(false)
+  // Scopable permissions are filtered by data scope (self ... company); others are yes/no only.
+  scopable     Boolean @default(false)
+  defaultScope String?
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

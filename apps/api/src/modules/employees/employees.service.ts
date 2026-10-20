@@ -1,6 +1,8 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AccountLifecycleStatus, DepartmentStatus, JobCatalogStatus, Prisma } from "@prisma/client";
+import { DataScopeService } from "../../common/data-scope/data-scope.service";
+import { COMPANY_SCOPE, type ResolvedScope } from "../../common/data-scope/data-scope.types";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { AdminSettingsService } from "../admin-settings/admin-settings.service";
 import { KeycloakAdminService } from "../auth/keycloak-admin.service";
@@ -72,16 +74,29 @@ export class EmployeesService {
     private readonly prisma: PrismaService,
     private readonly keycloakAdmin: KeycloakAdminService,
     private readonly config: ConfigService,
-    private readonly adminSettings: AdminSettingsService
+    private readonly adminSettings: AdminSettingsService,
+    private readonly dataScope: DataScopeService
   ) {}
 
-  async findAll() {
+  async findAll(scope: ResolvedScope = COMPANY_SCOPE) {
     const employees = await this.prisma.employee.findMany({
+      where: this.dataScope.employeeWhere(scope),
       include: employeeInclude,
       orderBy: { code: "asc" }
     });
 
     return employees.map((employee) => this.resolveEmployee(employee));
+  }
+
+  async findOneInScope(id: string, scope: ResolvedScope) {
+    await this.dataScope.assertEmployeeInScope(scope, id);
+    return this.findOne(id);
+  }
+
+  private assertDepartmentInScope(scope: ResolvedScope, departmentId: string | undefined) {
+    if (departmentId && !this.dataScope.departmentInScope(scope, departmentId)) {
+      throw new BadRequestException("Phòng ban nằm ngoài phạm vi quản lý của bạn");
+    }
   }
 
   async findOne(id: string) {
@@ -97,7 +112,8 @@ export class EmployeesService {
     return this.resolveEmployee(employee);
   }
 
-  async getDocument(employeeId: string, documentId: string) {
+  async getDocument(employeeId: string, documentId: string, scope: ResolvedScope = COMPANY_SCOPE) {
+    await this.dataScope.assertEmployeeInScope(scope, employeeId);
     const document = await this.prisma.employeeDocument.findFirst({
       where: { id: documentId, employeeId }
     });
@@ -109,7 +125,9 @@ export class EmployeesService {
     return document;
   }
 
-  async create(dto: CreateEmployeeDto, actorId?: string) {
+  async create(dto: CreateEmployeeDto, actorId?: string, scope: ResolvedScope = COMPANY_SCOPE) {
+    this.assertDepartmentInScope(scope, dto.departmentId);
+
     try {
       await this.assertEmployeeDepartment(dto.departmentId);
       await this.assertEmployeeManager(dto.managerId, undefined);
@@ -246,7 +264,10 @@ export class EmployeesService {
     }
   }
 
-  async updateEmployee(id: string, dto: UpdateEmployeeDto, actorId?: string) {
+  async updateEmployee(id: string, dto: UpdateEmployeeDto, actorId?: string, scope: ResolvedScope = COMPANY_SCOPE) {
+    await this.dataScope.assertEmployeeInScope(scope, id);
+    this.assertDepartmentInScope(scope, dto.departmentId);
+
     const before = await this.prisma.employee.findUnique({
       where: { id },
       include: employeeInclude
@@ -304,7 +325,9 @@ export class EmployeesService {
     }
   }
 
-  async updateEmployeeAccount(id: string, dto: LinkEmployeeAccountDto, actorId?: string) {
+  async updateEmployeeAccount(id: string, dto: LinkEmployeeAccountDto, actorId?: string, scope: ResolvedScope = COMPANY_SCOPE) {
+    await this.dataScope.assertEmployeeInScope(scope, id);
+
     const before = await this.prisma.employee.findUnique({
       where: { id },
       include: employeeInclude
