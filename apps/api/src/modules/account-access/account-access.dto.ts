@@ -7,6 +7,7 @@ import {
   IsEmail,
   IsEnum,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   Matches,
@@ -149,6 +150,14 @@ export class CreatePermissionGroupDto {
   @ArrayUnique()
   @IsString({ each: true })
   permissionKeys?: string[];
+
+  @ApiPropertyOptional({
+    description: "Data scope per scopable permission key; invalid levels and non-scopable keys are ignored.",
+    example: { "permission.attendance.view": "department" }
+  })
+  @IsOptional()
+  @IsObject()
+  permissionScopes?: Record<string, string>;
 }
 
 export class UpdatePermissionGroupDto {
@@ -175,6 +184,14 @@ export class UpdatePermissionGroupDto {
   @ArrayUnique()
   @IsString({ each: true })
   permissionKeys?: string[];
+
+  @ApiPropertyOptional({
+    description: "Scopes to change; keys not sent keep their stored scope.",
+    example: { "permission.attendance.view": "department" }
+  })
+  @IsOptional()
+  @IsObject()
+  permissionScopes?: Record<string, string>;
 }
 
 export class CreatePermissionDefinitionDto {

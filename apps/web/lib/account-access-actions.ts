@@ -106,12 +106,32 @@ function readAccountPayload(
   };
 }
 
+// The group form posts one JSON object for the scopes chosen in its dropdowns; the API validates
+// levels and keeps stored scopes for keys that are not sent.
+function readPermissionScopes(formData: FormData) {
+  const raw = formData.get("permissionScopes");
+
+  if (typeof raw !== "string" || raw.length === 0) {
+    return undefined;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as PermissionGroupMutationPayload["permissionScopes"])
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function readGroupPayload(formData: FormData): PermissionGroupMutationPayload {
   return {
     name: readRequiredString(formData, "name"),
     description: readRequiredString(formData, "description"),
     roleScope: readRequiredString(formData, "roleScope") as AccountRole,
-    permissionKeys: readPermissionKeys(formData)
+    permissionKeys: readPermissionKeys(formData),
+    permissionScopes: readPermissionScopes(formData)
   };
 }
 

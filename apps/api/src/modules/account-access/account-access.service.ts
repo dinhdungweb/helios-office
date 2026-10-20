@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AccountLifecycleStatus, PermissionGroupStatus, Prisma } from "@prisma/client";
+import { parseScopeMap } from "../../common/data-scope/data-scope.types";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { AdminSettingsService } from "../admin-settings/admin-settings.service";
 import { KeycloakAdminService } from "../auth/keycloak-admin.service";
@@ -43,6 +44,8 @@ type PermissionCatalogItem = {
   label: string;
   description: string | null;
   adminOnly: boolean;
+  // Limited by data scope (docs/design/data-scope.md); absent for the built-in fallback catalog.
+  scopable?: boolean;
   sortOrder: number;
 };
 
@@ -503,6 +506,7 @@ export class AccountAccessService {
   async createGroup(dto: CreatePermissionGroupDto, actorId?: string) {
     const baseId = buildPermissionGroupIdBase(dto.name);
     const permissionKeys = await this.assertKnownPermissionKeys(this.resolvePermissionGroupKeys(dto.permissionKeys ?? []));
+    const permissionScopes = await this.resolveGroupScopes(dto.permissionScopes ?? {}, permissionKeys);
 
     for (let attempt = 1; attempt <= 20; attempt += 1) {
       const id = buildPermissionGroupIdCandidate(baseId, attempt);
@@ -515,6 +519,7 @@ export class AccountAccessService {
             description: dto.description,
             roleScope: "user",
             permissions: permissionKeys,
+            permissionScopes,
             status: PermissionGroupStatus.active
           }
         });
@@ -563,6 +568,14 @@ export class AccountAccessService {
     const permissionKeys = rawPermissionKeys !== undefined
       ? await this.assertKnownPermissionKeys(this.resolvePermissionGroupKeys(rawPermissionKeys))
       : undefined;
+    // Scopes sent by the client override stored ones key by key; keys without a sent scope keep
+    // their stored scope, so saving the form never silently narrows a grant it does not show.
+    const permissionScopes = permissionKeys !== undefined || dto.permissionScopes !== undefined
+      ? await this.resolveGroupScopes(
+          { ...parseScopeMap(before.permissionScopes), ...(dto.permissionScopes ?? {}) },
+          permissionKeys ?? before.permissions
+        )
+      : undefined;
 
     const group = await this.prisma.permissionGroup.update({
       where: { id },
@@ -570,7 +583,8 @@ export class AccountAccessService {
         name: dto.name,
         description: dto.description,
         roleScope: "user",
-        permissions: permissionKeys
+        permissions: permissionKeys,
+        permissionScopes
       },
       include: {
         _count: {
@@ -842,8 +856,20 @@ export class AccountAccessService {
       label: permission.label,
       description: permission.description,
       adminOnly: permission.adminOnly,
+      scopable: permission.scopable,
       sortOrder: permission.sortOrder
     };
+  }
+
+  // Keeps only valid scopes for scopable keys the group actually holds.
+  private async resolveGroupScopes(scopes: Record<string, unknown>, permissionKeys: string[]) {
+    const scopable = await this.prisma.permissionDefinition.findMany({
+      where: { key: { in: permissionKeys }, scopable: true },
+      select: { key: true }
+    });
+    const parsed = parseScopeMap(scopes);
+
+    return Object.fromEntries(scopable.flatMap(({ key }) => (parsed[key] ? [[key, parsed[key]]] : [])));
   }
 
   private resolvePermissionGroupKeys(permissionKeys: string[]) {

@@ -214,8 +214,8 @@ modules:
         status: done
       - id: AU-10
         title: Phạm vi dữ liệu trong quyền (scope) và áp vào guard
-        status: partial
-        note: API đã lọc theo phạm vi; còn dropdown chọn phạm vi trong ma trận nhóm quyền (task 6 phase-1)
+        status: done
+        note: Dropdown Quản lý/Xem trong ma trận nhóm quyền chọn 5 mức phạm vi cho quyền có phạm vi; quyền không hiện dropdown giữ phạm vi đang lưu khi lưu form. Phạm vi cho quyền riêng từng user thuộc AU-11
         depends: [CORE-15]
       - id: AU-11
         title: Ghi đè quyền riêng cho từng user

@@ -26,7 +26,7 @@ Chia thành 6 cụm, làm theo thứ tự. Mỗi cụm là một (hoặc vài) c
 | 3 | CORE-15 | `DataScopeService` (cây phòng ban có cache, quản lý trực tiếp đệ quy, rộng nhất thắng) | Unit test theo bảng ở data-scope.md §10 | ✅ 17 test. Bỏ cache: đọc cây mỗi request (rẻ, không bị cũ sau điều chuyển) |
 | 4 | AU-10, HR-33 | Áp vào `GET /employees` (kèm phân trang), `GET/PATCH /employees/:id` (ngoài phạm vi → 404) | E2E: tài khoản `department` chỉ thấy phòng mình | ✅ 5 test e2e. Phân trang `/employees` hoãn tới HR-33 (8 chỗ web dùng dạng mảng) |
 | 5 | AU-12 | `GET /account-access/accounts/:id/effective-permissions`; `GET /auth/me` trả `permissionScopes` | E2E | ✅ 2 unit + 2 e2e; kiểm tra trên API thật với admin/haianh/khanglm |
-| 6 | AU-10 | UI: dropdown phạm vi trong ma trận nhóm quyền | Trình duyệt: đổi phạm vi, lưu, tải lại | |
+| 6 | AU-10 | UI: dropdown phạm vi trong ma trận nhóm quyền | Trình duyệt: đổi phạm vi, lưu, tải lại | ✅ Nối dropdown có sẵn (trước chỉ trang trí) vào phạm vi thật; thử tạo → sửa → giữ phạm vi quyền không hiện → xoá nhóm thử |
 
 ### 1b. Audit log
 
