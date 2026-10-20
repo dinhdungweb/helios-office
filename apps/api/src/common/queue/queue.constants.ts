@@ -9,4 +9,6 @@ export const WORKER_HEARTBEAT_KEY = `${QUEUE_PREFIX}:worker:heartbeat`;
 export const WORKER_HEARTBEAT_INTERVAL_MS = 15_000;
 export const WORKER_HEARTBEAT_TTL_SECONDS = 45;
 
-export const DEFAULT_REDIS_URL = "redis://localhost:6379";
+// Matches docker-compose (host port 6380). An explicit IPv4 address avoids "localhost" resolving to
+// ::1 or 127.0.0.1 depending on which Redis is up.
+export const DEFAULT_REDIS_URL = "redis://127.0.0.1:6380";
