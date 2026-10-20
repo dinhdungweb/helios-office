@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -21,7 +22,10 @@ import { AccountAccessService } from "./account-access.service";
 @ApiBearerAuth()
 @Controller("account-access")
 export class AccountAccessController {
-  constructor(private readonly accountAccessService: AccountAccessService) {}
+  constructor(
+    private readonly accountAccessService: AccountAccessService,
+    private readonly dataScope: DataScopeService
+  ) {}
 
   @Get("summary")
   @ApiOkResponse({ description: "Account role, lifecycle status, and custom permission summary." })
@@ -45,6 +49,13 @@ export class AccountAccessController {
   @ApiOkResponse({ description: "Single user account with resolved group and effective permissions." })
   findOne(@Param("id") id: string) {
     return this.accountAccessService.findOne(id);
+  }
+
+  @Get("accounts/:id/effective-permissions")
+  @ApiOkResponse({ description: "Every permission the account holds with its data scope and source (group/custom)." })
+  async findEffectivePermissions(@Param("id") id: string) {
+    await this.accountAccessService.findOne(id); // 404 for unknown accounts
+    return { accountId: id, grants: await this.dataScope.grantsFor(id) };
   }
 
   @Patch("accounts/:id")

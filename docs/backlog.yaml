@@ -224,7 +224,8 @@ modules:
       - id: AU-12
         title: Xem quyền hiệu lực của user
         api: ["GET /account-access/accounts/:id/effective-permissions"]
-        status: todo
+        status: partial
+        note: API trả quyền + phạm vi + nguồn; /auth/me trả permissionScopes. Chưa hiển thị trên trang chi tiết tài khoản
       - id: AU-13
         title: Đổi mật khẩu
         api: ["POST /auth/change-password"]

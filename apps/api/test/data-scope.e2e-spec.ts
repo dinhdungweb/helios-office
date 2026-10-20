@@ -59,7 +59,10 @@ const prismaStub = {
   $disconnect: async () => undefined,
   userAccount: { findUnique: async ({ where }: { where: { id: string } }) => (accounts[where.id] ? accountRecord(where.id) : null) },
   permissionDefinition: {
-    findMany: async () => [{ key: KEY, scopable: true, defaultScope: "department" }]
+    findMany: async (args?: { where?: { key?: { in?: string[] } } }) =>
+      [{ key: KEY, scopable: true, defaultScope: "department" }].filter(
+        (definition) => !args?.where?.key?.in || args.where.key.in.includes(definition.key)
+      )
   },
   department: { findMany: async () => departments },
   employee: {
@@ -145,6 +148,15 @@ describe("Data scope on /employees (e2e)", () => {
       .set("Authorization", "Bearer token-sales-department")
       .send({ fullName: "Changed" })
       .expect(404);
+  });
+
+  it("exposes the caller's scopes on /auth/me", async () => {
+    const response = await get("/auth/me", "token-sales-department").expect(200);
+    expect(response.body.permissionScopes).toEqual({ [KEY]: "department" });
+  });
+
+  it("does not let a non-admin read another account's effective permissions", async () => {
+    await get("/account-access/accounts/token-company/effective-permissions", "token-sales-department").expect(403);
   });
 
   it("rejects moving an employee into a department outside the scope", async () => {

@@ -64,6 +64,8 @@ const prisma = {
       const hasGroup = account.groupScope !== undefined;
       const hasCustom = account.customScope !== undefined;
       return {
+        adminRole: "user",
+        accountStatus: "active",
         customPermissionsEnabled: hasCustom,
         customPermissions: hasCustom ? [KEY] : null,
         customPermissionScopes: account.customScope ? { [KEY]: account.customScope } : null,
@@ -184,6 +186,20 @@ describe("DataScopeService.resolve (design table §10)", () => {
   it("permissions the account does not hold do not widen the scope", async () => {
     accounts.a = { employeeId: "online-staff", groupScope: "self" };
     expect((await service.resolve(user("a"), [KEY, NON_SCOPABLE_KEY])).level).toBe("self");
+  });
+});
+
+describe("DataScopeService.grantsFor (AU-12)", () => {
+  it("reports scope and sources per held permission", async () => {
+    accounts.a = { employeeId: "online-staff", groupScope: "department", customScope: "branch", extraGroupKeys: [NON_SCOPABLE_KEY] };
+    expect(await service.grantsFor("a")).toEqual([
+      { key: KEY, scopable: true, scope: "branch", sources: ["group", "custom"] },
+      { key: NON_SCOPABLE_KEY, scopable: false, scope: "company", sources: ["group"] }
+    ]);
+  });
+
+  it("returns nothing for an unknown account", async () => {
+    expect(await service.grantsFor("missing")).toEqual([]);
   });
 });
 

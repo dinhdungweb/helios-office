@@ -12,6 +12,13 @@ import {
   widerScope
 } from "./data-scope.types";
 
+export type EffectiveGrant = {
+  key: string;
+  scopable: boolean;
+  scope: ScopeLevel;
+  sources: Array<"group" | "custom" | "system_admin">;
+};
+
 type DepartmentNode = { id: string; parentId: string | null; permissionStructure: string };
 type EmployeeNode = { id: string; managerId: string | null };
 
@@ -62,46 +69,79 @@ export class DataScopeService {
 
   // Widest scope among the requested permissions the account actually holds.
   async resolveLevel(accountId: string, permissionKeys: readonly string[]): Promise<ScopeLevel> {
-    const [account, definitions] = await Promise.all([
-      this.prisma.userAccount.findUnique({
-        where: { id: accountId },
-        select: {
-          customPermissionsEnabled: true,
-          customPermissions: true,
-          customPermissionScopes: true,
-          permissionGroup: { select: { status: true, permissions: true, permissionScopes: true } }
-        }
-      }),
-      this.prisma.permissionDefinition.findMany({
-        where: { key: { in: [...permissionKeys] } },
-        select: { key: true, scopable: true, defaultScope: true }
-      })
-    ]);
-
-    const definitionByKey = new Map(definitions.map((definition) => [definition.key, definition]));
-    const group = account?.permissionGroup && account.permissionGroup.status !== "archived" ? account.permissionGroup : null;
-    const groupScopes = parseScopeMap(group?.permissionScopes);
-    const customKeys = account?.customPermissionsEnabled ? resolveCustomPermissionKeys(account.customPermissions) : [];
-    const customScopes = parseScopeMap(account?.customPermissionScopes);
+    const grants = await this.grantsFor(accountId, permissionKeys);
     let widest: ScopeLevel | null = null;
 
-    for (const key of permissionKeys) {
-      const definition = definitionByKey.get(key);
-      const grants: Array<ScopeLevel | undefined> = [];
-
-      if (group?.permissions.includes(key)) grants.push(groupScopes[key]);
-      if (customKeys.includes(key)) grants.push(customScopes[key]);
-
-      for (const explicit of grants) {
-        const grantLevel: ScopeLevel = !definition?.scopable
-          ? "company"
-          : explicit ?? (isScopeLevel(definition.defaultScope) ? definition.defaultScope : "company");
-        widest = widest ? widerScope(widest, grantLevel) : grantLevel;
-      }
+    for (const grant of grants) {
+      widest = widest ? widerScope(widest, grant.scope) : grant.scope;
     }
 
     // PermissionGuard has already ensured at least one grant; fall back to the narrowest scope.
     return widest ?? "self";
+  }
+
+  // Every permission an account holds with its effective scope and where it comes from (AU-12).
+  // Pass `onlyKeys` to restrict the lookup. Non-scopable permissions report "company".
+  async grantsFor(accountId: string, onlyKeys?: readonly string[]): Promise<EffectiveGrant[]> {
+    const account = await this.prisma.userAccount.findUnique({
+      where: { id: accountId },
+      select: {
+        adminRole: true,
+        accountStatus: true,
+        customPermissionsEnabled: true,
+        customPermissions: true,
+        customPermissionScopes: true,
+        permissionGroup: { select: { status: true, permissions: true, permissionScopes: true } }
+      }
+    });
+
+    if (!account || account.accountStatus !== "active") {
+      return [];
+    }
+
+    const definitions = await this.prisma.permissionDefinition.findMany({
+      where: onlyKeys ? { key: { in: [...onlyKeys] } } : undefined,
+      select: { key: true, scopable: true, defaultScope: true },
+      orderBy: { sortOrder: "asc" }
+    });
+
+    if (account.adminRole === "system_admin") {
+      return definitions.map((definition) => ({
+        key: definition.key,
+        scopable: definition.scopable,
+        scope: "company",
+        sources: ["system_admin"]
+      }));
+    }
+
+    const group = account.permissionGroup && account.permissionGroup.status !== "archived" ? account.permissionGroup : null;
+    const groupKeys = new Set(group?.permissions ?? []);
+    const groupScopes = parseScopeMap(group?.permissionScopes);
+    const customKeys = new Set(account.customPermissionsEnabled ? resolveCustomPermissionKeys(account.customPermissions) : []);
+    const customScopes = parseScopeMap(account.customPermissionScopes);
+    const grants: EffectiveGrant[] = [];
+
+    for (const definition of definitions) {
+      const fallback: ScopeLevel = isScopeLevel(definition.defaultScope) ? definition.defaultScope : "company";
+      const sources: EffectiveGrant["sources"] = [];
+      let scope: ScopeLevel | null = null;
+
+      for (const [source, held, scopes] of [
+        ["group", groupKeys, groupScopes],
+        ["custom", customKeys, customScopes]
+      ] as const) {
+        if (!held.has(definition.key)) continue;
+        const grantScope: ScopeLevel = definition.scopable ? scopes[definition.key] ?? fallback : "company";
+        sources.push(source);
+        scope = scope ? widerScope(scope, grantScope) : grantScope;
+      }
+
+      if (scope) {
+        grants.push({ key: definition.key, scopable: definition.scopable, scope, sources });
+      }
+    }
+
+    return grants;
   }
 
   employeeWhere(scope: ResolvedScope): Prisma.EmployeeWhereInput {
