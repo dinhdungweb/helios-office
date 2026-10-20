@@ -1,0 +1,10 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testRegex": ".*\\.e2e-spec\\.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": { "allowJs": true }, "diagnostics": { "ignoreCodes": ["TS151001"] } }]
+  },
+  "transformIgnorePatterns": ["node_modules/(?!jose/)"],
+  "testEnvironment": "node"
+}

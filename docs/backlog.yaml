@@ -45,12 +45,13 @@ modules:
       - id: CORE-01
         title: Guard toàn cục (APP_GUARD) + decorator @Public cho route mở
         phase: 0
-        status: todo
+        status: done
+        note: Kèm sửa lỗi token hỏng trả 500 → 401 (Keycloak không truy cập được → 503). Test e2e apps/api/test/auth-guards.e2e-spec.ts
       - id: CORE-02
         title: Bổ sung guard cho approvals, payroll-cycles, leave-requests, posts, notifications, announcements
         phase: 0
-        status: todo
-        note: Xem mục "Route API không có guard" trong báo cáo audit
+        status: done
+        note: Quyền theo docs/plans/phase-0.md; test e2e kiểm tra 401/403
       - id: CORE-03
         title: Proxy web chặn /hcns, /apps, /social, /personnel-profile-profile khi chưa đăng nhập
         phase: 0
@@ -78,7 +79,7 @@ modules:
       - id: CORE-09
         title: .gitattributes chuẩn hoá line ending
         phase: 0
-        status: todo
+        status: done
       - id: CORE-10
         title: Chuẩn phân trang/lọc/sắp xếp dùng chung cho mọi list API
         status: todo
@@ -107,6 +108,7 @@ modules:
       - id: CORE-17
         title: WebSocket gateway xác thực JWT
         status: todo
+        note: Từ Phase 0, guard toàn cục từ chối mọi message WebSocket cho tới khi có xác thực lúc handshake
       - id: CORE-18
         title: Import Excel chung (upload → validate → preview → commit)
         api: ["POST /imports", "GET /imports/:id", "POST /imports/:id/commit"]
@@ -674,7 +676,7 @@ modules:
         title: Danh sách đơn nghỉ đọc từ DB
         api: ["GET /leave-requests"]
         status: partial
-        note: Đọc DB nhưng không có guard, UI chưa dùng
+        note: Đọc DB, đã có guard; UI chưa dùng
       - id: LV-02
         title: Tạo đơn (API chung cho mọi loại đơn)
         api: ["POST /requests"]
@@ -841,12 +843,12 @@ modules:
         title: Hộp duyệt của tôi
         api: ["GET /approvals"]
         status: partial
-        note: Đang trả mock-data, không có guard
+        note: Đang trả mock-data
       - id: AP-15
         title: Duyệt / từ chối
         api: ["POST /approvals/:id/decision"]
         status: partial
-        note: Mock, không lưu DB, không có guard
+        note: Mock, không lưu DB
         depends: [AP-13]
       - id: AP-16
         title: Trả lại để bổ sung
@@ -905,12 +907,12 @@ modules:
         title: Danh sách kỳ lương
         api: ["GET /payroll-cycles"]
         status: partial
-        note: Đọc DB nhưng không có guard
+        note: Đọc DB, đã có guard
       - id: PY-02
         title: Quy trình lương mẫu
         api: ["GET /payroll-cycles/workflow"]
         status: partial
-        note: Không có guard
+        note: Dữ liệu mẫu
       - id: PY-03
         title: Tạo / sửa kỳ lương
         api: ["POST /payroll-cycles", "PATCH /payroll-cycles/:id"]
@@ -997,7 +999,7 @@ modules:
         title: Bảng tin
         api: ["GET /posts"]
         status: partial
-        note: Đang trả mock-data, không có guard
+        note: Đang trả mock-data
       - id: WP-02
         title: Tạo / sửa / xoá bài viết
         api: ["POST /posts", "PATCH /posts/:id", "DELETE /posts/:id"]
@@ -1033,7 +1035,7 @@ modules:
         title: Thông báo công ty
         api: ["GET /announcements"]
         status: partial
-        note: Đang trả mock-data, không có guard
+        note: Đang trả mock-data
       - id: WP-11
         title: Tạo / sửa / xoá thông báo công ty
         api: ["POST /announcements", "PATCH /announcements/:id", "DELETE /announcements/:id"]
@@ -1076,7 +1078,7 @@ modules:
         title: Số thông báo chưa đọc
         api: ["GET /notifications/unread"]
         status: partial
-        note: Đang trả mock-data, không có guard
+        note: Đang trả mock-data. Khi nối DB phải lấy theo user đăng nhập, bỏ query userId (hiện ai cũng xem được thông báo của người khác)
       - id: NT-02
         title: Danh sách thông báo
         api: ["GET /notifications"]

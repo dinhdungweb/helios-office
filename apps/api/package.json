@@ -11,7 +11,8 @@
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "ts-node prisma/seed.ts",
-    "keycloak:bootstrap": "ts-node scripts/bootstrap-keycloak.ts"
+    "keycloak:bootstrap": "ts-node scripts/bootstrap-keycloak.ts",
+    "test:e2e": "jest --config test/jest-e2e.json"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",
@@ -43,8 +44,10 @@
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.0.2",
+    "@types/supertest": "^6.0.3",
     "jest": "^30.2.0",
     "prisma": "^7.8.0",
+    "supertest": "^7.3.1",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

@@ -1,8 +1,10 @@
 import { Controller, Get, Query } from "@nestjs/common";
-import { ApiOkResponse, ApiQuery, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOkResponse, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { NotificationsService } from "./notifications.service";
 
+// Any signed-in user; enforced by the global JwtAuthGuard.
 @ApiTags("notifications")
+@ApiBearerAuth()
 @Controller("notifications")
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}

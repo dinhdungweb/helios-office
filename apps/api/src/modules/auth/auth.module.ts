@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { PrismaModule } from "../../common/prisma/prisma.module";
 import { AdminRoleGuard } from "./admin-role.guard";
 import { AuthController } from "./auth.controller";
@@ -10,7 +11,15 @@ import { PermissionGuard } from "./permission.guard";
 @Module({
   imports: [PrismaModule],
   controllers: [AuthController],
-  providers: [AuthService, JwtAuthGuard, AdminRoleGuard, PermissionGuard, KeycloakAdminService],
+  providers: [
+    AuthService,
+    JwtAuthGuard,
+    AdminRoleGuard,
+    PermissionGuard,
+    KeycloakAdminService,
+    // Every route requires a verified session unless it is marked @Public().
+    { provide: APP_GUARD, useExisting: JwtAuthGuard }
+  ],
   exports: [AuthService, JwtAuthGuard, AdminRoleGuard, PermissionGuard, KeycloakAdminService]
 })
 export class AuthModule {}

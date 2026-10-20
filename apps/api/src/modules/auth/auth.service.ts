@@ -1,6 +1,6 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { Injectable, ServiceUnavailableException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
+import { createRemoteJWKSet, errors as joseErrors, jwtVerify, type JWTPayload } from "jose";
 import { accountPermissionCatalog } from "../../common/mock-data";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import {
@@ -23,10 +23,7 @@ export class AuthService {
     const issuers = this.getAcceptedIssuers();
     const audience = this.config.get<string>("JWT_AUDIENCE") || undefined;
 
-    const { payload } = await jwtVerify(token, this.getJwks(), {
-      issuer: issuers,
-      audience
-    });
+    const payload = await this.verifyToken(token, issuers, audience);
 
     const sub = this.asString(payload.sub);
     if (!sub) {
@@ -53,6 +50,25 @@ export class AuthService {
       account,
       claims: payload
     };
+  }
+
+  private async verifyToken(token: string, issuers: string[], audience: string | undefined) {
+    try {
+      const { payload } = await jwtVerify(token, this.getJwks(), {
+        issuer: issuers,
+        audience
+      });
+
+      return payload;
+    } catch (error) {
+      // A bad, expired or foreign token is the caller's problem (401); failing to reach
+      // Keycloak's JWKS endpoint is ours (503). Neither should surface as a 500.
+      if (error instanceof joseErrors.JOSEError && !(error instanceof joseErrors.JWKSTimeout)) {
+        throw new UnauthorizedException("Access token is invalid or expired");
+      }
+
+      throw new ServiceUnavailableException("Authentication provider is unavailable");
+    }
   }
 
   private extractBearerToken(header: string | string[] | undefined) {

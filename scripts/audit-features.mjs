@@ -53,8 +53,17 @@ function normalizeRoute(method, routePath) {
 
 // ---------- Quét controller của API ----------
 
+// True when JwtAuthGuard is registered as APP_GUARD: every route then requires a session
+// unless it carries @Public().
+function hasGlobalAuthGuard() {
+  return walk(apiSrc, (file) => file.endsWith(".module.ts")).some((file) =>
+    /provide:\s*APP_GUARD,\s*use(?:Existing|Class):\s*JwtAuthGuard/.test(fs.readFileSync(file, "utf8"))
+  );
+}
+
 function scanControllers() {
   const routes = [];
+  const globalAuth = hasGlobalAuthGuard();
   const files = walk(apiSrc, (file) => file.endsWith(".controller.ts"));
 
   for (const file of files) {
@@ -67,6 +76,7 @@ function scanControllers() {
     const prefix = header.match(/@Controller\(\s*(?:["'`]([^"'`]*)["'`])?\s*\)/)?.[1] ?? "";
     const classGuarded = /@UseGuards\(/.test(header);
     const classPermission = /@Require(?:Any)?Permissions?\(/.test(header);
+    const classPublic = /@Public\(\)/.test(header);
 
     for (let i = classLine + 1; i < lines.length; i += 1) {
       const match = lines[i].match(new RegExp(`^\\s*@(${HTTP_METHODS.join("|")})\\(\\s*(?:["'\`]([^"'\`]*)["'\`])?\\s*\\)`));
@@ -83,14 +93,20 @@ function scanControllers() {
       const handler = lines[end].match(/^\s{2}(?:async\s+)?(\w+)\s*\(/)?.[1] ?? "?";
 
       const fullPath = [prefix, match[2] ?? ""].filter(Boolean).join("/");
+      const isPublic = classPublic || /@Public\(\)/.test(block);
+      const ownGuard = classGuarded || /@UseGuards\(/.test(block);
+      const permission = classPermission || /@Require(?:Any)?Permissions?\(/.test(block);
       routes.push({
         key: normalizeRoute(match[1], fullPath),
         display: `${match[1].toUpperCase()} /${fullPath}`.replace(/\/+/g, "/").replace(/(.)\/$/, "$1"),
         file: rel(file),
         line: i + 1,
         handler,
-        guarded: classGuarded || /@UseGuards\(/.test(block),
-        permission: classPermission || /@Require(?:Any)?Permissions?\(/.test(block)
+        public: isPublic,
+        // A @Public route is still guarded when it brings its own guard (e.g. AttendanceSyncGuard).
+        guarded: ownGuard || (globalAuth && !isPublic),
+        permission,
+        access: isPublic ? (ownGuard ? "public+guard" : "public") : permission ? "permission" : "login"
       });
     }
   }
@@ -190,10 +206,23 @@ function audit() {
     }
   }
 
+  // Routes reachable with no authentication at all must be declared `public: true` in the backlog.
+  const declaredPublic = new Set(
+    items.filter((item) => item.public).flatMap((item) => item.api.map((api) => {
+      const [method, ...rest] = api.split(" ");
+      return normalizeRoute(method, rest.join(" "));
+    }))
+  );
+  for (const route of routes.filter((route) => route.access === "public" && !declaredPublic.has(route.key))) {
+    warnings.push(`Route ${route.display} là @Public nhưng item trong backlog chưa có "public: true" (${route.file}:${route.line})`);
+  }
+
   const untracked = routes.filter((route) => !tracked.has(route.key));
   const unguarded = routes.filter((route) => !route.guarded);
+  const publicRoutes = routes.filter((route) => route.public);
+  const loginOnly = routes.filter((route) => route.access === "login");
 
-  return { doc, items, routes, untracked, unguarded, mockImports, errors, warnings };
+  return { doc, items, routes, untracked, unguarded, publicRoutes, loginOnly, mockImports, errors, warnings };
 }
 
 // ---------- Báo cáo ----------
@@ -264,7 +293,18 @@ function render(result) {
   out.push(...(result.warnings.length ? result.warnings.map((line) => `- ⚠️ ${line}`) : ["- Không có"]), "");
 
   out.push(`## Route API không có guard (${result.unguarded.length})`, "");
-  out.push(...result.unguarded.map((route) => `- \`${route.display}\` — ${route.file}:${route.line}`), "");
+  out.push(...(result.unguarded.length ? result.unguarded.map((route) => `- \`${route.display}\` — ${route.file}:${route.line}`) : ["- Không có"]), "");
+
+  out.push(`## Route @Public (${result.publicRoutes.length})`, "");
+  out.push(
+    ...(result.publicRoutes.length
+      ? result.publicRoutes.map((route) => `- \`${route.display}\` ${route.access === "public+guard" ? "(có guard riêng)" : "(mở hoàn toàn)"} — ${route.file}:${route.line}`)
+      : ["- Không có"]),
+    ""
+  );
+
+  out.push(`## Route chỉ cần đăng nhập, không yêu cầu quyền (${result.loginOnly.length})`, "");
+  out.push(...(result.loginOnly.length ? result.loginOnly.map((route) => `- \`${route.display}\` — ${route.file}:${route.line}`) : ["- Không có"]), "");
 
   out.push(`## Route có trong code nhưng chưa có trong backlog (${result.untracked.length})`, "");
   out.push(...(result.untracked.length ? result.untracked.map((route) => `- \`${route.display}\` — ${route.file}:${route.line}`) : ["- Không có"]), "");
@@ -274,7 +314,7 @@ function render(result) {
 
   if (flag("routes")) {
     out.push(`## Toàn bộ route API (${result.routes.length})`, "");
-    out.push(...result.routes.map((route) => `- \`${route.display}\` ${route.guarded ? "🔒" : "🔓"} ${route.handler} — ${route.file}:${route.line}`), "");
+    out.push(...result.routes.map((route) => `- \`${route.display}\` ${route.guarded ? "🔒" : "🔓"} ${route.access} · ${route.handler} — ${route.file}:${route.line}`), "");
   }
 
   if (moduleFilter || phaseFilter) {
