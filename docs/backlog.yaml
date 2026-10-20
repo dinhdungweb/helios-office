@@ -1104,12 +1104,14 @@ modules:
         status: partial
         note: Đang trả mock-data. Khi nối DB phải lấy theo user đăng nhập, bỏ query userId (hiện ai cũng xem được thông báo của người khác)
       - id: NT-02
-        title: Danh sách thông báo
-        api: ["GET /notifications"]
+        title: Danh sách thông báo + số chưa đọc của tài khoản đang đăng nhập
+        api: ["GET /notifications", "GET /notifications/unread-count"]
+        phase: 1
         status: todo
       - id: NT-03
         title: Đánh dấu đã đọc / đọc tất cả
         api: ["POST /notifications/:id/read", "POST /notifications/read-all"]
+        phase: 1
         status: todo
       - id: NT-04
         title: Đẩy thông báo realtime qua WebSocket
