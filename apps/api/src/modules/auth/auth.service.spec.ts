@@ -79,6 +79,28 @@ describe("AuthService account resolution (AU-24)", () => {
     expect(user.account).toMatchObject({ id: "acc-1", employeeId: "emp-1", accountStatus: "active" });
   });
 
+  it("refuses tokens issued before a force logout with code session_revoked, and accepts later ones (AU-17)", async () => {
+    const revokedAtSeconds = 1_800_000_000;
+    account = { ...activeAccount, sessionsRevokedAt: new Date(revokedAtSeconds * 1000 + 400) };
+
+    const error = await rejection(serviceWithToken({ sub: "kc-1", iat: revokedAtSeconds - 1 }).verifyAuthorizationHeader("Bearer x"));
+    expect(error.getStatus()).toBe(401);
+    expect(error.getResponse()).toMatchObject({ code: "session_revoked" });
+
+    const user = await serviceWithToken({ sub: "kc-1", iat: revokedAtSeconds }).verifyAuthorizationHeader("Bearer x");
+    expect(user.account).not.toHaveProperty("sessionsRevokedAt");
+  });
+
+  it("refuses tokens of a session signed out on its own, but not the account's other sessions (AU-16)", async () => {
+    account = { ...activeAccount, revokedSessionIds: [{ sid: "sid-gone", at: new Date().toISOString() }] };
+
+    const error = await rejection(serviceWithToken({ sub: "kc-1", sid: "sid-gone" }).verifyAuthorizationHeader("Bearer x"));
+    expect(error.getResponse()).toMatchObject({ code: "session_revoked" });
+
+    const user = await serviceWithToken({ sub: "kc-1", sid: "sid-other" }).verifyAuthorizationHeader("Bearer x");
+    expect(user.account).not.toHaveProperty("revokedSessionIds");
+  });
+
   it("keeps a plain 401 without a code for a missing token", async () => {
     const error = await rejection(new AuthService(config, prisma).verifyAuthorizationHeader(undefined));
 

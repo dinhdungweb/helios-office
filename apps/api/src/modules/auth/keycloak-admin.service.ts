@@ -44,6 +44,15 @@ export type ProvisionKeycloakUserInput = {
 
 export type PasswordCheck = "valid" | "update_required" | "invalid";
 
+// `start` and `lastAccess` are epoch milliseconds.
+export type KeycloakUserSession = {
+  id: string;
+  ipAddress?: string;
+  start?: number;
+  lastAccess?: number;
+  clients?: Record<string, string>;
+};
+
 export type UpdateKeycloakUserInput = {
   displayName?: string;
   email?: string;
@@ -299,6 +308,32 @@ export class KeycloakAdminService {
 
     if (!response.ok) {
       await this.throwKeycloakError("logout user", response);
+    }
+  }
+
+  async listUserSessions(userId: string) {
+    const token = await this.getAdminToken();
+    const response = await fetch(this.adminUrl(`users/${encodeURIComponent(userId)}/sessions`), {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      await this.throwKeycloakError("list user sessions", response);
+    }
+
+    return response.json() as Promise<KeycloakUserSession[]>;
+  }
+
+  async deleteSession(sessionId: string) {
+    const token = await this.getAdminToken();
+    const response = await fetch(this.adminUrl(`sessions/${encodeURIComponent(sessionId)}`), {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    // 404: the session already ended, which is what the caller wanted.
+    if (!response.ok && response.status !== 404) {
+      await this.throwKeycloakError("delete session", response);
     }
   }
 

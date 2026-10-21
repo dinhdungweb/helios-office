@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -18,6 +18,8 @@ import {
 import { AccountAccessService } from "./account-access.service";
 import { ResetAccountPasswordDto } from "./account-password.dto";
 import { AccountPasswordService } from "./account-password.service";
+import { LoginHistoryQueryDto } from "./login-activity.dto";
+import { LoginActivityService } from "./login-activity.service";
 
 @ApiTags("account-access")
 @UseGuards(JwtAuthGuard, PermissionGuard)
@@ -28,7 +30,8 @@ export class AccountAccessController {
   constructor(
     private readonly accountAccessService: AccountAccessService,
     private readonly dataScope: DataScopeService,
-    private readonly passwords: AccountPasswordService
+    private readonly passwords: AccountPasswordService,
+    private readonly loginActivity: LoginActivityService
   ) {}
 
   @Get("summary")
@@ -105,6 +108,19 @@ export class AccountAccessController {
   @ApiOkResponse({ description: "Email a reset link or set a temporary password; optionally end the account's sessions." })
   resetPassword(@Param("id") id: string, @Body() body: ResetAccountPasswordDto, @CurrentUser() user: AuthenticatedUser) {
     return this.passwords.resetAccountPassword(id, body, user);
+  }
+
+  @Post("accounts/:id/force-logout")
+  @HttpCode(200)
+  @ApiOkResponse({ description: "End every session of the account; its existing access tokens stop working at once." })
+  forceLogout(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.loginActivity.forceLogout(id, user);
+  }
+
+  @Get("accounts/:id/login-history")
+  @ApiOkResponse({ description: "Recent sign-in attempts of the account, newest first." })
+  findLoginHistory(@Param("id") id: string, @Query() query: LoginHistoryQueryDto) {
+    return this.loginActivity.accountLoginHistory(id, query.limit);
   }
 
   @Get("groups")

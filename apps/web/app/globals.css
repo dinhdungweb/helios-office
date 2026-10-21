@@ -7681,6 +7681,160 @@
   overflow-x: auto;
 }
 
+/* Sessions (AU-16) and login history (AU-20) */
+.login-activity-table-shell {
+  overflow-x: auto;
+}
+
+.login-activity-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+}
+
+.login-activity-table th,
+.login-activity-table td {
+  height: 44px;
+  padding: 0 var(--space-8);
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: var(--font-size-md);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.login-activity-table thead th {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-strong);
+}
+
+.login-activity-outcome {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+}
+
+.login-activity-outcome.is-success {
+  color: #05603a;
+  background: #ecfdf3;
+}
+
+.login-activity-outcome.is-failed {
+  color: #b42318;
+  background: #fff1f0;
+}
+
+.login-activity-empty {
+  margin: 0;
+  padding: var(--space-8);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.login-activity-action {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-3);
+}
+
+.login-activity-action button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.login-activity-action small {
+  color: var(--color-danger);
+}
+
+.security-page {
+  display: grid;
+  gap: var(--space-9, 24px);
+  width: min(994px, 100%);
+  margin: 0 auto;
+  padding: var(--space-9, 24px) var(--space-8);
+  box-sizing: border-box;
+}
+
+.security-card {
+  overflow: hidden;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.security-card > header {
+  padding: var(--space-8);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.security-card > header h2 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-lg, 17px);
+}
+
+.security-card > header p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.security-session-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.security-session-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-7);
+  padding: var(--space-7) var(--space-8);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.security-session-list li:last-child {
+  border-bottom: 0;
+}
+
+.security-session-list li > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  min-width: 0;
+}
+
+.security-session-list small {
+  flex-basis: 100%;
+  color: var(--color-text-secondary);
+}
+
+.security-session-badge {
+  padding: 2px 8px;
+  color: var(--color-primary-strong);
+  background: var(--color-primary-soft);
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+}
+
+@media (max-width: 640px) {
+  .security-page {
+    padding: var(--space-7) 16px;
+  }
+
+  .security-session-list li {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .login-activity-action {
+    justify-items: stretch;
+  }
+}
+
 .admin-account-device-table,
 .admin-account-token-table,
 .admin-account-permission-table {

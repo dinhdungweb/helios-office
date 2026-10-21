@@ -1,7 +1,10 @@
 import { Fragment, type ReactNode } from "react";
 import { AccountDetailActionMenu } from "@/components/admin/account-detail-action-menu";
 import { AccountGroupChangeDialog } from "@/components/admin/account-group-change-dialog";
+import { AccountForceLogoutButton } from "@/components/admin/account-force-logout-button";
 import { AccountPasswordResetActions } from "@/components/admin/account-password-reset-dialog";
+import { LoginHistoryTable } from "@/components/auth/login-history-table";
+import type { LoginHistoryEntry } from "@/lib/login-activity-api";
 import { FormCheckbox } from "@/components/ui/form-controls";
 import {
   Apple,
@@ -466,11 +469,13 @@ function ActivityTimeline({ activities, account }: { activities: ActivityItem[];
 export function AdminUserDetailBoard({
   account,
   data,
-  deviceRequests
+  deviceRequests,
+  loginHistory
 }: {
   account: ManagedUserAccount;
   data: AccountAccessData;
   deviceRequests: DeviceAuthRequest[];
+  loginHistory: LoginHistoryEntry[] | null;
 }) {
   const groupName = groupNameFor(account, data.groups);
   const phone = stablePhone(account);
@@ -504,6 +509,7 @@ export function AdminUserDetailBoard({
       <section className="admin-account-detail-actionbar" aria-label="Tác vụ tài khoản">
         <AccountGroupChangeDialog account={account} groups={data.groups} permissions={data.permissions} />
         <AccountPasswordResetActions account={account} />
+        <AccountForceLogoutButton accountId={account.id} accountName={account.name} disabled={account.status === "closed"} />
         <button className="admin-account-action-button" type="button">
           <ShieldCheck size={15} weight="duotone" aria-hidden="true" />
           Tạo chữ ký số
@@ -560,6 +566,14 @@ export function AdminUserDetailBoard({
                 </tbody>
               </table>
             </div>
+          </DetailPanel>
+
+          <DetailPanel title="Lịch sử đăng nhập">
+            {loginHistory === null ? (
+              <p className="login-activity-empty">Không tải được lịch sử đăng nhập.</p>
+            ) : (
+              <LoginHistoryTable entries={loginHistory} label="Lịch sử đăng nhập có thể cuộn ngang" />
+            )}
           </DetailPanel>
 
           <DetailPanel title="Danh sách token nhận thông báo">

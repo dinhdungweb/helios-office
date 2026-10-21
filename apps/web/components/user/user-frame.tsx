@@ -12,7 +12,7 @@ import { AppLauncher } from "@/components/dashboard/app-launcher";
 import { ProfileMenu } from "@/components/user/profile-menu";
 import { UserQuickCreateMenu } from "@/components/user/user-quick-create-menu";
 import { UserPersonalNavigation } from "@/components/user/user-personal-navigation";
-import { getCurrentSessionUser, type CurrentSessionUser } from "@/lib/auth-user";
+import { getCurrentSessionUserOrSignOut, type CurrentSessionUser } from "@/lib/auth-user";
 import { currentUser } from "@/lib/mock-data";
 import type { UserProfile } from "@/lib/mock-data";
 import { getOrgChartData, type OrgChartData } from "@/lib/org-chart-api";
@@ -194,7 +194,7 @@ export async function UserFrame({ activeModule, children, showSearch, title }: U
   const isAdminFrame = activeModule === "admin";
   const isHcnsFrame = activeModule === "hcns";
   const sidebarVariant = isAdminFrame ? "admin" : isHcnsFrame ? "hcns" : "user";
-  const sessionUser = await getCurrentSessionUser();
+  const sessionUser = await getCurrentSessionUserOrSignOut();
   const quickCreateOrgChartData = isAdminFrame ? await getOrgChartData() : undefined;
   const viewer = resolveViewer(sessionUser);
   const quickCreateMenuStorageKey = sidebarVariant === "user"

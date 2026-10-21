@@ -12,6 +12,7 @@ import {
   type KeycloakTokenSet
 } from "@/lib/auth-session";
 import { checkHeliosAccount, endKeycloakSession, isRefusedAccount } from "@/lib/auth-account-check";
+import { recordLoginEvent, usernameFromToken } from "@/lib/login-events";
 import { buildRequestUrl, getRequestOrigin } from "@/lib/request-origin";
 
 export const runtime = "nodejs";
@@ -86,13 +87,16 @@ export async function GET(request: NextRequest) {
     }
 
     const account = await checkHeliosAccount(tokenSet.access_token);
+    const username = usernameFromToken(tokenSet.access_token);
     if (isRefusedAccount(account)) {
+      await recordLoginEvent(request, { username, outcome: account, accessToken: tokenSet.access_token });
       await endKeycloakSession(config, tokenSet.refresh_token);
       const response = loginErrorResponse(request, account);
       clearTransientAuthCookies(response);
       return response;
     }
 
+    await recordLoginEvent(request, { username, outcome: "success", accessToken: tokenSet.access_token });
     const response = NextResponse.redirect(new URL(redirectTo, origin), 303);
     setSessionCookies(response, tokenSet);
     clearTransientAuthCookies(response);

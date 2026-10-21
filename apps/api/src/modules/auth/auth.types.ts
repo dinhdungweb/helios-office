@@ -30,5 +30,6 @@ export type RequestWithUser = {
 // Machine-readable reasons in 401 bodies; the web maps them to login page messages.
 export const AUTH_ERROR_CODES = {
   accountNotLinked: "account_not_linked",
-  accountInactive: "account_inactive"
+  accountInactive: "account_inactive",
+  sessionRevoked: "session_revoked"
 } as const;

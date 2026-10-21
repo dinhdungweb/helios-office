@@ -2,6 +2,9 @@ import { BadRequestException, ConflictException, ForbiddenException } from "@nes
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { AccountPasswordService, generateTemporaryPassword } from "./account-password.service";
 
+// jose is ESM-only; AuthService (which imports it) is replaced by a stub here.
+jest.mock("jose", () => ({}));
+
 const ACTIVE_USER = {
   id: "acc-1",
   email: "linh@helios.test",
@@ -34,9 +37,17 @@ function setup(overrides: { account?: Record<string, unknown> | null; check?: st
   const config = { get: jest.fn().mockReturnValue(undefined) };
   const adminSettings = { isSmtpEmailEnabled: jest.fn().mockResolvedValue(overrides.smtp ?? true) };
   const audit = { contextFields: () => ({}) };
-  const service = new AccountPasswordService(prisma as never, keycloak as never, config as never, adminSettings as never, audit as never);
+  const loginActivity = { revokeAllSessions: jest.fn().mockResolvedValue(new Date()) };
+  const service = new AccountPasswordService(
+    prisma as never,
+    keycloak as never,
+    config as never,
+    adminSettings as never,
+    audit as never,
+    loginActivity as never
+  );
 
-  return { service, prisma, keycloak };
+  return { service, prisma, keycloak, loginActivity };
 }
 
 function userWith(adminRole: "user" | "system_admin", id = "acc-1"): AuthenticatedUser {
@@ -150,13 +161,13 @@ describe("AccountPasswordService", () => {
 
   describe("resetAccountPassword (AU-15)", () => {
     it("sets a generated temporary password, signs the account out and returns the password once", async () => {
-      const { service, keycloak, prisma } = setup();
+      const { service, keycloak, prisma, loginActivity } = setup();
 
       const result = await service.resetAccountPassword("acc-1", { method: "temporary_password" }, userWith("user", "acc-admin"));
 
       expect(result.temporaryPassword).toEqual(expect.any(String));
       expect(keycloak.resetPassword).toHaveBeenCalledWith("kc-1", result.temporaryPassword, true);
-      expect(keycloak.logoutUser).toHaveBeenCalledWith("kc-1");
+      expect(loginActivity.revokeAllSessions).toHaveBeenCalledWith(expect.objectContaining({ id: "acc-1", keycloakUserId: "kc-1" }));
       expect(prisma.userAccount.update).toHaveBeenCalledWith({
         where: { id: "acc-1" },
         data: { passwordResetRequired: true, temporaryPasswordIssuedAt: expect.any(Date) }
@@ -166,7 +177,7 @@ describe("AccountPasswordService", () => {
     });
 
     it("does not echo a password the admin typed, and can keep sessions", async () => {
-      const { service, keycloak } = setup();
+      const { service, keycloak, loginActivity } = setup();
 
       const result = await service.resetAccountPassword(
         "acc-1",
@@ -176,7 +187,7 @@ describe("AccountPasswordService", () => {
 
       expect(result).not.toHaveProperty("temporaryPassword");
       expect(keycloak.resetPassword).toHaveBeenCalledWith("kc-1", "Typed@123", true);
-      expect(keycloak.logoutUser).not.toHaveBeenCalled();
+      expect(loginActivity.revokeAllSessions).not.toHaveBeenCalled();
     });
 
     it("emails a reset link when SMTP is on, and refuses when it is off", async () => {

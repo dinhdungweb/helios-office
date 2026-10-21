@@ -124,6 +124,13 @@ model UserAccount {
   inviteSentAt             DateTime?
   activatedAt              DateTime?
   closedAt                 DateTime?
+  // Access tokens issued before this instant are refused (AU-17 force logout), so signing an
+  // account out takes effect at once instead of when its short-lived tokens expire.
+  sessionsRevokedAt        DateTime?
+  // Keycloak session ids (sid) signed out one by one (AU-16): [{ "sid": string, "at": ISO date }].
+  // Kept only as long as a token of that session could still be valid.
+  revokedSessionIds        Json?
+  loginEvents              LoginEvent[]
   preferences              UserPreference[]
   auditLogs                AuditLog[]
   notifications            Notification[]
@@ -133,6 +140,33 @@ model UserAccount {
   exportJobs               ExportJob[]
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
+}
+
+enum LoginOutcome {
+  success
+  invalid_credentials
+  password_update_required
+  account_not_linked
+  account_inactive
+}
+
+// Sign-in attempts through the Helios login page (AU-20), reported by the web server with the
+// browser's IP and user agent; Keycloak only sees the web server.
+model LoginEvent {
+  id             String        @id @default(uuid())
+  accountId      String?
+  account        UserAccount?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  keycloakUserId String?
+  username       String
+  outcome        LoginOutcome
+  // Keycloak session id (sid) of a successful sign-in; links GET /auth/sessions rows to their device.
+  sessionId      String?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime      @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([sessionId])
 }
 
 enum ApprovalWorkflowStatus {

@@ -20,6 +20,7 @@ import type {
   ForgotPasswordDto,
   ResetAccountPasswordDto
 } from "./account-password.dto";
+import { LoginActivityService } from "./login-activity.service";
 
 const UPDATE_PASSWORD = "UPDATE_PASSWORD";
 // One forgot-password email per account in this window, however often the form is submitted.
@@ -75,7 +76,8 @@ export class AccountPasswordService {
     private readonly keycloakAdmin: KeycloakAdminService,
     private readonly config: ConfigService,
     private readonly adminSettings: AdminSettingsService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly loginActivity: LoginActivityService
   ) {}
 
   async changeOwnPassword(user: AuthenticatedUser, dto: ChangePasswordDto) {
@@ -212,7 +214,7 @@ export class AccountPasswordService {
     }
 
     if (signOutSessions) {
-      await this.keycloakAdmin.logoutUser(account.keycloakUserId);
+      await this.loginActivity.revokeAllSessions(account);
     }
 
     await this.writeAudit("account.password.reset", account, {

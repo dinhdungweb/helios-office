@@ -12,7 +12,8 @@ import {
   Key,
   Language,
   Logout,
-  MagicWand
+  MagicWand,
+  ShieldCheck
 } from "@/lib/icons";
 import type { UserProfile } from "@/lib/mock-data";
 import { ChangePasswordDialog } from "@/components/user/change-password-dialog";
@@ -299,6 +300,10 @@ export function ProfileMenu({ canOpenAdminSettings, user }: ProfileMenuProps) {
               <Key size={18} weight="duotone" aria-hidden="true" />
               <span>Đổi mật khẩu</span>
             </button>
+            <a href="/user/security" role="menuitem">
+              <ShieldCheck size={18} weight="duotone" aria-hidden="true" />
+              <span>Phiên & lịch sử đăng nhập</span>
+            </a>
             <a className="is-danger" href="/api/auth/logout" role="menuitem">
               <Logout size={18} weight="duotone" aria-hidden="true" />
               <span>Đăng xuất</span>

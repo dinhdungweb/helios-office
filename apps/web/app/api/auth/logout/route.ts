@@ -32,6 +32,14 @@ function localLogoutResponse(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  // The Keycloak session is already gone (signed out from another device or by an admin): only
+  // the cookies are left to clear, and the login page says why.
+  if (request.nextUrl.searchParams.get("reason") === "session_revoked") {
+    const response = NextResponse.redirect(buildRequestUrl(request, "/login?error=session_revoked"), 303);
+    clearSessionCookies(response);
+    return response;
+  }
+
   try {
     return buildLogoutResponse(request);
   } catch {

@@ -1,0 +1,16 @@
+import { SecurityBoard } from "@/components/user/security-board";
+import { UserFrame } from "@/components/user/user-frame";
+import { getMyLoginHistory, getMySessions } from "@/lib/login-activity-api";
+
+export default async function UserSecurityPage() {
+  const [sessions, history] = await Promise.all([
+    getMySessions().catch(() => null),
+    getMyLoginHistory().catch(() => null)
+  ]);
+
+  return (
+    <UserFrame activeModule="profile" title="Bảo mật đăng nhập">
+      <SecurityBoard history={history} sessions={sessions} />
+    </UserFrame>
+  );
+}

@@ -8,6 +8,7 @@ import {
   resolveEffectivePermissionKeys
 } from "../account-access/account-access.utils";
 import { AUTH_ERROR_CODES, type AuthenticatedUser } from "./auth.types";
+import { isSessionRevoked } from "./session-revocation";
 
 @Injectable()
 export class AuthService {
@@ -54,14 +55,34 @@ export class AuthService {
       });
     }
 
+    // Force logout (AU-17) ends the Keycloak sessions, but access tokens already handed out stay
+    // valid until they expire; refuse those here. iat has second precision, so compare in seconds.
+    // A single session signed out from "Phiên đăng nhập" (AU-16) is refused the same way.
+    const { sessionsRevokedAt, revokedSessionIds, ...accountView } = account;
+    const revokedBefore = sessionsRevokedAt && typeof payload.iat === "number" && payload.iat < Math.floor(sessionsRevokedAt.getTime() / 1000);
+    if (revokedBefore || isSessionRevoked(revokedSessionIds, payload.sid)) {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        error: "Unauthorized",
+        code: AUTH_ERROR_CODES.sessionRevoked,
+        message: "This session was signed out"
+      });
+    }
+
     return {
       sub,
       email,
       name,
       roles: this.resolveRoles(payload),
-      account,
+      account: accountView,
       claims: payload
     };
+  }
+
+  // Signature, issuer and expiry only; no account checks. For the web server reporting which
+  // Keycloak user and session a sign-in produced (AU-20), including refused ones.
+  async verifyAccessToken(token: string) {
+    return this.verifyToken(token, this.getAcceptedIssuers(), this.config.get<string>("JWT_AUDIENCE") || undefined);
   }
 
   private async verifyToken(token: string, issuers: string[], audience: string | undefined) {
@@ -148,6 +169,8 @@ export class AuthService {
           displayName: true,
           adminRole: true,
           accountStatus: true,
+          sessionsRevokedAt: true,
+          revokedSessionIds: true,
           customPermissions: true,
           customPermissionsEnabled: true,
           customRevokedPermissions: true,
@@ -192,6 +215,8 @@ export class AuthService {
       employeeId: account.employee?.id ?? null,
       adminRole: account.adminRole,
       accountStatus: account.accountStatus,
+      sessionsRevokedAt: account.sessionsRevokedAt,
+      revokedSessionIds: account.revokedSessionIds,
       effectivePermissionKeys
     };
   }

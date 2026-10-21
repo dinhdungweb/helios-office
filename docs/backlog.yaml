@@ -257,11 +257,15 @@ modules:
       - id: AU-16
         title: Danh sách phiên đăng nhập và thu hồi phiên
         api: ["GET /auth/sessions", "DELETE /auth/sessions/:id"]
-        status: todo
+        ui: /user/security (menu hồ sơ › Phiên & lịch sử đăng nhập)
+        status: done
+        note: Phiên lấy từ Keycloak, ghép IP/trình duyệt từ lịch sử đăng nhập theo sid (Keycloak chỉ thấy IP của server web). Không thu hồi được phiên đang dùng (dùng Đăng xuất); id phiên của người khác trả 404. Thu hồi có hiệu lực ngay: sid lưu ở UserAccount.revokedSessionIds (giữ 1 giờ), API trả 401 session_revoked và khung trang web đưa thiết bị đó về /login với thông báo. Thử trình duyệt 2026-10-21 trên khanglm (2 thiết bị)
       - id: AU-17
         title: Buộc đăng xuất user
         api: ["POST /account-access/accounts/:id/force-logout"]
-        status: todo
+        ui: /admin/settings/accounts/:id (Buộc đăng xuất)
+        status: done
+        note: Đóng mọi phiên Keycloak và đặt UserAccount.sessionsRevokedAt; API từ chối access token cấp trước thời điểm đó (401 code session_revoked) nên có hiệu lực ngay, không chờ token hết hạn. Đặt lại mật khẩu kèm đăng xuất (AU-15) dùng chung cơ chế. Chỉ system admin buộc đăng xuất được system admin
       - id: AU-18
         title: Chính sách 2FA (bắt buộc theo nhóm/vai trò)
         api: ["GET /admin-settings/two-factor", "PATCH /admin-settings/two-factor"]
@@ -276,8 +280,10 @@ modules:
         note: Có trang UI, chưa có API
       - id: AU-20
         title: Lịch sử đăng nhập
-        api: ["GET /auth/login-history", "GET /account-access/accounts/:id/login-history"]
-        status: todo
+        api: ["GET /auth/login-history", "GET /account-access/accounts/:id/login-history", "POST /auth/login-events"]
+        ui: /user/security; /admin/settings/accounts/:id (panel Lịch sử đăng nhập)
+        status: done
+        note: Bảng LoginEvent do Helios tự ghi (không dùng Keycloak events vì Keycloak chỉ thấy IP của server web). Route đăng nhập/callback của web gửi mỗi lần thử (thành công, sai mật khẩu, mật khẩu tạm, chưa gắn tài khoản, bị khoá) kèm IP + user agent của trình duyệt tới POST /auth/login-events, xác thực bằng WEB_SERVICE_TOKEN (cấu hình chung web + API); thiếu token thì bỏ qua, không chặn đăng nhập
       - id: AU-21
         title: Uỷ quyền duyệt thay khi vắng mặt
         api: ["GET /delegations", "POST /delegations", "PATCH /delegations/:id", "DELETE /delegations/:id"]

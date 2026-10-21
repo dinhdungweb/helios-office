@@ -30,6 +30,8 @@ function getLoginErrorMessage(value: string | string[] | undefined) {
       return "Không thể đăng nhập lúc này. Vui lòng thử lại sau hoặc liên hệ quản trị viên.";
     case "session_expired":
       return "Phiên đăng nhập đã hết hạn. Đăng nhập lại để tiếp tục.";
+    case "session_revoked":
+      return "Phiên đăng nhập này đã bị đăng xuất (từ thiết bị khác hoặc bởi quản trị viên). Đăng nhập lại để tiếp tục.";
     case "account_not_linked":
       return "Tài khoản này chưa được cấp quyền vào Helios Office. Liên hệ quản trị viên để được tạo hoặc liên kết tài khoản.";
     case "account_inactive":
