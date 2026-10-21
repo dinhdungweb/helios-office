@@ -348,6 +348,24 @@ export class KeycloakAdminService {
     return user?.id ?? null;
   }
 
+  // SSO idle timeout: a session not refreshed for this long ends, so its refresh token stops
+  // working. Partial realm updates leave every other realm setting as it is.
+  async updateRealmSessionIdle(idleSeconds: number) {
+    const token = await this.getAdminToken();
+    const response = await fetch(this.adminUrl(""), {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ ssoSessionIdleTimeout: idleSeconds })
+    });
+
+    if (!response.ok) {
+      await this.throwKeycloakError("update realm session idle timeout", response);
+    }
+  }
+
   async updateRealmSmtpSettings(smtpServer: Record<string, string>) {
     const token = await this.getAdminToken();
     const currentResponse = await fetch(this.adminUrl(""), {

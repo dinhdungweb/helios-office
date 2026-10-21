@@ -6,6 +6,8 @@ import { AuthService } from "./auth.service";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { KeycloakAdminService } from "./keycloak-admin.service";
 import { PermissionGuard } from "./permission.guard";
+import { SecurityPolicyService } from "./security-policy.service";
+import { TwoFactorGateService } from "./two-factor-gate.service";
 
 @Module({
   imports: [PrismaModule],
@@ -15,8 +17,10 @@ import { PermissionGuard } from "./permission.guard";
     JwtAuthGuard,
     AdminRoleGuard,
     PermissionGuard,
-    KeycloakAdminService
+    KeycloakAdminService,
+    SecurityPolicyService,
+    TwoFactorGateService
   ],
-  exports: [AuthService, JwtAuthGuard, AdminRoleGuard, PermissionGuard, KeycloakAdminService]
+  exports: [AuthService, JwtAuthGuard, AdminRoleGuard, PermissionGuard, KeycloakAdminService, SecurityPolicyService, TwoFactorGateService]
 })
 export class AuthModule {}

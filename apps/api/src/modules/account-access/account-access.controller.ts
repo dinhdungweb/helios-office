@@ -20,6 +20,7 @@ import { ResetAccountPasswordDto } from "./account-password.dto";
 import { AccountPasswordService } from "./account-password.service";
 import { LoginHistoryQueryDto } from "./login-activity.dto";
 import { LoginActivityService } from "./login-activity.service";
+import { TwoFactorService } from "../two-factor/two-factor.service";
 
 @ApiTags("account-access")
 @UseGuards(JwtAuthGuard, PermissionGuard)
@@ -31,7 +32,8 @@ export class AccountAccessController {
     private readonly accountAccessService: AccountAccessService,
     private readonly dataScope: DataScopeService,
     private readonly passwords: AccountPasswordService,
-    private readonly loginActivity: LoginActivityService
+    private readonly loginActivity: LoginActivityService,
+    private readonly twoFactor: TwoFactorService
   ) {}
 
   @Get("summary")
@@ -115,6 +117,13 @@ export class AccountAccessController {
   @ApiOkResponse({ description: "End every session of the account; its existing access tokens stop working at once." })
   forceLogout(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.loginActivity.forceLogout(id, user);
+  }
+
+  @Post("accounts/:id/two-factor/reset")
+  @HttpCode(200)
+  @ApiOkResponse({ description: "Remove the account's authenticator app and verified sessions (lost phone)." })
+  resetTwoFactor(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.twoFactor.resetForAccount(id, user);
   }
 
   @Get("accounts/:id/login-history")

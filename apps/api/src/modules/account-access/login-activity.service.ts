@@ -11,7 +11,8 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 import { AuthService } from "../auth/auth.service";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { KeycloakAdminService } from "../auth/keycloak-admin.service";
-import { addRevokedSession } from "../auth/session-revocation";
+import { SecurityPolicyService } from "../auth/security-policy.service";
+import { addRevokedSession, type RevokedSession } from "../auth/session-revocation";
 import type { RecordLoginEventDto } from "./login-activity.dto";
 
 const DEFAULT_HISTORY_LIMIT = 50;
@@ -37,7 +38,8 @@ export class LoginActivityService {
     private readonly prisma: PrismaService,
     private readonly auth: AuthService,
     private readonly keycloakAdmin: KeycloakAdminService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly policies: SecurityPolicyService
   ) {}
 
   async recordLoginEvent(dto: RecordLoginEventDto) {
@@ -73,7 +75,37 @@ export class LoginActivityService {
       }
     });
 
+    if (dto.outcome === LoginOutcome.success && account && keycloakUserId && sessionId) {
+      await this.enforceSessionLimit(account.id, keycloakUserId, sessionId);
+    }
+
     return { ok: true };
+  }
+
+  // AU-19: past the limit, the sessions used least recently are signed out (the new one stays).
+  private async enforceSessionLimit(accountId: string, keycloakUserId: string, currentSessionId: string) {
+    const { maxConcurrentSessions } = await this.policies.getSessionPolicy();
+    if (!maxConcurrentSessions) return;
+
+    const sessions = await this.keycloakAdmin.listUserSessions(keycloakUserId);
+    const surplus = sessions
+      .filter((session) => session.id !== currentSessionId)
+      .sort((a, b) => (b.lastAccess ?? b.start ?? 0) - (a.lastAccess ?? a.start ?? 0))
+      .slice(maxConcurrentSessions - 1);
+
+    if (surplus.length === 0) return;
+
+    let revoked: unknown = (await this.prisma.userAccount.findUnique({ where: { id: accountId }, select: { revokedSessionIds: true } }))?.revokedSessionIds;
+    for (const session of surplus) {
+      await this.keycloakAdmin.deleteSession(session.id);
+      revoked = addRevokedSession(revoked, session.id);
+    }
+
+    await this.prisma.userAccount.update({ where: { id: accountId }, data: { revokedSessionIds: revoked as RevokedSession[] } });
+    await this.writeAudit("auth.session.limit_enforced", accountId, {
+      maxConcurrentSessions,
+      signedOut: surplus.map((session) => session.id)
+    });
   }
 
   async loginHistory(accountId: string, limit = DEFAULT_HISTORY_LIMIT) {

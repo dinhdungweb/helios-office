@@ -259,7 +259,7 @@ modules:
         api: ["GET /auth/sessions", "DELETE /auth/sessions/:id"]
         ui: /user/security (menu hồ sơ › Phiên & lịch sử đăng nhập)
         status: done
-        note: Phiên lấy từ Keycloak, ghép IP/trình duyệt từ lịch sử đăng nhập theo sid (Keycloak chỉ thấy IP của server web). Không thu hồi được phiên đang dùng (dùng Đăng xuất); id phiên của người khác trả 404. Thu hồi có hiệu lực ngay: sid lưu ở UserAccount.revokedSessionIds (giữ 1 giờ), API trả 401 session_revoked và khung trang web đưa thiết bị đó về /login với thông báo. Thử trình duyệt 2026-10-21 trên khanglm (2 thiết bị)
+        note: Phiên lấy từ Keycloak, ghép IP/trình duyệt từ lịch sử đăng nhập theo sid (Keycloak chỉ thấy IP của server web). Không thu hồi được phiên đang dùng (dùng Đăng xuất); id phiên của người khác trả 404. Thu hồi có hiệu lực ngay (sid lưu ở UserAccount.revokedSessionIds (giữ 1 giờ), API trả 401 session_revoked và khung trang web đưa thiết bị đó về /login với thông báo). Thử trình duyệt 2026-10-21 trên khanglm (2 thiết bị)
       - id: AU-17
         title: Buộc đăng xuất user
         api: ["POST /account-access/accounts/:id/force-logout"]
@@ -268,16 +268,25 @@ modules:
         note: Đóng mọi phiên Keycloak và đặt UserAccount.sessionsRevokedAt; API từ chối access token cấp trước thời điểm đó (401 code session_revoked) nên có hiệu lực ngay, không chờ token hết hạn. Đặt lại mật khẩu kèm đăng xuất (AU-15) dùng chung cơ chế. Chỉ system admin buộc đăng xuất được system admin
       - id: AU-18
         title: Chính sách 2FA (bắt buộc theo nhóm/vai trò)
-        api: ["GET /admin-settings/two-factor", "PATCH /admin-settings/two-factor"]
-        ui: /admin/settings/two-factor
-        status: partial
-        note: Có trang UI, chưa có API
+        api:
+          - GET /admin-settings/two-factor
+          - PATCH /admin-settings/two-factor
+          - GET /auth/two-factor
+          - POST /auth/two-factor/totp/setup
+          - POST /auth/two-factor/totp/confirm
+          - DELETE /auth/two-factor/totp
+          - POST /auth/two-factor/email/send
+          - POST /auth/two-factor/verify
+          - POST /account-access/accounts/:id/two-factor/reset
+        ui: /admin/settings/two-factor; /login/two-factor; /user/security (Bảo mật 2 lớp); chi tiết tài khoản (Đặt lại 2FA)
+        status: done
+        note: App xác thực (TOTP RFC 6238, khoá mã hoá bằng SettingsSecretService) là chính, mã qua email (SMTP) dự phòng (chốt 2026-10-21). Khi bắt buộc, API từ chối phiên (sid) chưa qua 2FA với 401 two_factor_required, web chuyển sang /login/two-factor (người chưa có app được hướng dẫn thiết lập ngay). Chống dùng lại mã, khoá 15 phút sau 10 lần sai. Áp dụng cho mọi tài khoản đăng nhập bằng mật khẩu, chưa tách theo nhóm/vai trò. "Xem bảng lương công ty" hỏi lại mã sau verificationMinutes (403 two_factor_step_up_required) — API payroll-cycles đã áp, giao diện lương chưa nối API thật nên phần hỏi lại trên UI làm khi nối module lương
       - id: AU-19
         title: Chính sách phiên (timeout, số phiên đồng thời)
         api: ["GET /admin-settings/session", "PATCH /admin-settings/session"]
         ui: /admin/settings/session
-        status: partial
-        note: Có trang UI, chưa có API
+        status: done
+        note: Cài đặt chung (AdminSetting security.session), trước đây trang lưu vào tuỳ chọn cá nhân của admin nên không có tác dụng. Tự đăng xuất khi không hoạt động — khung trang hiện cảnh báo đếm ngược (đồng bộ giữa các tab), đồng thời đặt ssoSessionIdleTimeout của realm Keycloak (tắt = 30 phút mặc định). Giới hạn số phiên cùng lúc áp khi đăng nhập qua web (phiên ít dùng nhất bị đăng xuất, token bị chặn ngay)
       - id: AU-20
         title: Lịch sử đăng nhập
         api: ["GET /auth/login-history", "GET /account-access/accounts/:id/login-history", "POST /auth/login-events"]

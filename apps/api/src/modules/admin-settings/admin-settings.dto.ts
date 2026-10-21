@@ -198,3 +198,60 @@ export class TestSmtpSettingsDto {
   @IsEmail()
   recipient?: string;
 }
+
+// AU-18. Fields left out keep their stored value.
+export class UpdateTwoFactorPolicyDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  enforced?: boolean;
+
+  @ApiPropertyOptional({ enum: [10, 20, 30, 60] })
+  @IsOptional()
+  @IsIn([10, 20, 30, 60])
+  verificationMinutes?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  payrollRequired?: boolean;
+
+  @ApiPropertyOptional({ enum: [4, 6, 8] })
+  @IsOptional()
+  @IsIn([4, 6, 8])
+  otpDigits?: number;
+
+  @ApiPropertyOptional({ enum: [30, 45, 60] })
+  @IsOptional()
+  @IsIn([30, 45, 60])
+  otpPeriodSeconds?: number;
+}
+
+// AU-19. warningSeconds must leave at least 60 s before the idle limit (checked in the service).
+export class UpdateSessionPolicyDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  autoLogoutEnabled?: boolean;
+
+  @ApiPropertyOptional({ minimum: 10, maximum: 1440 })
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(1440)
+  idleMinutes?: number;
+
+  @ApiPropertyOptional({ minimum: 60 })
+  @IsOptional()
+  @IsInt()
+  @Min(60)
+  @Max(86_340)
+  warningSeconds?: number;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 20, description: "0 = no limit" })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(20)
+  maxConcurrentSessions?: number;
+}

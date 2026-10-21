@@ -30,6 +30,8 @@ function getLoginErrorMessage(value: string | string[] | undefined) {
       return "Không thể đăng nhập lúc này. Vui lòng thử lại sau hoặc liên hệ quản trị viên.";
     case "session_expired":
       return "Phiên đăng nhập đã hết hạn. Đăng nhập lại để tiếp tục.";
+    case "idle":
+      return "Bạn đã được đăng xuất vì không thao tác trong một thời gian. Đăng nhập lại để tiếp tục.";
     case "session_revoked":
       return "Phiên đăng nhập này đã bị đăng xuất (từ thiết bị khác hoặc bởi quản trị viên). Đăng nhập lại để tiếp tục.";
     case "account_not_linked":

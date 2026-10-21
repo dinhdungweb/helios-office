@@ -16,6 +16,7 @@ export type CurrentSessionUser = {
     accountStatus: string;
     effectivePermissionKeys: string[];
   } | null;
+  sessionPolicy?: { autoLogoutEnabled: boolean; idleMinutes: number; warningSeconds: number };
 };
 
 async function fetchSessionUser(): Promise<{ user: CurrentSessionUser | null; code?: string }> {
@@ -55,6 +56,11 @@ export async function getCurrentSessionUserOrSignOut() {
 
   if (code === "session_revoked") {
     redirect("/api/auth/logout?reason=session_revoked");
+  }
+
+  // Password accepted, second factor still missing while the company enforces 2FA (AU-18).
+  if (code === "two_factor_required") {
+    redirect("/login/two-factor");
   }
 
   return user;

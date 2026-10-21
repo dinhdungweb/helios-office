@@ -1,90 +1,52 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import { FormSwitch } from "@/components/ui/form-controls";
+import { updateSessionPolicyAction, type SessionPolicy } from "@/lib/security-policy-actions";
 
-type SessionSettings = {
-  autoLogoutEnabled: boolean;
-  idleMinutes: number;
-  warningSeconds: number;
-};
-
-const preferenceScope = "admin.session-settings";
-const defaultSettings: SessionSettings = {
+const defaultPolicy: SessionPolicy = {
   autoLogoutEnabled: false,
   idleMinutes: 30,
-  warningSeconds: 60
+  warningSeconds: 60,
+  maxConcurrentSessions: 0
 };
 
-function readSessionSettings(value: unknown): SessionSettings {
-  if (!value || typeof value !== "object") {
-    return defaultSettings;
-  }
+// AU-19: company-wide session policy, enforced by the page frame (idle warning), by Keycloak's SSO
+// idle timeout and at sign-in (concurrent sessions).
+export function SessionSettingsBoard({ initialPolicy, loadError }: { initialPolicy: SessionPolicy | null; loadError: string | null }) {
+  const [settings, setSettings] = useState(initialPolicy ?? defaultPolicy);
+  const [isSaving, startSaving] = useTransition();
+  const [feedback, setFeedback] = useState<{ message: string; error: boolean } | null>(
+    loadError ? { message: `Chưa tải được cài đặt đã lưu: ${loadError}`, error: true } : null
+  );
 
-  const candidate = value as Partial<SessionSettings>;
-
-  return {
-    autoLogoutEnabled: Boolean(candidate.autoLogoutEnabled),
-    idleMinutes: typeof candidate.idleMinutes === "number" ? Math.max(10, candidate.idleMinutes) : 30,
-    warningSeconds: typeof candidate.warningSeconds === "number" ? Math.max(60, candidate.warningSeconds) : 60
-  };
-}
-
-export function SessionSettingsBoard() {
-  const [settings, setSettings] = useState(defaultSettings);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [feedback, setFeedback] = useState<{ message: string; error: boolean } | null>(null);
-
-  useEffect(() => {
-    let isActive = true;
-
-    fetch(`/api/user-preferences/${encodeURIComponent(preferenceScope)}`, { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`Preference read returned ${response.status}`);
-        return response.json() as Promise<{ value?: unknown }>;
-      })
-      .then((preference) => {
-        if (isActive) setSettings(readSessionSettings(preference.value));
-      })
-      .catch(() => {
-        if (isActive) setFeedback({ message: "Chưa tải được cài đặt đã lưu.", error: true });
-      })
-      .finally(() => {
-        if (isActive) setIsLoading(false);
-      });
-
-    return () => { isActive = false; };
-  }, []);
-
-  const updateSetting = <Key extends keyof SessionSettings,>(key: Key, value: SessionSettings[Key]) => {
+  const updateSetting = <Key extends keyof SessionPolicy,>(key: Key, value: SessionPolicy[Key]) => {
     setSettings((current) => ({ ...current, [key]: value }));
     setFeedback(null);
   };
 
-  const saveSettings = async (event: FormEvent<HTMLFormElement>) => {
+  const saveSettings = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setIsSaving(true);
     setFeedback(null);
 
-    try {
-      const response = await fetch(`/api/user-preferences/${encodeURIComponent(preferenceScope)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ value: settings })
-      });
-
-      if (!response.ok) throw new Error(`Preference update returned ${response.status}`);
-      setFeedback({ message: "Đã cập nhật cài đặt phiên làm việc.", error: false });
-    } catch {
-      setFeedback({ message: "Chưa cập nhật được cài đặt. Vui lòng thử lại.", error: true });
-    } finally {
-      setIsSaving(false);
+    if (settings.warningSeconds > settings.idleMinutes * 60 - 60) {
+      setFeedback({ message: "Cảnh báo phải sớm hơn thời điểm đăng xuất ít nhất 60 giây.", error: true });
+      return;
     }
+
+    startSaving(async () => {
+      const result = await updateSessionPolicyAction(settings);
+      if (result.ok) {
+        setSettings(result.data);
+        setFeedback({ message: "Đã cập nhật cài đặt phiên làm việc. Áp dụng từ lần tải trang tiếp theo của mỗi người.", error: false });
+      } else {
+        setFeedback({ message: result.error, error: true });
+      }
+    });
   };
 
   return (
-    <form className="system-settings-form is-short" aria-busy={isLoading || isSaving} onSubmit={saveSettings}>
+    <form className="system-settings-form is-short" aria-busy={isSaving} onSubmit={saveSettings}>
       <div className="system-settings-content">
         <section className="system-settings-card" aria-labelledby="session-auto-logout-title">
           <header><h2 id="session-auto-logout-title">Cài đặt tự động đăng xuất</h2></header>
@@ -108,10 +70,11 @@ export function SessionSettingsBoard() {
             <input
               className="system-settings-number-input"
               id="idle-minutes"
+              max="1440"
               min="10"
               type="number"
               value={settings.idleMinutes}
-              onChange={(event) => updateSetting("idleMinutes", Number(event.target.value) || 10)}
+              onChange={(event) => updateSetting("idleMinutes", Math.max(10, Number(event.target.value) || 10))}
             />
           </div>
           <div className="system-settings-row">
@@ -125,14 +88,33 @@ export function SessionSettingsBoard() {
               min="60"
               type="number"
               value={settings.warningSeconds}
-              onChange={(event) => updateSetting("warningSeconds", Number(event.target.value) || 60)}
+              onChange={(event) => updateSetting("warningSeconds", Math.max(60, Number(event.target.value) || 60))}
+            />
+          </div>
+        </section>
+
+        <section className="system-settings-card" aria-labelledby="session-concurrent-title">
+          <header><h2 id="session-concurrent-title">Phiên đăng nhập đồng thời</h2></header>
+          <div className="system-settings-row">
+            <div>
+              <label htmlFor="max-concurrent-sessions">Số phiên đăng nhập cùng lúc tối đa</label>
+              <p>0 = không giới hạn. Khi đăng nhập vượt giới hạn, các phiên lâu không dùng nhất bị đăng xuất.</p>
+            </div>
+            <input
+              className="system-settings-number-input"
+              id="max-concurrent-sessions"
+              max="20"
+              min="0"
+              type="number"
+              value={settings.maxConcurrentSessions}
+              onChange={(event) => updateSetting("maxConcurrentSessions", Math.min(20, Math.max(0, Number(event.target.value) || 0)))}
             />
           </div>
         </section>
       </div>
 
       <footer className="system-settings-submit-bar">
-        <button className="system-settings-submit" disabled={isLoading || isSaving} type="submit">
+        <button className="system-settings-submit" disabled={isSaving} type="submit">
           {isSaving ? "ĐANG CẬP NHẬT..." : "CẬP NHẬT"}
         </button>
         <span className={feedback?.error ? "system-settings-feedback is-error" : "system-settings-feedback"} role="status" aria-live="polite">

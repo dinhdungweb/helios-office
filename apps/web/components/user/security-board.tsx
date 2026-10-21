@@ -1,18 +1,24 @@
 import { formatDateTime, LoginHistoryTable } from "@/components/auth/login-history-table";
 import { SessionRevokeButton } from "@/components/user/session-revoke-button";
+import { TwoFactorSecurityCard } from "@/components/user/two-factor-security-card";
+import type { TwoFactorStatus } from "@/lib/two-factor-actions";
 import type { LoginHistoryEntry, LoginSession } from "@/lib/login-activity-api";
 import { describeUserAgent } from "@/lib/user-agent";
 
 // AU-16 + AU-20: where the user is signed in, and recent sign-in attempts on their account.
 export function SecurityBoard({
   history,
-  sessions
+  sessions,
+  twoFactor
 }: {
   history: LoginHistoryEntry[] | null;
   sessions: LoginSession[] | null;
+  twoFactor: TwoFactorStatus | null;
 }) {
   return (
     <main className="security-page" aria-label="Bảo mật đăng nhập">
+      <TwoFactorSecurityCard status={twoFactor} />
+
       <section className="security-card" aria-labelledby="security-sessions-title">
         <header>
           <h2 id="security-sessions-title">Phiên đăng nhập</h2>

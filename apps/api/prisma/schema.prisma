@@ -131,6 +131,9 @@ model UserAccount {
   // Kept only as long as a token of that session could still be valid.
   revokedSessionIds        Json?
   loginEvents              LoginEvent[]
+  twoFactorCredential      TwoFactorCredential?
+  twoFactorSessions        TwoFactorSession[]
+  twoFactorEmailCodes      TwoFactorEmailCode[]
   preferences              UserPreference[]
   auditLogs                AuditLog[]
   notifications            Notification[]
@@ -140,6 +143,58 @@ model UserAccount {
   exportJobs               ExportJob[]
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
+}
+
+enum TwoFactorMethod {
+  totp
+  email
+}
+
+// Authenticator app (TOTP, RFC 6238) of an account (AU-18). Secrets are encrypted with
+// SettingsSecretService. digits/period are fixed at enrollment, so later policy changes do not
+// break codes from an app already set up.
+model TwoFactorCredential {
+  accountId        String      @id
+  account          UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  secret           Json?
+  digits           Int         @default(6)
+  periodSeconds    Int         @default(30)
+  confirmedAt      DateTime?
+  // A new secret waiting for its first code; replaces `secret` only once confirmed.
+  pendingSecret    Json?
+  pendingDigits    Int?
+  pendingPeriod    Int?
+  pendingCreatedAt DateTime?
+  // Last accepted time step, so one code cannot be used twice.
+  lastUsedStep     Int?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+// A Keycloak session (sid) that passed the second factor; refreshed by each new verification,
+// which is what payroll step-up checks against.
+model TwoFactorSession {
+  sessionId  String          @id
+  accountId  String
+  account    UserAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  method     TwoFactorMethod
+  verifiedAt DateTime
+
+  @@index([accountId])
+}
+
+// One-time codes sent by email; only a hash is stored.
+model TwoFactorEmailCode {
+  id        String      @id @default(uuid())
+  accountId String
+  account   UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int         @default(0)
+  usedAt    DateTime?
+  createdAt DateTime    @default(now())
+
+  @@index([accountId, createdAt])
 }
 
 enum LoginOutcome {

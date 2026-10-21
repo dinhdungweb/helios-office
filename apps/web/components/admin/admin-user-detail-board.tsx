@@ -3,6 +3,7 @@ import { AccountDetailActionMenu } from "@/components/admin/account-detail-actio
 import { AccountGroupChangeDialog } from "@/components/admin/account-group-change-dialog";
 import { AccountForceLogoutButton } from "@/components/admin/account-force-logout-button";
 import { AccountPasswordResetActions } from "@/components/admin/account-password-reset-dialog";
+import { AccountTwoFactorResetButton } from "@/components/admin/account-two-factor-reset-button";
 import { LoginHistoryTable } from "@/components/auth/login-history-table";
 import type { LoginHistoryEntry } from "@/lib/login-activity-api";
 import { FormCheckbox } from "@/components/ui/form-controls";
@@ -510,6 +511,7 @@ export function AdminUserDetailBoard({
         <AccountGroupChangeDialog account={account} groups={data.groups} permissions={data.permissions} />
         <AccountPasswordResetActions account={account} />
         <AccountForceLogoutButton accountId={account.id} accountName={account.name} disabled={account.status === "closed"} />
+        <AccountTwoFactorResetButton accountId={account.id} accountName={account.name} />
         <button className="admin-account-action-button" type="button">
           <ShieldCheck size={15} weight="duotone" aria-hidden="true" />
           Tạo chữ ký số

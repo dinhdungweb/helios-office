@@ -13,6 +13,7 @@ import { ProfileMenu } from "@/components/user/profile-menu";
 import { UserQuickCreateMenu } from "@/components/user/user-quick-create-menu";
 import { UserPersonalNavigation } from "@/components/user/user-personal-navigation";
 import { getCurrentSessionUserOrSignOut, type CurrentSessionUser } from "@/lib/auth-user";
+import { IdleLogoutWatcher } from "@/components/user/idle-logout-watcher";
 import { currentUser } from "@/lib/mock-data";
 import type { UserProfile } from "@/lib/mock-data";
 import { getOrgChartData, type OrgChartData } from "@/lib/org-chart-api";
@@ -240,6 +241,9 @@ export async function UserFrame({ activeModule, children, showSearch, title }: U
         />
         {children}
       </div>
+      {sessionUser?.sessionPolicy?.autoLogoutEnabled ? (
+        <IdleLogoutWatcher idleMinutes={sessionUser.sessionPolicy.idleMinutes} warningSeconds={sessionUser.sessionPolicy.warningSeconds} />
+      ) : null}
     </div>
   );
 }

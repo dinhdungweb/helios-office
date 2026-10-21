@@ -64,6 +64,8 @@ const prismaStub = {
         (definition) => !args?.where?.key?.in || args.where.key.in.includes(definition.key)
       )
   },
+  // Security policies (AU-18/19) read by the auth guard and /auth/me: none stored = defaults.
+  adminSetting: { findUnique: async () => null },
   department: { findMany: async () => departments },
   employee: {
     findMany: async (args: { where?: Prisma.EmployeeWhereInput; include?: unknown }) => {

@@ -5,7 +5,7 @@ import { LoginActivityService } from "./login-activity.service";
 // jose is ESM-only; AuthService (which imports it) is replaced by a stub here.
 jest.mock("jose", () => ({}));
 
-function setup(options: { account?: Record<string, unknown> | null; sessions?: Array<Record<string, unknown>> } = {}) {
+function setup(options: { account?: Record<string, unknown> | null; sessions?: Array<Record<string, unknown>>; maxSessions?: number } = {}) {
   const account = options.account === undefined ? { id: "acc-1", keycloakUserId: "kc-1", adminRole: "user" } : options.account;
   const prisma = {
     userAccount: {
@@ -25,7 +25,14 @@ function setup(options: { account?: Record<string, unknown> | null; sessions?: A
     deleteSession: jest.fn().mockResolvedValue(undefined),
     logoutUser: jest.fn().mockResolvedValue(undefined)
   };
-  const service = new LoginActivityService(prisma as never, auth as never, keycloak as never, { contextFields: () => ({}) } as never);
+  const policies = { getSessionPolicy: jest.fn().mockResolvedValue({ maxConcurrentSessions: options.maxSessions ?? 0 }) };
+  const service = new LoginActivityService(
+    prisma as never,
+    auth as never,
+    keycloak as never,
+    { contextFields: () => ({}) } as never,
+    policies as never
+  );
 
   return { service, prisma, auth, keycloak };
 }
@@ -58,6 +65,30 @@ describe("LoginActivityService", () => {
           userAgent: "Firefox"
         }
       });
+    });
+
+    it("signs out the least recently used sessions past the concurrent limit (AU-19)", async () => {
+      const sessions = [
+        { id: "sid-1", lastAccess: 5_000 },
+        { id: "sid-a", lastAccess: 4_000 },
+        { id: "sid-b", lastAccess: 1_000 },
+        { id: "sid-c", lastAccess: 3_000 }
+      ];
+      const { service, keycloak, prisma } = setup({ sessions, maxSessions: 2 });
+
+      await service.recordLoginEvent({ username: "khanglm", outcome: "success", accessToken: "token" });
+
+      expect(keycloak.deleteSession.mock.calls.map(([id]: [string]) => id)).toEqual(["sid-c", "sid-b"]);
+      expect(prisma.userAccount.update.mock.calls[0][0].data.revokedSessionIds.map((item: { sid: string }) => item.sid)).toEqual(["sid-c", "sid-b"]);
+    });
+
+    it("leaves sessions alone without a limit", async () => {
+      const { service, keycloak } = setup({ sessions: [{ id: "sid-a" }, { id: "sid-b" }] });
+
+      await service.recordLoginEvent({ username: "khanglm", outcome: "success", accessToken: "token" });
+
+      expect(keycloak.listUserSessions).not.toHaveBeenCalled();
+      expect(keycloak.deleteSession).not.toHaveBeenCalled();
     });
 
     it("needs a token for outcomes Keycloak issued one for", async () => {

@@ -10,9 +10,12 @@ import {
   UpdateCompanyInfoDto,
   UpdateIntranetSettingsDto,
   UpdateModuleConfigDto,
-  UpdateSmtpSettingsDto
+  UpdateSessionPolicyDto,
+  UpdateSmtpSettingsDto,
+  UpdateTwoFactorPolicyDto
 } from "./admin-settings.dto";
 import { AdminSettingsService } from "./admin-settings.service";
+import { SecurityPolicyService } from "../auth/security-policy.service";
 
 @ApiTags("admin-settings")
 @UseGuards(JwtAuthGuard, PermissionGuard)
@@ -20,7 +23,10 @@ import { AdminSettingsService } from "./admin-settings.service";
 @ApiBearerAuth()
 @Controller("admin-settings")
 export class AdminSettingsController {
-  constructor(private readonly adminSettingsService: AdminSettingsService) {}
+  constructor(
+    private readonly adminSettingsService: AdminSettingsService,
+    private readonly securityPolicies: SecurityPolicyService
+  ) {}
 
   @Get()
   @ApiOkResponse({ description: "Complete admin settings center grouped by system, module, and operations." })
@@ -112,6 +118,31 @@ export class AdminSettingsController {
     return this.adminSettingsService.testSmtpSettings(body, user.account?.employeeId ?? undefined);
   }
 
+  @Get("two-factor")
+  @ApiOkResponse({ description: "Two-factor policy (AU-18)." })
+  getTwoFactorPolicy() {
+    return this.securityPolicies.getTwoFactorPolicy();
+  }
+
+  @Patch("two-factor")
+  @ApiOkResponse({ description: "Update the two-factor policy." })
+  updateTwoFactorPolicy(@Body() body: UpdateTwoFactorPolicyDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.securityPolicies.updateTwoFactorPolicy(body, user.account?.employeeId ?? undefined);
+  }
+
+  @Get("session")
+  @ApiOkResponse({ description: "Session policy: idle sign-out and concurrent session limit (AU-19)." })
+  getSessionPolicy() {
+    return this.securityPolicies.getSessionPolicy();
+  }
+
+  @Patch("session")
+  @ApiOkResponse({ description: "Update the session policy; also sets Keycloak's SSO idle timeout." })
+  updateSessionPolicy(@Body() body: UpdateSessionPolicyDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.securityPolicies.updateSessionPolicy(body, user.account?.employeeId ?? undefined);
+  }
+
+  // Keep last: it would otherwise catch the named routes above.
   @Get(":id")
   @ApiOkResponse({ description: "Single admin setting item." })
   findOne(@Param("id") id: string) {
