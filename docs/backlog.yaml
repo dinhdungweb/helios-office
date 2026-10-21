@@ -88,8 +88,8 @@ modules:
         status: done
       - id: CORE-10
         title: Chuẩn phân trang/lọc/sắp xếp dùng chung cho mọi list API
-        status: partial
-        note: Helper ListQueryDto/pageArgs/sortArgs/paginated (common/pagination) đã có + test; áp vào từng list API khi làm (GET /employees giữ dạng mảng tới HR-33 vì 8 chỗ trên web đang dùng)
+        status: done
+        note: Helper ListQueryDto/pageArgs/sortArgs/paginated (common/pagination) + test, đang dùng ở /audit-logs và /notifications. List API mới dùng chuẩn này; chuyển các list cũ sang chuẩn là CORE-27 (GET /employees giữ dạng mảng tới HR-33 vì 8 chỗ trên web đang dùng)
       - id: CORE-11
         title: File service MinIO (presign upload, tải, xoá)
         api: ["POST /files/presign", "POST /files/:id/complete", "POST /files", "GET /files/:id", "DELETE /files/:id"]
@@ -97,14 +97,15 @@ modules:
         note: MinIO/S3 (bucket tạo lúc dùng đầu, API chạy được khi MinIO tắt); presign PUT 10 phút, tải qua redirect 5 phút; FileAccessPolicy theo purpose, purpose chưa có policy bị từ chối; chính sách đầu tiên employee_document theo phạm vi dữ liệu
       - id: CORE-12
         title: Giới hạn loại/dung lượng file, quét file tải lên
-        status: partial
-        note: Đã có MIME + dung lượng theo purpose (ảnh 10MB, tài liệu 25MB, FILE_MAX_*), kiểm lại bằng HEAD khi complete. Chưa có quét virus và job dọn file pending quá 24h
+        status: done
+        note: MIME + dung lượng theo purpose (ảnh 10MB, tài liệu 25MB, FILE_MAX_*), kiểm lại bằng HEAD khi complete. Worker dọn mỗi giờ các upload pending quá 24h (đánh dấu deleted rồi xoá object; có claim theo trạng thái nên chạy song song an toàn). Quét virus tách thành CORE-28
         depends: [CORE-11]
       - id: CORE-13
         title: API xem audit log
         api: ["GET /audit-logs", "GET /audit-logs/:id"]
-        status: partial
-        note: API xong (lọc entity/actor/action/source/khoảng ngày, phân trang, chỉ system.accounts.manage). Chưa có trang UI xem nhật ký
+        ui: /admin/settings/audit-logs
+        status: done
+        note: API lọc entity/actor/action/source/khoảng ngày, phân trang, chỉ system.accounts.manage. Trang Nhật ký hệ thống (menu Cài đặt hệ thống) có bộ lọc trên URL, xem giá trị trước/sau từng bản ghi. Thử trình duyệt 2026-10-21
       - id: CORE-14
         title: Interceptor ghi audit log cho mọi mutation HR/công/lương/duyệt
         status: done
@@ -160,6 +161,17 @@ modules:
         phase: 9
         status: todo
         note: Chủ yếu react-hooks/set-state-in-effect (27) và <a> thay vì <Link> (22). Hạ --max-warnings trong npm run lint mỗi khi dọn bớt
+      - id: CORE-27
+        title: Chuyển các list API cũ sang chuẩn phân trang/lọc/sắp xếp của CORE-10
+        phase: 9
+        status: todo
+        note: Tách từ CORE-10 khi đóng Phase 1. Các list API viết trước CORE-10 vẫn trả mảng; chuyển kèm sửa chỗ web đang dùng (GET /employees đi cùng HR-33)
+      - id: CORE-28
+        title: Quét virus file tải lên
+        phase: 9
+        status: todo
+        note: Tách từ CORE-12 khi đóng Phase 1. Cần thêm dịch vụ quét (ví dụ ClamAV trong docker-compose) và bước quét trước khi file chuyển sang ready
+        depends: [CORE-12]
       - id: CORE-25
         title: Sửa lỗi hydration mismatch xuất hiện trên mọi trang dùng khung chung
         status: done
@@ -233,8 +245,9 @@ modules:
       - id: AU-12
         title: Xem quyền hiệu lực của user
         api: ["GET /account-access/accounts/:id/effective-permissions"]
-        status: partial
-        note: API trả quyền + phạm vi + nguồn; /auth/me trả permissionScopes. Chưa hiển thị trên trang chi tiết tài khoản
+        ui: /admin/settings/accounts/:id (Chi tiết quyền)
+        status: done
+        note: API trả quyền + phạm vi + nguồn; /auth/me trả permissionScopes. Bảng Chi tiết quyền ở trang chi tiết tài khoản hiện phạm vi thật và nguồn (theo nhóm / cấp riêng / quản trị hệ thống). Thử trình duyệt 2026-10-21 với quyền cấp riêng phạm vi phòng ban & cấp dưới
       - id: AU-13
         title: Đổi mật khẩu
         api: ["POST /auth/change-password"]
@@ -1160,8 +1173,9 @@ modules:
       - id: NT-04
         title: Đẩy thông báo realtime qua WebSocket
         phase: 1
-        status: partial
-        note: Server xong (worker → Redis → socket của đúng người, ~0,1s) + route web GET /api/auth/socket-token. Chưa có client trên web nghe socket (chuông thông báo) — làm cùng UI thông báo
+        ui: chuông thông báo trên thanh trên cùng
+        status: done
+        note: Server (worker → Redis → socket của đúng người) + route web GET /api/auth/socket-token + chuông trên web (badge chưa đọc, danh sách 15 thông báo, đánh dấu đã đọc, nhận thông báo mới không cần tải lại; token socket lấy lại mỗi lần kết nối lại). Handshake socket áp luôn chính sách 2FA. Thử trình duyệt 2026-10-21 bằng POST /notifications/test
         depends: [CORE-17]
       - id: NT-05
         title: Dịch vụ gửi thông báo dùng chung (fan-out qua BullMQ)

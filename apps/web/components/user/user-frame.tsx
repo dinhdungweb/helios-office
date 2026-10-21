@@ -1,5 +1,4 @@
 import {
-  Bell,
   BookmarkSimple,
   ChatCircle,
   GearSix,
@@ -14,6 +13,7 @@ import { UserQuickCreateMenu } from "@/components/user/user-quick-create-menu";
 import { UserPersonalNavigation } from "@/components/user/user-personal-navigation";
 import { getCurrentSessionUserOrSignOut, type CurrentSessionUser } from "@/lib/auth-user";
 import { IdleLogoutWatcher } from "@/components/user/idle-logout-watcher";
+import { NotificationBell } from "@/components/user/notification-bell";
 import { currentUser } from "@/lib/mock-data";
 import type { UserProfile } from "@/lib/mock-data";
 import { getOrgChartData, type OrgChartData } from "@/lib/org-chart-api";
@@ -177,9 +177,7 @@ function UserTopbar({
           <ChatCircle size={18} weight="duotone" aria-hidden="true" />
           <span aria-hidden="true">1</span>
         </button>
-        <button className="icon-button" type="button" aria-label="Thông báo">
-          <Bell size={18} weight="duotone" aria-hidden="true" />
-        </button>
+        <NotificationBell />
         {canOpenAdminSettings ? (
           <a className="icon-button" href="/admin/settings" aria-label="Cài đặt hệ thống">
             <GearSix size={18} weight="duotone" aria-hidden="true" />

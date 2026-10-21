@@ -15,6 +15,7 @@ import { ImportExportProcessor } from "./import-export.processor";
 import { NotificationsProcessor } from "./notifications.processor";
 import { RealtimeEmitter } from "./realtime-emitter.service";
 import { WorkerRuntime } from "./worker-runtime.service";
+import { FileCleanupService } from "./file-cleanup.service";
 
 // Root module of the background worker process (src/worker.ts). No HTTP server: it consumes the
 // BullMQ queues the API produces into. AdminSettingsModule provides the SMTP settings for email.
@@ -35,7 +36,7 @@ import { WorkerRuntime } from "./worker-runtime.service";
     ImportExportModule,
     EmployeeTransferModule
   ],
-  providers: [WorkerRuntime, RealtimeEmitter, NotificationDeliveryService, NotificationsProcessor, EmailProcessor, ImportExportProcessor],
+  providers: [WorkerRuntime, RealtimeEmitter, NotificationDeliveryService, NotificationsProcessor, EmailProcessor, ImportExportProcessor, FileCleanupService],
   exports: [WorkerRuntime]
 })
 export class WorkerModule {}

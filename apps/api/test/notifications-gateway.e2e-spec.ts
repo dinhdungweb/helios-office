@@ -5,16 +5,24 @@ import { io, type Socket } from "socket.io-client";
 import { AuthService } from "../src/modules/auth/auth.service";
 import { accountRoom, NOTIFICATION_CREATED_EVENT } from "../src/modules/notifications/notification-realtime";
 import { NotificationsGateway } from "../src/modules/notifications/notifications.gateway";
+import { TwoFactorGateService } from "../src/modules/auth/two-factor-gate.service";
 
 // Real Socket.IO server + client: handshake authentication and per-account rooms (CORE-17).
 
-const tokens: Record<string, string> = { "token-a": "acc-a", "token-b": "acc-b" };
+const tokens: Record<string, string> = { "token-a": "acc-a", "token-b": "acc-b", "token-no-2fa": "acc-no-2fa" };
 
 const authStub = {
   verifyAuthorizationHeader: async (header?: string) => {
     const accountId = tokens[(header ?? "").replace(/^Bearer\s+/i, "")];
     if (!accountId) throw new UnauthorizedException("Access token is invalid or expired");
     return { sub: accountId, roles: [], claims: { exp: Math.floor(Date.now() / 1000) + 300 }, account: { id: accountId } };
+  }
+};
+
+// acc-no-2fa stands for a session that has not passed the enforced second factor (AU-18).
+const twoFactorGateStub = {
+  check: async (user: { account: { id: string } }) => {
+    if (user.account.id === "acc-no-2fa") throw new UnauthorizedException("two_factor_required");
   }
 };
 
@@ -25,7 +33,11 @@ describe("Notifications gateway (e2e)", () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [NotificationsGateway, { provide: AuthService, useValue: authStub }]
+      providers: [
+        NotificationsGateway,
+        { provide: AuthService, useValue: authStub },
+        { provide: TwoFactorGateService, useValue: twoFactorGateStub }
+      ]
     }).compile();
 
     app = moduleRef.createNestApplication({ logger: false });
@@ -62,6 +74,10 @@ describe("Notifications gateway (e2e)", () => {
 
   it("refuses a socket with an invalid token at the handshake", async () => {
     expect(await outcome(connect("not-a-token"))).toBe("connect_error: Unauthorized");
+  });
+
+  it("refuses a session that has not passed enforced 2FA", async () => {
+    expect(await outcome(connect("token-no-2fa"))).toBe("connect_error: Unauthorized");
   });
 
   it("accepts a valid token and delivers only the account's own events", async () => {

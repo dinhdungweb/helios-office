@@ -20,14 +20,18 @@ import {
 import type {
   AccountAccessData,
   AccountPermission,
+  EffectivePermissionGrant,
   ManagedUserAccount,
   PermissionGroup
 } from "@/lib/account-access-api";
+import { isDataScopeLevel } from "@/lib/data-scope";
 import type { DeviceAuthRequest } from "@/lib/device-auth-api";
+import { scopeOptionLabels } from "@/lib/permission-scope-options";
 import {
   filterGroupPermissionSectionsByCatalog,
+  getGroupPermissionActionKeys,
   groupPermissionModuleSections,
-  hasGroupPermissionAction,
+  type GroupPermissionActionColumn,
   type GroupPermissionItem
 } from "@/lib/user-group-permission-model";
 
@@ -370,14 +374,60 @@ function isPermissionModuleSelected(item: GroupPermissionItem, allowedKeys: Set<
   return item.permissionKeys.some((permissionKey) => allowedKeys.has(permissionKey));
 }
 
+// For catalogue items without their own wording for a column the account does hold.
+const DEFAULT_COLUMN_LABELS: Record<GroupPermissionActionColumn, string> = {
+  manage: "Được quản lý",
+  view: "Được xem",
+  create: "Được tạo mới"
+};
+
+const GRANT_SOURCE_LABELS: Record<EffectivePermissionGrant["sources"][number], string> = {
+  group: "Theo nhóm",
+  custom: "Cấp riêng",
+  system_admin: "Quản trị hệ thống"
+};
+
+// AU-12: the real scope and where the grant comes from, rather than the catalogue's generic label.
+function PermissionCell({
+  column,
+  grantsByKey,
+  item,
+  allowedKeys
+}: {
+  column: GroupPermissionActionColumn;
+  grantsByKey: Map<string, EffectivePermissionGrant>;
+  item: GroupPermissionItem;
+  allowedKeys: Set<string>;
+}) {
+  const keys = getGroupPermissionActionKeys(item, column).filter((key) => allowedKeys.has(key));
+  if (keys.length === 0) return <>--</>;
+
+  const grant = keys.map((key) => grantsByKey.get(key)).find(Boolean);
+  const scopeLabel =
+    grant?.scopable && column !== "create" && isDataScopeLevel(grant.scope)
+      ? scopeOptionLabels[column][grant.scope]
+      : item[column] ?? DEFAULT_COLUMN_LABELS[column];
+
+  return (
+    <span className="admin-account-permission-grant">
+      {scopeLabel}
+      {grant ? <small>{grant.sources.map((source) => GRANT_SOURCE_LABELS[source]).join(" + ")}</small> : null}
+    </span>
+  );
+}
+
 function ModulePermissionDetailTable({
   account,
-  data
+  data,
+  grants
 }: {
   account: ManagedUserAccount;
   data: AccountAccessData;
+  grants: EffectivePermissionGrant[] | null;
 }) {
-  const allowedKeys = new Set(account.effectivePermissionKeys);
+  // Prefer what the API resolved (it applies revokes and scopes); fall back to the account list.
+  const allowedKeys = new Set(grants ? grants.map((grant) => grant.key) : account.effectivePermissionKeys);
+  const grantsByKey = new Map((grants ?? []).map((grant) => [grant.key, grant]));
   const sections = filterGroupPermissionSectionsByCatalog(groupPermissionModuleSections, data.permissions)
     .map((section) => ({
       ...section,
@@ -414,9 +464,9 @@ function ModulePermissionDetailTable({
                     <PermissionCheckbox checked />
                     <span>{item.label}</span>
                   </th>
-                  <td>{hasGroupPermissionAction(item, allowedKeys, "manage") ? item.manage ?? "--" : "--"}</td>
-                  <td>{hasGroupPermissionAction(item, allowedKeys, "view") ? item.view ?? "--" : "--"}</td>
-                  <td>{hasGroupPermissionAction(item, allowedKeys, "create") ? item.create ?? "--" : "--"}</td>
+                  <td><PermissionCell allowedKeys={allowedKeys} column="manage" grantsByKey={grantsByKey} item={item} /></td>
+                  <td><PermissionCell allowedKeys={allowedKeys} column="view" grantsByKey={grantsByKey} item={item} /></td>
+                  <td><PermissionCell allowedKeys={allowedKeys} column="create" grantsByKey={grantsByKey} item={item} /></td>
                 </tr>
               ))}
             </Fragment>
@@ -471,11 +521,13 @@ export function AdminUserDetailBoard({
   account,
   data,
   deviceRequests,
+  effectiveGrants,
   loginHistory
 }: {
   account: ManagedUserAccount;
   data: AccountAccessData;
   deviceRequests: DeviceAuthRequest[];
+  effectiveGrants: EffectivePermissionGrant[] | null;
   loginHistory: LoginHistoryEntry[] | null;
 }) {
   const groupName = groupNameFor(account, data.groups);
@@ -616,7 +668,7 @@ export function AdminUserDetailBoard({
           </DetailPanel>
 
           <DetailPanel title="Chi tiết quyền" className="admin-account-permission-panel">
-            <ModulePermissionDetailTable account={account} data={data} />
+            <ModulePermissionDetailTable account={account} data={data} grants={effectiveGrants} />
           </DetailPanel>
         </div>
 

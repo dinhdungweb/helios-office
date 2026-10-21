@@ -2,6 +2,7 @@ import { Logger } from "@nestjs/common";
 import { OnGatewayInit, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
 import type { Namespace, Socket } from "socket.io";
 import { AuthService } from "../auth/auth.service";
+import { TwoFactorGateService } from "../auth/two-factor-gate.service";
 import { accountRoom, NOTIFICATIONS_NAMESPACE } from "./notification-realtime";
 
 // Realtime notifications (CORE-17). Clients connect with `auth: { token: <access token> }`. The token
@@ -18,7 +19,10 @@ export class NotificationsGateway implements OnGatewayInit {
   @WebSocketServer()
   server!: Namespace;
 
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly twoFactorGate: TwoFactorGateService
+  ) {}
 
   afterInit(namespace: Namespace) {
     namespace.use((socket, next) => {
@@ -35,6 +39,8 @@ export class NotificationsGateway implements OnGatewayInit {
   private async authenticate(socket: Socket) {
     const token = handshakeToken(socket);
     const user = await this.auth.verifyAuthorizationHeader(token ? `Bearer ${token}` : undefined);
+    // Same rule as HTTP routes: while 2FA is enforced, an unverified session gets no events (AU-18).
+    await this.twoFactorGate.check(user, { allowPending: false });
     const accountId = user.account!.id;
     socket.data.accountId = accountId;
     await socket.join(accountRoom(accountId));

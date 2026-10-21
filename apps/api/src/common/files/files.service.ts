@@ -10,6 +10,8 @@ import { ObjectStorageService } from "./object-storage.service";
 
 type UploadRequest = { fileName: string; mimeType: string; size: number; purpose: FilePurpose; ownerId: string };
 
+export const PENDING_FILE_MAX_AGE_MS = 24 * 60 * 60_000;
+
 const publicFields = (file: StoredFile) => ({
   id: file.id,
   fileName: file.fileName,
@@ -107,6 +109,32 @@ export class FilesService {
     await this.storage.delete(file.objectKey);
     await this.prisma.storedFile.update({ where: { id: file.id }, data: { status: "deleted", deletedAt: new Date() } });
     return { id: file.id, deleted: true };
+  }
+
+  // CORE-12: uploads that were presigned but never completed (tab closed, upload failed) leave a
+  // pending row and maybe a partial object. Each row is claimed with a status-guarded update first,
+  // so a `complete` racing the cleanup wins or loses cleanly, then its object is removed.
+  async purgeStalePending(olderThanMs = PENDING_FILE_MAX_AGE_MS, batchSize = 200) {
+    const stale = await this.prisma.storedFile.findMany({
+      where: { status: "pending", createdAt: { lt: new Date(Date.now() - olderThanMs) } },
+      select: { id: true, objectKey: true },
+      orderBy: { createdAt: "asc" },
+      take: batchSize
+    });
+    let purged = 0;
+
+    for (const file of stale) {
+      const claimed = await this.prisma.storedFile.updateMany({
+        where: { id: file.id, status: "pending" },
+        data: { status: "deleted", deletedAt: new Date() }
+      });
+      if (claimed.count === 0) continue;
+
+      await this.storage.delete(file.objectKey);
+      purged += 1;
+    }
+
+    return { purged };
   }
 
   private async createPending(user: AuthenticatedUser, request: UploadRequest) {

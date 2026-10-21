@@ -20,6 +20,14 @@ const prisma = {
       return row;
     },
     findUnique: async ({ where }: { where: { id: string } }) => rows.get(where.id) ?? null,
+    findMany: async ({ where }: { where: { status: string; createdAt: { lt: Date } } }) =>
+      [...rows.values()].filter((row) => row.status === where.status && row.createdAt < where.createdAt.lt),
+    updateMany: async ({ where, data }: { where: { id: string; status: string }; data: Partial<StoredFile> }) => {
+      const row = rows.get(where.id);
+      if (!row || row.status !== where.status) return { count: 0 };
+      rows.set(row.id, { ...row, ...data } as StoredFile);
+      return { count: 1 };
+    },
     update: async ({ where, data }: { where: { id: string }; data: Partial<StoredFile> }) => {
       const row = { ...rows.get(where.id)!, ...data } as StoredFile;
       rows.set(row.id, row);
@@ -74,6 +82,23 @@ describe("FilesService", () => {
     expect(row.objectKey).toMatch(/^employee_document\/\d{4}\/\d{2}\/[0-9a-f-]{36}-hop-dong-lao-dong\.pdf$/);
     expect(row).toMatchObject({ ownerType: "Employee", ownerId: "emp-1", status: "pending", uploadedById: "acc-uploader" });
     expect(result.headers).toEqual({ "Content-Type": "application/pdf" });
+  });
+
+  it("purges uploads pending over 24 h with their objects, and leaves recent and completed ones (CORE-12)", async () => {
+    const stale = (await service.presignUpload(uploader, request)).file;
+    const recent = (await service.presignUpload(uploader, request)).file;
+    const done = (await service.presignUpload(uploader, request)).file;
+    const dayAgo = new Date(Date.now() - 25 * 60 * 60_000);
+    for (const id of [stale.id, done.id]) rows.set(id, { ...rows.get(id)!, createdAt: dayAgo });
+    rows.set(done.id, { ...rows.get(done.id)!, status: "ready" });
+    for (const row of rows.values()) objects.set(row.objectKey, { size: 1, contentType: "application/pdf" });
+
+    await expect(service.purgeStalePending()).resolves.toEqual({ purged: 1 });
+
+    expect(rows.get(stale.id)).toMatchObject({ status: "deleted", deletedAt: expect.any(Date) });
+    expect(objects.has(rows.get(stale.id)!.objectKey)).toBe(false);
+    expect(rows.get(recent.id)!.status).toBe("pending");
+    expect(rows.get(done.id)!.status).toBe("ready");
   });
 
   it("rejects disallowed types and oversize files before creating anything", async () => {

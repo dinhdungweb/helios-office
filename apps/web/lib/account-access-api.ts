@@ -420,6 +420,21 @@ export type AccountPermissionOverrides = {
   overrides: PermissionOverride[];
 };
 
+// AU-12: what the account can actually do — group ± overrides, with the data scope of each key.
+export type EffectivePermissionGrant = {
+  key: string;
+  scopable: boolean;
+  scope: string;
+  sources: Array<"group" | "custom" | "system_admin">;
+};
+
+export async function getAccountEffectivePermissions(accountId: string) {
+  const result = await requestJson<{ accountId: string; grants: EffectivePermissionGrant[] }>(
+    `/account-access/accounts/${encodeURIComponent(accountId)}/effective-permissions`
+  );
+  return result.grants;
+}
+
 export async function getAccountPermissionOverrides(accountId: string) {
   return requestJson<AccountPermissionOverrides>(`/account-access/accounts/${encodeURIComponent(accountId)}/permission-overrides`);
 }
