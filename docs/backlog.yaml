@@ -162,8 +162,8 @@ modules:
         note: Chủ yếu react-hooks/set-state-in-effect (27) và <a> thay vì <Link> (22). Hạ --max-warnings trong npm run lint mỗi khi dọn bớt
       - id: CORE-25
         title: Sửa lỗi hydration mismatch xuất hiện trên mọi trang dùng khung chung
-        status: todo
-        note: Phát hiện 2026-10-20 khi chạy thử; console báo "A tree hydrated but some attributes ... didn't match"
+        status: done
+        note: Phát hiện 2026-10-20 khi chạy thử; console báo "A tree hydrated but some attributes ... didn't match". Nguyên nhân là script trong layout gốc đặt màu giao diện đã lưu lên style của thẻ html trước khi React hydrate (cố ý, để không nháy màu); đặt suppressHydrationWarning trên html (chỉ áp cho thuộc tính của chính thẻ này). Kiểm tra 2026-10-21 trên 7 trang chính (người dùng, admin, HCNS) với màu giao diện đã chọn, 0 lỗi console
 
   # ---------------------------------------------------------------------------
   - code: AU
