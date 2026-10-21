@@ -65,7 +65,10 @@ async function exchangePasswordForToken(config: WebAuthConfig, username: string,
 
   if (!response.ok) {
     if (response.status === 400 || response.status === 401) {
-      throw new Error("invalid_credentials");
+      // Keycloak checks the password before required actions: this answer means the password was
+      // right but is temporary (UPDATE_PASSWORD), so the person has to replace it first.
+      const error = (await response.json().catch(() => ({}))) as { error_description?: string };
+      throw new Error(error.error_description === "Account is not fully set up" ? "password_update_required" : "invalid_credentials");
     }
 
     throw new Error(`Password grant returned ${response.status}`);
@@ -115,14 +118,22 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   let redirectTo = "/user";
+  let username = "";
 
   try {
     const formData = await request.formData();
     redirectTo = sanitizeRedirectTo(formData.get("redirectTo"));
+    username = String(formData.get("username") ?? "").trim();
     return await buildLoginResponse(request, formData);
   } catch (error) {
     if (error instanceof Error && error.message === "invalid_credentials") {
       return loginErrorResponse(request, redirectTo, "credentials");
+    }
+
+    if (error instanceof Error && error.message === "password_update_required") {
+      const url = buildRequestUrl(request, "/login/change-password");
+      url.searchParams.set("username", username);
+      return NextResponse.redirect(url, 303);
     }
 
     if (error instanceof Error && error.message.includes("is not configured")) {

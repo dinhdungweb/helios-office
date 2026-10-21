@@ -1,13 +1,12 @@
 import { Fragment, type ReactNode } from "react";
 import { AccountDetailActionMenu } from "@/components/admin/account-detail-action-menu";
 import { AccountGroupChangeDialog } from "@/components/admin/account-group-change-dialog";
+import { AccountPasswordResetActions } from "@/components/admin/account-password-reset-dialog";
 import { FormCheckbox } from "@/components/ui/form-controls";
 import {
   Apple,
   ArrowSquareOut,
   Clock,
-  EnvelopeSimple,
-  Key,
   LinkSimple,
   Lock,
   PlayStore,
@@ -504,14 +503,7 @@ export function AdminUserDetailBoard({
     <main className="admin-account-detail-page" aria-label={`Chi tiết tài khoản ${account.name}`}>
       <section className="admin-account-detail-actionbar" aria-label="Tác vụ tài khoản">
         <AccountGroupChangeDialog account={account} groups={data.groups} permissions={data.permissions} />
-        <button className="admin-account-action-button" type="button">
-          <EnvelopeSimple size={15} weight="duotone" aria-hidden="true" />
-          Gửi mật khẩu
-        </button>
-        <button className="admin-account-action-button" type="button">
-          <Key size={15} weight="duotone" aria-hidden="true" />
-          Đổi mật khẩu
-        </button>
+        <AccountPasswordResetActions account={account} />
         <button className="admin-account-action-button" type="button">
           <ShieldCheck size={15} weight="duotone" aria-hidden="true" />
           Tạo chữ ký số

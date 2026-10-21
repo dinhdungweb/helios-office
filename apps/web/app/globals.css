@@ -10134,6 +10134,98 @@
   gap: var(--space-6);
 }
 
+.password-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.password-dialog-target {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.password-dialog-methods {
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.password-dialog-methods legend {
+  margin-bottom: var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-strong);
+}
+
+.password-dialog-methods label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.password-dialog-methods label:has(input:checked) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.password-dialog-methods input {
+  margin-top: 3px;
+  accent-color: var(--color-primary);
+}
+
+.password-dialog-methods span {
+  display: grid;
+  gap: 2px;
+}
+
+.password-dialog-methods small {
+  color: var(--color-text-secondary);
+}
+
+.password-dialog-success {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.password-dialog-success svg {
+  flex: none;
+  color: var(--color-success, #12b76a);
+}
+
+.password-dialog-secret {
+  display: grid;
+  gap: var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.password-dialog-secret > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.password-dialog-secret code {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-5) var(--space-6);
+  color: var(--color-text-primary);
+  background: var(--color-surface-subtle, #f3f4f6);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-md, 15px);
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+
 .account-dialog-actions .primary-button,
 .account-dialog-actions .secondary-button {
   display: inline-flex;
@@ -22216,6 +22308,35 @@ small {
 .login-options a {
   color: #6b5cff;
   white-space: nowrap;
+}
+
+.login-notice {
+  margin: 0;
+  padding: 10px 12px;
+  color: #05603a;
+  background: #ecfdf3;
+  border: 1px solid #abefc6;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  line-height: 18px;
+}
+
+.login-card-intro {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 20px;
+}
+
+.login-back-link {
+  justify-self: center;
+  color: #6b5cff;
+  font-size: var(--font-size-sm);
+}
+
+.login-submit:disabled {
+  cursor: progress;
+  opacity: 0.7;
 }
 
 .login-submit {

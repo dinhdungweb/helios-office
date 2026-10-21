@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 type KeycloakTokenResponse = {
@@ -41,6 +41,8 @@ export type ProvisionKeycloakUserInput = {
   roles: string[];
   username?: string;
 };
+
+export type PasswordCheck = "valid" | "update_required" | "invalid";
 
 export type UpdateKeycloakUserInput = {
   displayName?: string;
@@ -202,6 +204,113 @@ export class KeycloakAdminService {
     if (!response.ok) {
       await this.throwKeycloakError("send required actions email", response);
     }
+  }
+
+  // Proves a password with a password grant on the web client, then ends the session that grant
+  // opened. Keycloak checks the credentials before required actions, so "Account is not fully set
+  // up" means the password was right but the account must change it first (temporary password).
+  async checkPassword(username: string, password: string): Promise<PasswordCheck> {
+    const clientId = this.config.get<string>("KEYCLOAK_CLIENT_ID");
+
+    if (!clientId) {
+      throw new ServiceUnavailableException("KEYCLOAK_CLIENT_ID is not configured");
+    }
+
+    const body = new URLSearchParams({ grant_type: "password", client_id: clientId, username, password, scope: "openid" });
+    const clientSecret = this.config.get<string>("KEYCLOAK_CLIENT_SECRET");
+    if (clientSecret) body.set("client_secret", clientSecret);
+
+    const response = await fetch(`${this.issuer()}/protocol/openid-connect/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body
+    });
+
+    if (response.status === 400 || response.status === 401) {
+      const error = (await response.json().catch(() => ({}))) as { error_description?: string };
+      return error.error_description === "Account is not fully set up" ? "update_required" : "invalid";
+    }
+
+    if (!response.ok) {
+      await this.throwKeycloakError("check password", response);
+    }
+
+    const tokenSet = (await response.json()) as { refresh_token?: string };
+    if (tokenSet.refresh_token) {
+      const logout = new URLSearchParams({ client_id: clientId, refresh_token: tokenSet.refresh_token });
+      if (clientSecret) logout.set("client_secret", clientSecret);
+      await fetch(`${this.issuer()}/protocol/openid-connect/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: logout
+      }).catch(() => undefined);
+    }
+
+    return "valid";
+  }
+
+  // Like setPassword, but a password the realm policy rejects is the caller's mistake (400), not an outage.
+  async resetPassword(userId: string, password: string, temporary: boolean) {
+    const token = await this.getAdminToken();
+    const response = await fetch(this.adminUrl(`users/${encodeURIComponent(userId)}/reset-password`), {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ type: "password", value: password, temporary })
+    });
+
+    if (response.status === 400) {
+      const error = (await response.json().catch(() => ({}))) as { error_description?: string; errorMessage?: string; error?: string };
+      throw new BadRequestException(`Mật khẩu không đạt chính sách: ${error.error_description ?? error.errorMessage ?? error.error ?? "invalid password"}`);
+    }
+
+    if (!response.ok) {
+      await this.throwKeycloakError("reset user password", response);
+    }
+  }
+
+  async removeRequiredAction(userId: string, action: string) {
+    const token = await this.getAdminToken();
+    const response = await fetch(this.adminUrl(`users/${encodeURIComponent(userId)}`), {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      await this.throwKeycloakError("read user", response);
+    }
+
+    const user = (await response.json()) as KeycloakUserRepresentation;
+    const remaining = (user.requiredActions ?? []).filter((item) => item !== action);
+
+    if (remaining.length !== (user.requiredActions ?? []).length) {
+      await this.updateUser(userId, { requiredActions: remaining });
+    }
+  }
+
+  // Ends every Keycloak session of the user; their refresh tokens stop working at the next refresh.
+  async logoutUser(userId: string) {
+    const token = await this.getAdminToken();
+    const response = await fetch(this.adminUrl(`users/${encodeURIComponent(userId)}/logout`), {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      await this.throwKeycloakError("logout user", response);
+    }
+  }
+
+  // Keycloak user id for what a person types in the login box: a username, or an email when the
+  // realm allows email login.
+  async findUserIdByLogin(login: string) {
+    const token = await this.getAdminToken();
+    const value = this.normalizeUsername(login);
+    const byUsername = await this.searchUsers({ username: value, exact: "true" }, token);
+    const user = byUsername[0] ?? (value.includes("@") ? (await this.searchUsers({ email: value, exact: "true" }, token))[0] : undefined);
+
+    return user?.id ?? null;
   }
 
   async updateRealmSmtpSettings(smtpServer: Record<string, string>) {

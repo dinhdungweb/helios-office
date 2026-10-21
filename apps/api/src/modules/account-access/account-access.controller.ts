@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -16,6 +16,8 @@ import {
   UpdateUserAccountDto
 } from "./account-access.dto";
 import { AccountAccessService } from "./account-access.service";
+import { ResetAccountPasswordDto } from "./account-password.dto";
+import { AccountPasswordService } from "./account-password.service";
 
 @ApiTags("account-access")
 @UseGuards(JwtAuthGuard, PermissionGuard)
@@ -25,7 +27,8 @@ import { AccountAccessService } from "./account-access.service";
 export class AccountAccessController {
   constructor(
     private readonly accountAccessService: AccountAccessService,
-    private readonly dataScope: DataScopeService
+    private readonly dataScope: DataScopeService,
+    private readonly passwords: AccountPasswordService
   ) {}
 
   @Get("summary")
@@ -95,6 +98,13 @@ export class AccountAccessController {
   @ApiOkResponse({ description: "Send a reset-password invite email for an active account." })
   resendInvite(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.accountAccessService.resendInvite(id, user.account?.employeeId ?? undefined);
+  }
+
+  @Post("accounts/:id/reset-password")
+  @HttpCode(200)
+  @ApiOkResponse({ description: "Email a reset link or set a temporary password; optionally end the account's sessions." })
+  resetPassword(@Param("id") id: string, @Body() body: ResetAccountPasswordDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.passwords.resetAccountPassword(id, body, user);
   }
 
   @Get("groups")

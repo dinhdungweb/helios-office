@@ -15,6 +15,7 @@ import {
   MagicWand
 } from "@/lib/icons";
 import type { UserProfile } from "@/lib/mock-data";
+import { ChangePasswordDialog } from "@/components/user/change-password-dialog";
 
 type ProfileMenuProps = {
   canOpenAdminSettings: boolean;
@@ -100,6 +101,7 @@ async function saveThemePreference(themeId: string) {
 export function ProfileMenu({ canOpenAdminSettings, user }: ProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [selectedThemeId, setSelectedThemeId] = useState(themeColors[0].id);
   const menuId = useId();
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -286,7 +288,14 @@ export function ProfileMenu({ canOpenAdminSettings, user }: ProfileMenuProps) {
           </div>
 
           <div className="user-profile-menu-section">
-            <button type="button" role="menuitem">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setIsOpen(false);
+                setIsPasswordDialogOpen(true);
+              }}
+            >
               <Key size={18} weight="duotone" aria-hidden="true" />
               <span>Đổi mật khẩu</span>
             </button>
@@ -297,6 +306,7 @@ export function ProfileMenu({ canOpenAdminSettings, user }: ProfileMenuProps) {
           </div>
         </div>
       ) : null}
+      {isPasswordDialogOpen ? <ChangePasswordDialog onClose={() => setIsPasswordDialogOpen(false)} /> : null}
     </div>
   );
 }

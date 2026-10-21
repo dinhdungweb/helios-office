@@ -238,16 +238,22 @@ modules:
       - id: AU-13
         title: Đổi mật khẩu
         api: ["POST /auth/change-password"]
-        status: todo
+        ui: menu hồ sơ › Đổi mật khẩu
+        status: done
+        note: Kiểm tra mật khẩu cũ bằng password grant (rồi đóng ngay phiên đó) và đặt mật khẩu mới qua Keycloak Admin API
       - id: AU-14
         title: Quên mật khẩu / đặt lại mật khẩu
         api: ["POST /auth/forgot-password"]
+        ui: /login/forgot-password
         public: true
-        status: todo
+        status: done
+        note: Luôn trả cùng một câu trả lời (không lộ tài khoản nào tồn tại); email do Keycloak gửi (execute-actions-email UPDATE_PASSWORD) sau khi trả response; tối đa 1 email / tài khoản / 2 phút; cần bật SMTP
       - id: AU-15
         title: Admin đặt lại mật khẩu cho user
         api: ["POST /account-access/accounts/:id/reset-password"]
-        status: todo
+        ui: /admin/settings/accounts/:id (Gửi mật khẩu / Đổi mật khẩu)
+        status: done
+        note: Gửi email đặt lại hoặc đặt mật khẩu tạm (tự tạo nếu để trống, chỉ hiện một lần); mặc định đăng xuất mọi phiên. Chỉ system admin đặt lại được mật khẩu của system admin
       - id: AU-16
         title: Danh sách phiên đăng nhập và thu hồi phiên
         api: ["GET /auth/sessions", "DELETE /auth/sessions/:id"]
@@ -290,6 +296,13 @@ modules:
         title: Chặn đăng nhập và báo lỗi rõ khi user Keycloak chưa gắn tài khoản Helios
         status: done
         note: API trả 401 kèm code account_not_linked / account_inactive; web kiểm tra GET /auth/me ở đăng nhập, callback OAuth và refresh token, từ chối thì đóng phiên Keycloak và về /login với thông báo rõ. Thử trình duyệt 2026-10-21 với dungdd (chưa gắn) và tài khoản closed. Ghi lịch sử đăng nhập bị từ chối thuộc AU-20
+      - id: AU-25
+        title: Đổi mật khẩu tạm ở lần đăng nhập đầu
+        api: ["POST /auth/change-temporary-password"]
+        ui: /login/change-password
+        public: true
+        status: done
+        note: Keycloak từ chối password grant với "Account is not fully set up" khi mật khẩu đúng nhưng là mật khẩu tạm (UPDATE_PASSWORD), nên trước đây tài khoản tạo kèm mật khẩu tạm không đăng nhập được qua trang /login. Trang đăng nhập giờ chuyển sang /login/change-password; API tự kiểm tra mật khẩu tạm với Keycloak rồi mới đổi
 
   # ---------------------------------------------------------------------------
   - code: DV
