@@ -16,7 +16,7 @@ Cập nhật bảng này mỗi khi bắt đầu hoặc đóng một phase.
 |---|---|---|---|---|
 | 0 | Vá bảo mật & chuẩn hoá repo | Đã đóng (PR #1; CI GitHub chưa chạy được do tài khoản bị khoá billing — các bước đã pass trên local) | [phase-0.md](plans/phase-0.md) | 2026-10-20 |
 | 1 | Hạ tầng dùng chung | Đã đóng (typecheck/test/lint/build/audit pass trên local; thiết kế: [data-scope](design/data-scope.md), [file-storage](design/file-storage.md), [notification](design/notification.md)) | [phase-1.md](plans/phase-1.md) | 2026-10-21 |
-| 2 | Ca làm việc & engine tính công | Chưa bắt đầu | — | |
+| 2 | Ca làm việc & engine tính công | Đang thiết kế (bản nháp: [attendance-engine](design/attendance-engine.md); mặc định theo thông lệ, HR chỉnh sau) | [phase-2.md](plans/phase-2.md) | |
 | 3 | Engine phê duyệt & đơn từ | Chưa bắt đầu | — | |
 | 4 | Hồ sơ mở rộng & hợp đồng | Chưa bắt đầu | — | |
 | 5 | Lương, bảo hiểm, thuế | Chưa bắt đầu | — | |
