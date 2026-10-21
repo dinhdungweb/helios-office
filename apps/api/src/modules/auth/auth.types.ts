@@ -26,3 +26,9 @@ export type RequestWithUser = {
   };
   user?: AuthenticatedUser;
 };
+
+// Machine-readable reasons in 401 bodies; the web maps them to login page messages.
+export const AUTH_ERROR_CODES = {
+  accountNotLinked: "account_not_linked",
+  accountInactive: "account_inactive"
+} as const;

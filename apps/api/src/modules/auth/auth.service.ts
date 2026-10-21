@@ -7,7 +7,7 @@ import {
   resolveCustomPermissionKeys,
   resolveEffectivePermissionKeys
 } from "../account-access/account-access.utils";
-import type { AuthenticatedUser } from "./auth.types";
+import { AUTH_ERROR_CODES, type AuthenticatedUser } from "./auth.types";
 
 @Injectable()
 export class AuthService {
@@ -34,12 +34,24 @@ export class AuthService {
     const name = this.asString(payload.name) ?? this.asString(payload.preferred_username);
     const account = await this.resolveAccount(sub, email);
 
+    // `code` lets the web tell "valid Keycloak login, but no usable Helios account" apart from an
+    // expired token, and refuse the session with a clear message (AU-24).
     if (!account) {
-      throw new UnauthorizedException("No active Helios account is linked to this Keycloak user");
+      throw new UnauthorizedException({
+        statusCode: 401,
+        error: "Unauthorized",
+        code: AUTH_ERROR_CODES.accountNotLinked,
+        message: "No active Helios account is linked to this Keycloak user"
+      });
     }
 
     if (account.accountStatus !== "active") {
-      throw new UnauthorizedException("Helios account is not active");
+      throw new UnauthorizedException({
+        statusCode: 401,
+        error: "Unauthorized",
+        code: AUTH_ERROR_CODES.accountInactive,
+        message: "Helios account is not active"
+      });
     }
 
     return {

@@ -286,8 +286,8 @@ modules:
         status: todo
       - id: AU-24
         title: Chặn đăng nhập và báo lỗi rõ khi user Keycloak chưa gắn tài khoản Helios
-        status: todo
-        note: Hiện vẫn vào được giao diện nhưng mọi API trả 401 (gặp với dungdd khi DB seed cũ)
+        status: partial
+        note: Code xong 2026-10-21 — API trả 401 kèm code account_not_linked / account_inactive; web kiểm tra GET /auth/me ở đăng nhập, callback OAuth và refresh token, từ chối thì kết thúc phiên Keycloak và về /login với thông báo rõ. Chờ kiểm tra trình duyệt với dungdd (Docker đang tắt). Ghi lịch sử đăng nhập bị từ chối thuộc AU-20
 
   # ---------------------------------------------------------------------------
   - code: DV
