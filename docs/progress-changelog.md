@@ -27,7 +27,7 @@ Toàn bộ 39 item của phase đã `done` (CORE-10 → CORE-20, CORE-25, AU-10 
 Kiểm tra:
 
 - `npm run test`: 152 unit + 45 e2e pass. `npm run lint`: pass (89 cảnh báo cũ, không tăng). `npm run audit:features -- --strict`: pass. Typecheck API pass.
-- `npm run build` và `npm run typecheck` (web): chờ chạy khi dừng dev server (build xoá `dist/` mà dev đang dùng; typecheck web cần `.next/types` do build sinh lại).
+- `npm run build` (web 63 trang + API) và `npm run typecheck`: pass, chạy sau khi dừng dev server (build xoá `dist/` mà dev đang dùng; typecheck web cần `.next/types` do build sinh lại).
 - Chạy thật trên dev stack (Postgres, Keycloak, Redis, MinIO) + trình duyệt (Playwright) cho từng task, chi tiết trong plan. Ba tiêu chí của roadmap: user cấp phòng ban chỉ thấy nhân sự phòng mình qua `GET /employees`; upload → MinIO → tải về có kiểm quyền; sự kiện mẫu sinh thông báo realtime tới đúng người.
 
 Chưa xong / ghi nhận:
