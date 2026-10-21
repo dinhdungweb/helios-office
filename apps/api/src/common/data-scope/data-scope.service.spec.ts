@@ -35,6 +35,9 @@ type FakeAccount = {
   customScope?: ScopeLevel | null;
   groupArchived?: boolean;
   extraGroupKeys?: string[];
+  // AU-11 overrides
+  revoked?: string[];
+  overridesDisabled?: boolean;
 };
 
 let accounts: Record<string, FakeAccount> = {};
@@ -66,7 +69,8 @@ const prisma = {
       return {
         adminRole: "user",
         accountStatus: "active",
-        customPermissionsEnabled: hasCustom,
+        customPermissionsEnabled: (hasCustom || Boolean(account.revoked?.length)) && !account.overridesDisabled,
+        customRevokedPermissions: account.revoked ?? null,
         customPermissions: hasCustom ? [KEY] : null,
         customPermissionScopes: account.customScope ? { [KEY]: account.customScope } : null,
         permissionGroup: hasGroup
@@ -80,10 +84,12 @@ const prisma = {
     }
   },
   permissionDefinition: {
-    findMany: async () => [
-      { key: KEY, scopable: true, defaultScope: "department" },
-      { key: NON_SCOPABLE_KEY, scopable: false, defaultScope: null }
-    ]
+    // Honours `where.key.in` like Prisma, so grantsFor(onlyKeys) sees only the requested keys.
+    findMany: async (args?: { where?: { key?: { in?: string[] } } }) =>
+      [
+        { key: KEY, scopable: true, defaultScope: "department" },
+        { key: NON_SCOPABLE_KEY, scopable: false, defaultScope: null }
+      ].filter((definition) => !args?.where?.key?.in || args.where.key.in.includes(definition.key))
   }
 } as unknown as PrismaService;
 
@@ -196,6 +202,28 @@ describe("DataScopeService.grantsFor (AU-12)", () => {
       { key: KEY, scopable: true, scope: "branch", sources: ["group", "custom"] },
       { key: NON_SCOPABLE_KEY, scopable: false, scope: "company", sources: ["group"] }
     ]);
+  });
+
+  it("a custom scope replaces the group's, also when it is narrower (AU-11)", async () => {
+    accounts.a = { employeeId: "online-staff", groupScope: "company", customScope: "self" };
+    expect(await service.grantsFor("a", [KEY])).toEqual([{ key: KEY, scopable: true, scope: "self", sources: ["group", "custom"] }]);
+    expect((await service.resolve(user("a"), [KEY])).level).toBe("self");
+  });
+
+  it("a custom grant without its own scope keeps the group's scope", async () => {
+    accounts.a = { employeeId: "online-staff", groupScope: "branch", customScope: null };
+    expect((await service.grantsFor("a", [KEY]))[0].scope).toBe("branch");
+  });
+
+  it("a revoke removes a key the group grants (AU-11)", async () => {
+    accounts.a = { employeeId: "online-staff", groupScope: "company", extraGroupKeys: [NON_SCOPABLE_KEY], revoked: [KEY] };
+    expect(await service.grantsFor("a")).toEqual([{ key: NON_SCOPABLE_KEY, scopable: false, scope: "company", sources: ["group"] }]);
+    expect((await service.resolve(user("a"), [KEY])).level).toBe("self");
+  });
+
+  it("overrides switched off are ignored", async () => {
+    accounts.a = { employeeId: "online-staff", groupScope: "company", customScope: "self", revoked: [KEY], overridesDisabled: true };
+    expect(await service.grantsFor("a", [KEY])).toEqual([{ key: KEY, scopable: true, scope: "company", sources: ["group"] }]);
   });
 
   it("returns nothing for an unknown account", async () => {

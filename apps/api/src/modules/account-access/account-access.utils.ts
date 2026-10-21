@@ -23,6 +23,9 @@ export type PermissionEffectivenessInput = {
   permissionGroupStatus?: string | null;
   groupPermissionKeys?: readonly string[] | null;
   customPermissionKeys?: unknown;
+  // AU-11: removed even when the group or a custom grant includes them. Pass only while the
+  // account's overrides are enabled, like customPermissionKeys.
+  revokedPermissionKeys?: unknown;
 };
 
 export function resolveCustomPermissionKeys(value: unknown) {
@@ -51,15 +54,18 @@ export function resolveEffectivePermissionKeys(
   }
 
   const catalogKeySet = new Set(catalogKeys);
-  const rawKeys =
-    input.adminRole === "system_admin"
-      ? catalogKeys
-      : [
-          ...(input.permissionGroupStatus === "archived" ? [] : input.groupPermissionKeys ?? []),
-          ...resolveCustomPermissionKeys(input.customPermissionKeys)
-        ];
 
-  return normalizePermissionKeys(rawKeys).filter((permissionKey) => catalogKeySet.has(permissionKey));
+  if (input.adminRole === "system_admin") {
+    return normalizePermissionKeys(catalogKeys);
+  }
+
+  const revoked = new Set(resolveCustomPermissionKeys(input.revokedPermissionKeys));
+  const rawKeys = [
+    ...(input.permissionGroupStatus === "archived" ? [] : input.groupPermissionKeys ?? []),
+    ...resolveCustomPermissionKeys(input.customPermissionKeys)
+  ];
+
+  return normalizePermissionKeys(rawKeys).filter((permissionKey) => catalogKeySet.has(permissionKey) && !revoked.has(permissionKey));
 }
 
 function normalizePermissionKeys(value: readonly unknown[]) {

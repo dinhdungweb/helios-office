@@ -408,3 +408,31 @@ export async function deletePermissionGroup(groupId: string) {
     method: "DELETE"
   });
 }
+
+// AU-11: permissions an account gets on top of its group ("grant", optionally re-scoped) or loses
+// ("revoke"). Keys not listed follow the group.
+export type PermissionOverride = { key: string; mode: "grant" | "revoke"; scope?: DataScopeLevel };
+
+export type AccountPermissionOverrides = {
+  accountId: string;
+  enabled: boolean;
+  note: string | null;
+  overrides: PermissionOverride[];
+};
+
+export async function getAccountPermissionOverrides(accountId: string) {
+  return requestJson<AccountPermissionOverrides>(`/account-access/accounts/${encodeURIComponent(accountId)}/permission-overrides`);
+}
+
+export async function updateAccountPermissionOverrides(
+  accountId: string,
+  payload: { enabled: boolean; overrides: PermissionOverride[]; note?: string | null }
+) {
+  return requestJson<AccountPermissionOverrides>(`/account-access/accounts/${encodeURIComponent(accountId)}/permission-overrides`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+}

@@ -10,7 +10,13 @@ import {
   type GroupFormState
 } from "@/lib/account-access-actions";
 import type { AccountAccessData, PermissionGroup } from "@/lib/account-access-api";
-import { dataScopeLevels, type DataScopeLevel } from "@/lib/data-scope";
+import {
+  defaultGrantScope,
+  noPermissionOption,
+  scopeFromActionValue,
+  scopedOptions,
+  type ScopedPermissionColumn
+} from "@/lib/permission-scope-options";
 import { CaretDown } from "@/lib/icons";
 import {
   filterGroupPermissionSectionsByCatalog,
@@ -29,37 +35,7 @@ const initialState: GroupFormState = { ok: false };
 
 type GroupCreateSectionKey = "info" | "permissions";
 
-const noPermissionOption: FormSelectOption = { label: "Không có", value: "none" };
-
-type ScopedColumn = Exclude<GroupPermissionActionColumn, "create">;
-
-// Scope labels for the "Quản lý" / "Xem" dropdowns of scopable permissions (docs/design/data-scope.md).
-const scopeOptionLabels: Record<ScopedColumn, Record<DataScopeLevel, string>> = {
-  manage: {
-    company: "Quản lý toàn công ty",
-    branch: "Quản lý chi nhánh",
-    department_tree: "Quản lý phòng ban & cấp dưới",
-    department: "Quản lý phòng ban",
-    self: "Quản lý của bản thân"
-  },
-  view: {
-    company: "Xem toàn công ty",
-    branch: "Xem chi nhánh",
-    department_tree: "Xem phòng ban & cấp dưới",
-    department: "Xem phòng ban",
-    self: "Xem của bản thân"
-  }
-};
-
-// Matches the API default for grants without an explicit scope.
-const defaultGrantScope: DataScopeLevel = "department";
-
-function scopedOptions(column: ScopedColumn): FormSelectOption[] {
-  return [
-    noPermissionOption,
-    ...[...dataScopeLevels].reverse().map((level) => ({ label: scopeOptionLabels[column][level], value: `${column}_${level}` }))
-  ];
-}
+type ScopedColumn = ScopedPermissionColumn;
 
 const permissionActionOptions: Record<GroupPermissionActionColumn, FormSelectOption[]> = {
   manage: [noPermissionOption, { label: "Được quản lý", value: "manage_company" }],
@@ -71,16 +47,6 @@ const permissionActionOptions: Record<GroupPermissionActionColumn, FormSelectOpt
   ]
 };
 
-// "view_department_tree" -> "department_tree"; legacy "view_all" -> "company".
-function scopeFromActionValue(column: ScopedColumn, value: string): DataScopeLevel | null {
-  const level = value.startsWith(`${column}_`) ? value.slice(column.length + 1) : "";
-
-  if (level === "all") {
-    return "company";
-  }
-
-  return (dataScopeLevels as readonly string[]).includes(level) ? (level as DataScopeLevel) : null;
-}
 
 const permissionActionMenuLabels: Record<GroupPermissionActionColumn, string> = {
   manage: "Quyền quản lý",

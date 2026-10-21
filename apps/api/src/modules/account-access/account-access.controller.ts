@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -12,6 +12,7 @@ import {
   CreateUserAccountDto,
   UpdatePermissionDefinitionDto,
   UpdatePermissionGroupDto,
+  UpdatePermissionOverridesDto,
   UpdateUserAccountDto
 } from "./account-access.dto";
 import { AccountAccessService } from "./account-access.service";
@@ -56,6 +57,20 @@ export class AccountAccessController {
   async findEffectivePermissions(@Param("id") id: string) {
     await this.accountAccessService.findOne(id); // 404 for unknown accounts
     return { accountId: id, grants: await this.dataScope.grantsFor(id) };
+  }
+
+  @Get("accounts/:id/permission-overrides")
+  @ApiOkResponse({ description: "Permissions granted or revoked for this account on top of its group, with the effective result." })
+  async findPermissionOverrides(@Param("id") id: string) {
+    const overrides = await this.accountAccessService.findPermissionOverrides(id);
+    return { ...overrides, grants: await this.dataScope.grantsFor(id) };
+  }
+
+  @Put("accounts/:id/permission-overrides")
+  @ApiOkResponse({ description: "Replace the account's permission overrides (grant with optional scope, or revoke)." })
+  async updatePermissionOverrides(@Param("id") id: string, @Body() body: UpdatePermissionOverridesDto, @CurrentUser() user: AuthenticatedUser) {
+    const overrides = await this.accountAccessService.updatePermissionOverrides(id, body, user.account?.employeeId ?? undefined);
+    return { ...overrides, grants: await this.dataScope.grantsFor(id) };
   }
 
   @Patch("accounts/:id")

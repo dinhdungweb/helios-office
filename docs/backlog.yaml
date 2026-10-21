@@ -227,7 +227,9 @@ modules:
       - id: AU-11
         title: Ghi đè quyền riêng cho từng user
         api: ["GET /account-access/accounts/:id/permission-overrides", "PUT /account-access/accounts/:id/permission-overrides"]
-        status: todo
+        ui: /admin/settings/accounts/:id/edit
+        status: done
+        note: Mỗi quyền theo nhóm / cấp thêm (kèm phạm vi) / thu hồi (chốt 2026-10-21). Thu hồi thắng; phạm vi đặt riêng thay phạm vi nhóm. Áp dụng ở PermissionGuard, /auth/me và DataScopeService. Ma trận ở trang sửa tài khoản tính chênh lệch so với nhóm (trước đây bỏ tick quyền của nhóm không có tác dụng)
       - id: AU-12
         title: Xem quyền hiệu lực của user
         api: ["GET /account-access/accounts/:id/effective-permissions"]

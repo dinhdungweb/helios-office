@@ -1,8 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { AccountLifecycleStatus, PermissionGroupStatus, Prisma } from "@prisma/client";
 import { AuditService } from "../../common/audit/audit.service";
-import { parseScopeMap } from "../../common/data-scope/data-scope.types";
+import { parseScopeMap, type ScopeLevel } from "../../common/data-scope/data-scope.types";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { AdminSettingsService } from "../admin-settings/admin-settings.service";
 import { KeycloakAdminService } from "../auth/keycloak-admin.service";
@@ -13,7 +13,9 @@ import {
   CreateUserAccountDto,
   UpdatePermissionDefinitionDto,
   UpdatePermissionGroupDto,
-  UpdateUserAccountDto
+  UpdatePermissionOverridesDto,
+  UpdateUserAccountDto,
+  type PermissionOverrideMode
 } from "./account-access.dto";
 import {
   buildPermissionGroupIdBase,
@@ -21,6 +23,19 @@ import {
   resolveCustomPermissionKeys,
   resolveEffectivePermissionKeys
 } from "./account-access.utils";
+
+const OVERRIDE_ACCOUNT_SELECT = {
+  id: true,
+  adminRole: true,
+  customPermissionsEnabled: true,
+  customPermissions: true,
+  customRevokedPermissions: true,
+  customPermissionScopes: true,
+  customPermissionNote: true,
+  permissionGroup: { select: { id: true, name: true, status: true, permissions: true, permissionScopes: true } }
+} satisfies Prisma.UserAccountSelect;
+
+type OverrideAccount = Prisma.UserAccountGetPayload<{ select: typeof OVERRIDE_ACCOUNT_SELECT }>;
 
 type AccountWithRelations = Prisma.UserAccountGetPayload<{
   include: {
@@ -117,6 +132,71 @@ export class AccountAccessService {
     }
 
     return this.resolveAccount(account, permissionCatalog);
+  }
+
+  // AU-11: what the account changes relative to its group. Effective result: grantsFor().
+  async findPermissionOverrides(id: string) {
+    return this.toPermissionOverridesView(await this.findOverrideAccount(id));
+  }
+
+  // Replaces every stored override. Revokes win over the group and over grants; a grant's scope
+  // replaces the group's scope for that key.
+  async updatePermissionOverrides(id: string, dto: UpdatePermissionOverridesDto, actorId?: string) {
+    const before = await this.findOverrideAccount(id);
+
+    if (before.adminRole === "system_admin") {
+      throw new BadRequestException("System admins hold every permission; overrides do not apply");
+    }
+
+    const keys = dto.overrides.map((override) => override.key);
+    const duplicates = keys.filter((key, index) => keys.indexOf(key) !== index);
+    if (duplicates.length > 0) {
+      throw new BadRequestException(`Each permission may appear once: ${[...new Set(duplicates)].join(", ")}`);
+    }
+    await this.assertKnownPermissionKeys(keys);
+
+    const scopable = new Set(
+      (await this.prisma.permissionDefinition.findMany({ where: { key: { in: keys }, scopable: true }, select: { key: true } })).map(
+        (definition) => definition.key
+      )
+    );
+    const misplacedScopes = dto.overrides.filter((override) => override.scope && (override.mode === "revoke" || !scopable.has(override.key)));
+    if (misplacedScopes.length > 0) {
+      throw new BadRequestException(
+        `A scope applies only to granted, scopable permissions: ${misplacedScopes.map((override) => override.key).join(", ")}`
+      );
+    }
+
+    const grants = dto.overrides.filter((override) => override.mode === "grant");
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const account = await tx.userAccount.update({
+        where: { id },
+        data: {
+          customPermissionsEnabled: dto.enabled,
+          customPermissions: grants.map((override) => override.key),
+          customRevokedPermissions: dto.overrides.filter((override) => override.mode === "revoke").map((override) => override.key),
+          customPermissionScopes: Object.fromEntries(grants.flatMap((override) => (override.scope ? [[override.key, override.scope]] : []))),
+          ...(dto.note !== undefined ? { customPermissionNote: dto.note } : {})
+        },
+        select: OVERRIDE_ACCOUNT_SELECT
+      });
+
+      await tx.auditLog.create({
+        data: {
+          ...this.audit.contextFields(),
+          actorId,
+          action: "account.permission_overrides.update",
+          entityType: "UserAccount",
+          entityId: id,
+          beforeValue: this.toAuditJson(this.toPermissionOverridesView(before)),
+          afterValue: this.toAuditJson(this.toPermissionOverridesView(account))
+        }
+      });
+
+      return account;
+    });
+
+    return this.toPermissionOverridesView(updated);
   }
 
   async findGroups() {
@@ -374,6 +454,8 @@ export class AccountAccessService {
       if (isSystemAdmin) {
         data.permissionGroupId = null;
         data.customPermissions = [];
+        data.customRevokedPermissions = [];
+        data.customPermissionScopes = {};
         data.customPermissionsEnabled = false;
         data.customPermissionNote = null;
       }
@@ -780,7 +862,8 @@ export class AccountAccessService {
         accountStatus: account.accountStatus,
         permissionGroupStatus: group?.status,
         groupPermissionKeys: group?.permissions,
-        customPermissionKeys
+        customPermissionKeys,
+        revokedPermissionKeys: !isSystemAdmin && account.customPermissionsEnabled ? account.customRevokedPermissions : []
       },
       permissionCatalog.map((permission) => permission.key)
     );
@@ -961,6 +1044,37 @@ export class AccountAccessService {
         afterValue: this.toAuditJson(afterValue)
       }
     });
+  }
+
+  private async findOverrideAccount(id: string) {
+    const account = await this.prisma.userAccount.findUnique({ where: { id }, select: OVERRIDE_ACCOUNT_SELECT });
+
+    if (!account) {
+      throw new NotFoundException(`Account ${id} was not found`);
+    }
+
+    return account;
+  }
+
+  private toPermissionOverridesView(account: OverrideAccount) {
+    const scopes = parseScopeMap(account.customPermissionScopes);
+    const overrides: Array<{ key: string; mode: PermissionOverrideMode; scope?: ScopeLevel }> = [
+      ...resolveCustomPermissionKeys(account.customPermissions).map((key) => ({
+        key,
+        mode: "grant" as const,
+        ...(scopes[key] ? { scope: scopes[key] } : {})
+      })),
+      ...resolveCustomPermissionKeys(account.customRevokedPermissions).map((key) => ({ key, mode: "revoke" as const }))
+    ];
+
+    return {
+      accountId: account.id,
+      adminRole: account.adminRole,
+      enabled: account.customPermissionsEnabled,
+      note: account.customPermissionNote,
+      group: account.permissionGroup,
+      overrides: overrides.sort((left, right) => left.key.localeCompare(right.key))
+    };
   }
 
   private toAuditJson(value: unknown) {

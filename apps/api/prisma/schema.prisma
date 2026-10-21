@@ -107,8 +107,14 @@ model UserAccount {
   accountStatus            AccountLifecycleStatus @default(pending_activation)
   permissionGroupId        String?
   permissionGroup          PermissionGroup?       @relation(fields: [permissionGroupId], references: [id])
+  // Per-account overrides of the group (AU-11), applied only while customPermissionsEnabled:
+  // granted keys are added, revoked keys removed (revoke wins), and a scope set here replaces the
+  // group's scope for that key.
   customPermissionsEnabled Boolean                @default(false)
+  // Granted permission keys (string[]).
   customPermissions        Json?
+  // Revoked permission keys (string[]).
+  customRevokedPermissions Json?
   // { "<permission key>": "self" | "department" | "department_tree" | "branch" | "company" } for custom grants
   customPermissionScopes   Json?
   customPermissionNote     String?

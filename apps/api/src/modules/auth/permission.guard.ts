@@ -78,7 +78,8 @@ export class PermissionGuard implements CanActivate {
         groupPermissionKeys: account.permissionGroup?.permissions,
         customPermissionKeys: account.customPermissionsEnabled
           ? resolveCustomPermissionKeys(account.customPermissions)
-          : []
+          : [],
+        revokedPermissionKeys: account.customPermissionsEnabled ? account.customRevokedPermissions : []
       },
       catalogKeys
     );

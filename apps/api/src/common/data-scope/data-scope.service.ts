@@ -90,6 +90,7 @@ export class DataScopeService {
         accountStatus: true,
         customPermissionsEnabled: true,
         customPermissions: true,
+        customRevokedPermissions: true,
         customPermissionScopes: true,
         permissionGroup: { select: { status: true, permissions: true, permissionScopes: true } }
       }
@@ -117,28 +118,26 @@ export class DataScopeService {
     const group = account.permissionGroup && account.permissionGroup.status !== "archived" ? account.permissionGroup : null;
     const groupKeys = new Set(group?.permissions ?? []);
     const groupScopes = parseScopeMap(group?.permissionScopes);
-    const customKeys = new Set(account.customPermissionsEnabled ? resolveCustomPermissionKeys(account.customPermissions) : []);
-    const customScopes = parseScopeMap(account.customPermissionScopes);
+    // AU-11 overrides apply only while enabled: a revoke removes the key whatever grants it, and a
+    // scope set on the account replaces the group's scope for that key.
+    const overridesOn = account.customPermissionsEnabled;
+    const customKeys = new Set(overridesOn ? resolveCustomPermissionKeys(account.customPermissions) : []);
+    const revokedKeys = new Set(overridesOn ? resolveCustomPermissionKeys(account.customRevokedPermissions) : []);
+    const customScopes = overridesOn ? parseScopeMap(account.customPermissionScopes) : {};
     const grants: EffectiveGrant[] = [];
 
     for (const definition of definitions) {
+      const inGroup = groupKeys.has(definition.key);
+      const inCustom = customKeys.has(definition.key);
+      if ((!inGroup && !inCustom) || revokedKeys.has(definition.key)) continue;
+
       const fallback: ScopeLevel = isScopeLevel(definition.defaultScope) ? definition.defaultScope : "company";
-      const sources: EffectiveGrant["sources"] = [];
-      let scope: ScopeLevel | null = null;
+      const scope: ScopeLevel = !definition.scopable
+        ? "company"
+        : customScopes[definition.key] ?? (inGroup ? groupScopes[definition.key] : undefined) ?? fallback;
+      const sources: EffectiveGrant["sources"] = [...(inGroup ? (["group"] as const) : []), ...(inCustom ? (["custom"] as const) : [])];
 
-      for (const [source, held, scopes] of [
-        ["group", groupKeys, groupScopes],
-        ["custom", customKeys, customScopes]
-      ] as const) {
-        if (!held.has(definition.key)) continue;
-        const grantScope: ScopeLevel = definition.scopable ? scopes[definition.key] ?? fallback : "company";
-        sources.push(source);
-        scope = scope ? widerScope(scope, grantScope) : grantScope;
-      }
-
-      if (scope) {
-        grants.push({ key: definition.key, scopable: definition.scopable, scope, sources });
-      }
+      grants.push({ key: definition.key, scopable: definition.scopable, scope, sources });
     }
 
     return grants;

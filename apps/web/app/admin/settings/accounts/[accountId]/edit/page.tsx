@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { AdminUserEditBoard } from "@/components/admin/admin-user-edit-board";
 import { UserFrame } from "@/components/user/user-frame";
-import { getAccountAccessData } from "@/lib/account-access-api";
+import { getAccountAccessData, getAccountPermissionOverrides } from "@/lib/account-access-api";
 
 type AdminUserEditPageProps = {
   params: Promise<{
@@ -21,9 +21,11 @@ export default async function AdminUserEditPage({ params }: AdminUserEditPagePro
     notFound();
   }
 
+  const overrides = await getAccountPermissionOverrides(account.id);
+
   return (
     <UserFrame activeModule="admin" showSearch title="Sửa tài khoản">
-      <AdminUserEditBoard account={account} data={accountAccessData} />
+      <AdminUserEditBoard account={account} data={accountAccessData} overrides={overrides} />
     </UserFrame>
   );
 }

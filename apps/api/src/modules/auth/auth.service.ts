@@ -150,6 +150,7 @@ export class AuthService {
           accountStatus: true,
           customPermissions: true,
           customPermissionsEnabled: true,
+          customRevokedPermissions: true,
           employee: {
             select: {
               id: true
@@ -178,7 +179,8 @@ export class AuthService {
         accountStatus: account.accountStatus,
         permissionGroupStatus: account.permissionGroup?.status,
         groupPermissionKeys: account.permissionGroup?.permissions,
-        customPermissionKeys
+        customPermissionKeys,
+        revokedPermissionKeys: account.customPermissionsEnabled ? account.customRevokedPermissions : []
       },
       permissionCatalog
     );
