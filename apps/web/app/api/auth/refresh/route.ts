@@ -7,6 +7,7 @@ import {
   refreshSessionTokenSet,
   setSessionCookies
 } from "@/lib/auth-session";
+import { checkHeliosAccount, endKeycloakSession, isRefusedAccount } from "@/lib/auth-account-check";
 import { buildRequestUrl, getRequestOrigin } from "@/lib/request-origin";
 
 export const runtime = "nodejs";
@@ -40,7 +41,19 @@ export async function GET(request: NextRequest) {
 
   try {
     const origin = getRequestOrigin(request);
-    const tokenSet = await refreshSessionTokenSet(refreshToken, getWebAuthConfig(origin).issuer);
+    const config = getWebAuthConfig(origin);
+    const tokenSet = await refreshSessionTokenSet(refreshToken, config.issuer);
+
+    // An account unlinked or locked after login loses its session here, at the latest when the
+    // access token next expires.
+    const account = await checkHeliosAccount(tokenSet.access_token);
+    if (isRefusedAccount(account)) {
+      await endKeycloakSession(config, tokenSet.refresh_token ?? refreshToken);
+      const response = loginRedirect(request, redirectTo, account);
+      clearSessionCookies(response);
+      return response;
+    }
+
     const response = NextResponse.redirect(new URL(redirectTo, origin), 303);
     setSessionCookies(response, tokenSet);
 

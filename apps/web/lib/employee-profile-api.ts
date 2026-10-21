@@ -109,7 +109,9 @@ function normalizeGroup(group: ApiPermissionGroup): PermissionGroup {
     status: group.status === "archived" ? "archived" : "active",
     archivedAt: group.archivedAt ?? null,
     memberCount: group.memberCount ?? 0,
-    permissionKeys: group.permissionKeys ?? []
+    permissionKeys: group.permissionKeys ?? [],
+    // Only used to pick a group here; scopes are edited on the group settings page.
+    permissionScopes: {}
   };
 }
 

@@ -10,6 +10,8 @@ import {
   setSessionCookies,
   type KeycloakTokenSet
 } from "@/lib/auth-session";
+import { checkHeliosAccount, endKeycloakSession, isRefusedAccount } from "@/lib/auth-account-check";
+import { recordLoginEvent } from "@/lib/login-events";
 import { buildRequestUrl, getRequestOrigin } from "@/lib/request-origin";
 
 export const runtime = "nodejs";
@@ -64,7 +66,10 @@ async function exchangePasswordForToken(config: WebAuthConfig, username: string,
 
   if (!response.ok) {
     if (response.status === 400 || response.status === 401) {
-      throw new Error("invalid_credentials");
+      // Keycloak checks the password before required actions: this answer means the password was
+      // right but is temporary (UPDATE_PASSWORD), so the person has to replace it first.
+      const error = (await response.json().catch(() => ({}))) as { error_description?: string };
+      throw new Error(error.error_description === "Account is not fully set up" ? "password_update_required" : "invalid_credentials");
     }
 
     throw new Error(`Password grant returned ${response.status}`);
@@ -90,6 +95,14 @@ async function buildLoginResponse(request: NextRequest, formData: FormData) {
     return loginErrorResponse(request, redirectTo, "token");
   }
 
+  const account = await checkHeliosAccount(tokenSet.access_token);
+  if (isRefusedAccount(account)) {
+    await recordLoginEvent(request, { username, outcome: account, accessToken: tokenSet.access_token });
+    await endKeycloakSession(config, tokenSet.refresh_token);
+    return loginErrorResponse(request, redirectTo, account);
+  }
+
+  await recordLoginEvent(request, { username, outcome: "success", accessToken: tokenSet.access_token });
   const response = NextResponse.redirect(new URL(redirectTo, origin), 303);
   setSessionCookies(response, tokenSet);
   clearTransientAuthCookies(response);
@@ -108,14 +121,24 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   let redirectTo = "/user";
+  let username = "";
 
   try {
     const formData = await request.formData();
     redirectTo = sanitizeRedirectTo(formData.get("redirectTo"));
+    username = String(formData.get("username") ?? "").trim();
     return await buildLoginResponse(request, formData);
   } catch (error) {
     if (error instanceof Error && error.message === "invalid_credentials") {
+      await recordLoginEvent(request, { username, outcome: "invalid_credentials" });
       return loginErrorResponse(request, redirectTo, "credentials");
+    }
+
+    if (error instanceof Error && error.message === "password_update_required") {
+      await recordLoginEvent(request, { username, outcome: "password_update_required" });
+      const url = buildRequestUrl(request, "/login/change-password");
+      url.searchParams.set("username", username);
+      return NextResponse.redirect(url, 303);
     }
 
     if (error instanceof Error && error.message.includes("is not configured")) {

@@ -1,5 +1,4 @@
 import {
-  Bell,
   BookmarkSimple,
   ChatCircle,
   GearSix,
@@ -12,7 +11,9 @@ import { AppLauncher } from "@/components/dashboard/app-launcher";
 import { ProfileMenu } from "@/components/user/profile-menu";
 import { UserQuickCreateMenu } from "@/components/user/user-quick-create-menu";
 import { UserPersonalNavigation } from "@/components/user/user-personal-navigation";
-import { getCurrentSessionUser, type CurrentSessionUser } from "@/lib/auth-user";
+import { getCurrentSessionUserOrSignOut, type CurrentSessionUser } from "@/lib/auth-user";
+import { IdleLogoutWatcher } from "@/components/user/idle-logout-watcher";
+import { NotificationBell } from "@/components/user/notification-bell";
 import { currentUser } from "@/lib/mock-data";
 import type { UserProfile } from "@/lib/mock-data";
 import { getOrgChartData, type OrgChartData } from "@/lib/org-chart-api";
@@ -176,9 +177,7 @@ function UserTopbar({
           <ChatCircle size={18} weight="duotone" aria-hidden="true" />
           <span aria-hidden="true">1</span>
         </button>
-        <button className="icon-button" type="button" aria-label="Thông báo">
-          <Bell size={18} weight="duotone" aria-hidden="true" />
-        </button>
+        <NotificationBell />
         {canOpenAdminSettings ? (
           <a className="icon-button" href="/admin/settings" aria-label="Cài đặt hệ thống">
             <GearSix size={18} weight="duotone" aria-hidden="true" />
@@ -194,7 +193,7 @@ export async function UserFrame({ activeModule, children, showSearch, title }: U
   const isAdminFrame = activeModule === "admin";
   const isHcnsFrame = activeModule === "hcns";
   const sidebarVariant = isAdminFrame ? "admin" : isHcnsFrame ? "hcns" : "user";
-  const sessionUser = await getCurrentSessionUser();
+  const sessionUser = await getCurrentSessionUserOrSignOut();
   const quickCreateOrgChartData = isAdminFrame ? await getOrgChartData() : undefined;
   const viewer = resolveViewer(sessionUser);
   const quickCreateMenuStorageKey = sidebarVariant === "user"
@@ -240,6 +239,9 @@ export async function UserFrame({ activeModule, children, showSearch, title }: U
         />
         {children}
       </div>
+      {sessionUser?.sessionPolicy?.autoLogoutEnabled ? (
+        <IdleLogoutWatcher idleMinutes={sessionUser.sessionPolicy.idleMinutes} warningSeconds={sessionUser.sessionPolicy.warningSeconds} />
+      ) : null}
     </div>
   );
 }

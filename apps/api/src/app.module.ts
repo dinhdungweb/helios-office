@@ -3,19 +3,28 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { resolve } from "node:path";
+import { AuditModule } from "./common/audit/audit.module";
+import { DataScopeModule } from "./common/data-scope/data-scope.module";
+import { FilesModule } from "./common/files/files.module";
+import { ImportExportModule } from "./common/import-export/import-export.module";
 import { PrismaModule } from "./common/prisma/prisma.module";
+import { QueueModule } from "./common/queue/queue.module";
+import { HealthModule } from "./modules/health/health.module";
 import { SessionThrottlerGuard } from "./common/throttle/session-throttler.guard";
 import { AccountAccessModule } from "./modules/account-access/account-access.module";
 import { AdminSettingsModule } from "./modules/admin-settings/admin-settings.module";
 import { AnnouncementsModule } from "./modules/announcements/announcements.module";
 import { ApprovalsModule } from "./modules/approvals/approvals.module";
 import { AttendanceModule } from "./modules/attendance/attendance.module";
+import { AuditLogsModule } from "./modules/audit-logs/audit-logs.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { JwtAuthGuard } from "./modules/auth/jwt-auth.guard";
 import { DeviceAuthModule } from "./modules/device-auth/device-auth.module";
 import { EmployeesModule } from "./modules/employees/employees.module";
+import { EmployeeTransferModule } from "./modules/employees/employee-transfer.module";
 import { LeaveRequestsModule } from "./modules/leave-requests/leave-requests.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
+import { TwoFactorModule } from "./modules/two-factor/two-factor.module";
 import { PayrollModule } from "./modules/payroll/payroll.module";
 import { PostsModule } from "./modules/posts/posts.module";
 import { ReportsModule } from "./modules/reports/reports.module";
@@ -37,10 +46,18 @@ import { UserPreferencesModule } from "./modules/user-preferences/user-preferenc
       ]
     }),
     PrismaModule,
+    QueueModule,
+    FilesModule,
+    ImportExportModule,
+    AuditModule,
+    DataScopeModule,
     AuthModule,
     AccountAccessModule,
     AdminSettingsModule,
+    AuditLogsModule,
+    HealthModule,
     EmployeesModule,
+    EmployeeTransferModule,
     PostsModule,
     AnnouncementsModule,
     ApprovalsModule,
@@ -50,7 +67,8 @@ import { UserPreferencesModule } from "./modules/user-preferences/user-preferenc
     PayrollModule,
     ReportsModule,
     UserPreferencesModule,
-    NotificationsModule
+    NotificationsModule,
+    TwoFactorModule
   ],
   // Global guards run in this order: rate limit first so rejected tokens still count, then
   // authentication. Every route requires a verified session unless it is marked @Public().

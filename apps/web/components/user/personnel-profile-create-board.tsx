@@ -405,10 +405,11 @@ export function PersonnelProfileCreateBoard({ data }: { data: EmployeeCreateData
   ];
 
   useEffect(() => {
-    if (state.ok && state.employeeId) {
+    // Stay on the page when some attachments failed so the warning stays visible.
+    if (state.ok && state.employeeId && !state.warning) {
       router.push(`/user?customMenu=employee-profile&employeeId=${state.employeeId}`);
     }
-  }, [router, state.employeeId, state.ok]);
+  }, [router, state.employeeId, state.ok, state.warning]);
 
   return (
     <main className="personnel-profile-create-page" aria-label="Tạo mới hồ sơ nhân sự">
@@ -645,9 +646,15 @@ export function PersonnelProfileCreateBoard({ data }: { data: EmployeeCreateData
           <RelatedObjectsTab />
         </fieldset>
 
-        {state.ok ? (
+        {state.ok && !state.warning ? (
           <p className="employee-create-success personnel-create-message" role="status">
             Đã tạo hồ sơ nhân sự.
+          </p>
+        ) : null}
+        {state.ok && state.warning ? (
+          <p className="employee-create-error personnel-create-message" role="alert">
+            {state.warning}{" "}
+            <a href={`/user?customMenu=employee-profile&employeeId=${state.employeeId}`}>Mở hồ sơ</a>
           </p>
         ) : null}
         {state.error ? <p className="employee-create-error personnel-create-message" role="alert">{state.error}</p> : null}

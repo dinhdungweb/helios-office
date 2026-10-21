@@ -107,8 +107,16 @@ model UserAccount {
   accountStatus            AccountLifecycleStatus @default(pending_activation)
   permissionGroupId        String?
   permissionGroup          PermissionGroup?       @relation(fields: [permissionGroupId], references: [id])
+  // Per-account overrides of the group (AU-11), applied only while customPermissionsEnabled:
+  // granted keys are added, revoked keys removed (revoke wins), and a scope set here replaces the
+  // group's scope for that key.
   customPermissionsEnabled Boolean                @default(false)
+  // Granted permission keys (string[]).
   customPermissions        Json?
+  // Revoked permission keys (string[]).
+  customRevokedPermissions Json?
+  // { "<permission key>": "self" | "department" | "department_tree" | "branch" | "company" } for custom grants
+  customPermissionScopes   Json?
   customPermissionNote     String?
   passwordResetRequired    Boolean                @default(false)
   temporaryPasswordIssuedAt DateTime?
@@ -116,9 +124,104 @@ model UserAccount {
   inviteSentAt             DateTime?
   activatedAt              DateTime?
   closedAt                 DateTime?
+  // Access tokens issued before this instant are refused (AU-17 force logout), so signing an
+  // account out takes effect at once instead of when its short-lived tokens expire.
+  sessionsRevokedAt        DateTime?
+  // Keycloak session ids (sid) signed out one by one (AU-16): [{ "sid": string, "at": ISO date }].
+  // Kept only as long as a token of that session could still be valid.
+  revokedSessionIds        Json?
+  loginEvents              LoginEvent[]
+  twoFactorCredential      TwoFactorCredential?
+  twoFactorSessions        TwoFactorSession[]
+  twoFactorEmailCodes      TwoFactorEmailCode[]
   preferences              UserPreference[]
+  auditLogs                AuditLog[]
+  notifications            Notification[]
+  notificationPreferences  NotificationPreference[]
+  uploadedFiles            StoredFile[]
+  importJobs               ImportJob[]
+  exportJobs               ExportJob[]
   createdAt                DateTime               @default(now())
   updatedAt                DateTime               @updatedAt
+}
+
+enum TwoFactorMethod {
+  totp
+  email
+}
+
+// Authenticator app (TOTP, RFC 6238) of an account (AU-18). Secrets are encrypted with
+// SettingsSecretService. digits/period are fixed at enrollment, so later policy changes do not
+// break codes from an app already set up.
+model TwoFactorCredential {
+  accountId        String      @id
+  account          UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  secret           Json?
+  digits           Int         @default(6)
+  periodSeconds    Int         @default(30)
+  confirmedAt      DateTime?
+  // A new secret waiting for its first code; replaces `secret` only once confirmed.
+  pendingSecret    Json?
+  pendingDigits    Int?
+  pendingPeriod    Int?
+  pendingCreatedAt DateTime?
+  // Last accepted time step, so one code cannot be used twice.
+  lastUsedStep     Int?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+// A Keycloak session (sid) that passed the second factor; refreshed by each new verification,
+// which is what payroll step-up checks against.
+model TwoFactorSession {
+  sessionId  String          @id
+  accountId  String
+  account    UserAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  method     TwoFactorMethod
+  verifiedAt DateTime
+
+  @@index([accountId])
+}
+
+// One-time codes sent by email; only a hash is stored.
+model TwoFactorEmailCode {
+  id        String      @id @default(uuid())
+  accountId String
+  account   UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int         @default(0)
+  usedAt    DateTime?
+  createdAt DateTime    @default(now())
+
+  @@index([accountId, createdAt])
+}
+
+enum LoginOutcome {
+  success
+  invalid_credentials
+  password_update_required
+  account_not_linked
+  account_inactive
+}
+
+// Sign-in attempts through the Helios login page (AU-20), reported by the web server with the
+// browser's IP and user agent; Keycloak only sees the web server.
+model LoginEvent {
+  id             String        @id @default(uuid())
+  accountId      String?
+  account        UserAccount?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  keycloakUserId String?
+  username       String
+  outcome        LoginOutcome
+  // Keycloak session id (sid) of a successful sign-in; links GET /auth/sessions rows to their device.
+  sessionId      String?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime      @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([sessionId])
 }
 
 enum ApprovalWorkflowStatus {
@@ -147,6 +250,8 @@ model PermissionGroup {
   roleScope   AccountAdminRole      @default(user)
   licensePlan LicensePlan           @default(standard)
   permissions String[]
+  // Data scope per scopable permission key; see docs/design/data-scope.md
+  permissionScopes Json                  @default("{}")
   status      PermissionGroupStatus @default(active)
   archivedAt  DateTime?
   accounts    UserAccount[]
@@ -160,6 +265,9 @@ model PermissionDefinition {
   label       String
   description String?
   adminOnly   Boolean  @default(false)
+  // Scopable permissions are filtered by data scope (self ... company); others are yes/no only.
+  scopable     Boolean @default(false)
+  defaultScope String?
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -286,6 +394,39 @@ model Department {
   @@unique([parentId, name])
 }
 
+enum StoredFileStatus {
+  pending
+  ready
+  deleted
+}
+
+// A file kept in object storage (MinIO/S3). Business tables reference it by id; access is decided
+// per purpose by a FileAccessPolicy. See docs/design/file-storage.md.
+model StoredFile {
+  id           String           @id @default(uuid())
+  bucket       String
+  objectKey    String           @unique
+  fileName     String
+  mimeType     String
+  size         Int
+  // Storage ETag after upload is confirmed.
+  checksum     String?
+  purpose      String
+  ownerType    String?
+  ownerId      String?
+  status       StoredFileStatus @default(pending)
+  uploadedById String?
+  uploadedBy   UserAccount?     @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  employeeDocument EmployeeDocument?
+  importJobs   ImportJob[]      @relation("ImportJobFile")
+  exportJob    ExportJob?       @relation("ExportJobFile")
+  createdAt    DateTime         @default(now())
+  deletedAt    DateTime?
+
+  @@index([ownerType, ownerId])
+  @@index([status, createdAt])
+}
+
 model EmployeeDocument {
   id         String   @id @default(uuid())
   employeeId String
@@ -293,11 +434,75 @@ model EmployeeDocument {
   fileName   String
   mimeType   String
   size       Int
-  content    Bytes
+  // Legacy rows kept the bytes in Postgres; new documents live in object storage (fileId).
+  content    Bytes?
+  fileId     String?     @unique
+  file       StoredFile? @relation(fields: [fileId], references: [id])
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
 
   @@index([employeeId, fieldName])
+}
+
+enum ImportJobStatus {
+  validating
+  validated
+  invalid
+  committing
+  committed
+  failed
+}
+
+// One spreadsheet import (docs/design/import-export.md): the worker validates every row into
+// `rows`/`errors`, the user reviews the preview, then commit writes the valid rows.
+model ImportJob {
+  id          String          @id @default(uuid())
+  type        String
+  status      ImportJobStatus @default(validating)
+  fileId      String
+  file        StoredFile      @relation("ImportJobFile", fields: [fileId], references: [id])
+  createdById String
+  createdBy   UserAccount     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  // Data scope of the creator when the job was created, reused by the worker.
+  scope       Json
+  totalRows   Int             @default(0)
+  validRows   Int             @default(0)
+  // [{ row, column?, message }]
+  errors      Json?
+  // Normalised valid rows: [{ row, data }]
+  rows        Json?
+  // Handler summary after commit, e.g. { created, updated }.
+  result      Json?
+  error       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  committedAt DateTime?
+
+  @@index([createdById, createdAt])
+}
+
+enum ExportJobStatus {
+  running
+  ready
+  failed
+}
+
+model ExportJob {
+  id          String          @id @default(uuid())
+  type        String
+  status      ExportJobStatus @default(running)
+  params      Json?
+  scope       Json
+  fileId      String?         @unique
+  file        StoredFile?     @relation("ExportJobFile", fields: [fileId], references: [id])
+  createdById String
+  createdBy   UserAccount     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  rowCount    Int?
+  error       String?
+  createdAt   DateTime        @default(now())
+  finishedAt  DateTime?
+
+  @@index([createdById, createdAt])
 }
 
 model JobPosition {
@@ -714,25 +919,69 @@ model AssetAssignment {
   updatedAt  DateTime  @updatedAt
 }
 
+// In-app notification for one recipient account. See docs/design/notification.md.
 model Notification {
-  id        String    @id @default(uuid())
-  userId    String
+  id             String      @id @default(uuid())
+  accountId      String
+  account        UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  event          String
+  title          String
+  body           String?
+  // Path inside the web app that opens the related record.
+  link           String?
+  data           Json?
+  actorAccountId String?
+  readAt         DateTime?
+  createdAt      DateTime    @default(now())
+
+  @@index([accountId, readAt, createdAt])
+}
+
+// Per-account channel switches; event "*" is the account's default for every event.
+model NotificationPreference {
+  accountId String
+  account   UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   event     String
-  title     String
-  body      String?
-  readAt    DateTime?
-  createdAt DateTime  @default(now())
+  inApp     Boolean     @default(true)
+  email     Boolean     @default(false)
+  push      Boolean     @default(false)
+  updatedAt DateTime    @updatedAt
+
+  @@id([accountId, event])
+}
+
+// Catalog of notification events; defaults apply when an account has no preference.
+model NotificationEventType {
+  key          String  @id
+  module       String
+  label        String
+  defaultEmail Boolean @default(false)
+  // Users cannot turn these off (e.g. payslip published).
+  mandatory    Boolean @default(false)
 }
 
 model AuditLog {
-  id          String   @id @default(uuid())
-  actorId     String?
-  action      String
-  entityType  String
-  entityId    String
-  beforeValue Json?
-  afterValue  Json?
-  ipAddress   String?
-  employee    Employee? @relation(fields: [actorId], references: [id])
-  createdAt   DateTime @default(now())
+  id             String   @id @default(uuid())
+  // Employee behind the action (null for accounts without an employee profile, e.g. admin).
+  actorId        String?
+  // Account that performed the action; always set for requests made by a signed-in user.
+  actorAccountId String?
+  actorAccount   UserAccount? @relation(fields: [actorAccountId], references: [id], onDelete: SetNull)
+  action         String
+  entityType     String
+  entityId       String
+  beforeValue    Json?
+  afterValue     Json?
+  ipAddress      String?
+  userAgent      String?
+  requestId      String?
+  // "domain": written by a service with before/after values; "http": safety-net entry written by
+  // AuditInterceptor for a mutation that recorded nothing itself.
+  source         String   @default("domain")
+  employee       Employee? @relation(fields: [actorId], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([actorAccountId])
 }

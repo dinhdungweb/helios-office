@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Res, UseGuards } from "@nestjs/common";
 import type { Response } from "express";
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -6,42 +6,54 @@ import type { AuthenticatedUser } from "../auth/auth.types";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { PermissionGuard } from "../auth/permission.guard";
 import { RequireAnyPermission, RequirePermissions } from "../auth/permissions.decorator";
-import { CreateEmployeeDto, LinkEmployeeAccountDto, UpdateEmployeeDto } from "./employees.dto";
+import { DataScopeService } from "../../common/data-scope/data-scope.service";
+import { EMPLOYEE_DIRECTORY_KEYS, EMPLOYEE_MANAGE_KEYS } from "./employee-permissions";
+import { AttachEmployeeDocumentDto, CreateEmployeeDto, LinkEmployeeAccountDto, UpdateEmployeeDto } from "./employees.dto";
 import { EmployeesService } from "./employees.service";
+
+// Same keys as the route decorators: the data scope is the widest one among those the caller holds.
+const DIRECTORY_KEYS = EMPLOYEE_DIRECTORY_KEYS;
+const MANAGE_KEYS = EMPLOYEE_MANAGE_KEYS;
 
 @ApiTags("employees")
 @UseGuards(JwtAuthGuard, PermissionGuard)
 @ApiBearerAuth()
 @Controller("employees")
 export class EmployeesController {
-  constructor(private readonly employeesService: EmployeesService) {}
+  constructor(
+    private readonly employeesService: EmployeesService,
+    private readonly dataScope: DataScopeService
+  ) {}
 
   @Get()
-  @RequireAnyPermission("employees.department.manage", "system.accounts.manage")
-  @ApiOkResponse({ description: "Employee directory with current employment status." })
-  findAll() {
-    return this.employeesService.findAll();
+  @RequireAnyPermission(...DIRECTORY_KEYS)
+  @ApiOkResponse({ description: "Employee directory within the caller's data scope." })
+  async findAll(@CurrentUser() user: AuthenticatedUser) {
+    return this.employeesService.findAll(await this.dataScope.resolve(user, DIRECTORY_KEYS));
   }
 
   @Post()
-  @RequirePermissions("employees.department.manage")
+  @RequirePermissions(...MANAGE_KEYS)
   @ApiOkResponse({ description: "Create an employee profile and optionally provision a linked user account." })
-  create(@Body() body: CreateEmployeeDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.employeesService.create(body, user.account?.employeeId ?? undefined);
+  async create(@Body() body: CreateEmployeeDto, @CurrentUser() user: AuthenticatedUser) {
+    const scope = await this.dataScope.resolve(user, MANAGE_KEYS);
+    return this.employeesService.create(body, user.account?.employeeId ?? undefined, scope);
   }
 
   @Patch(":id")
-  @RequirePermissions("employees.department.manage")
-  @ApiOkResponse({ description: "Update an employee profile." })
-  update(@Param("id") id: string, @Body() body: UpdateEmployeeDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.employeesService.updateEmployee(id, body, user.account?.employeeId ?? undefined);
+  @RequirePermissions(...MANAGE_KEYS)
+  @ApiOkResponse({ description: "Update an employee profile within the caller's data scope." })
+  async update(@Param("id") id: string, @Body() body: UpdateEmployeeDto, @CurrentUser() user: AuthenticatedUser) {
+    const scope = await this.dataScope.resolve(user, MANAGE_KEYS);
+    return this.employeesService.updateEmployee(id, body, user.account?.employeeId ?? undefined, scope);
   }
 
   @Patch(":id/account")
-  @RequirePermissions("employees.department.manage")
+  @RequirePermissions(...MANAGE_KEYS)
   @ApiOkResponse({ description: "Link or unlink an employee profile with a user account." })
-  updateAccount(@Param("id") id: string, @Body() body: LinkEmployeeAccountDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.employeesService.updateEmployeeAccount(id, body, user.account?.employeeId ?? undefined);
+  async updateAccount(@Param("id") id: string, @Body() body: LinkEmployeeAccountDto, @CurrentUser() user: AuthenticatedUser) {
+    const scope = await this.dataScope.resolve(user, MANAGE_KEYS);
+    return this.employeesService.updateEmployeeAccount(id, body, user.account?.employeeId ?? undefined, scope);
   }
 
   @Get("org-chart")
@@ -52,23 +64,48 @@ export class EmployeesController {
   }
 
   @Get(":id/documents/:documentId")
-  @RequireAnyPermission("employees.department.manage", "system.accounts.manage")
+  @RequireAnyPermission(...DIRECTORY_KEYS)
   async getDocument(
     @Param("id") id: string,
     @Param("documentId") documentId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Res() response: Response
   ) {
-    const document = await this.employeesService.getDocument(id, documentId);
+    const scope = await this.dataScope.resolve(user, DIRECTORY_KEYS);
+    const document = await this.employeesService.getDocument(id, documentId, scope);
+
+    if (document.file) {
+      response.redirect(302, await this.employeesService.downloadUrl(document.file));
+      return;
+    }
+
+    // Legacy documents stored their bytes in Postgres before object storage (HR-07).
     response.setHeader("Content-Type", document.mimeType);
     response.setHeader("Content-Length", document.size.toString());
     response.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(document.fileName)}`);
     response.send(document.content);
   }
 
+  @Post(":id/documents")
+  @RequirePermissions(...MANAGE_KEYS)
+  @ApiOkResponse({ description: "Attach a file uploaded through /files (purpose employee_document) to the profile." })
+  async attachDocument(@Param("id") id: string, @Body() body: AttachEmployeeDocumentDto, @CurrentUser() user: AuthenticatedUser) {
+    const scope = await this.dataScope.resolve(user, MANAGE_KEYS);
+    return this.employeesService.attachDocument(id, body, user.account?.employeeId ?? undefined, scope);
+  }
+
+  @Delete(":id/documents/:documentId")
+  @RequirePermissions(...MANAGE_KEYS)
+  @ApiOkResponse({ description: "Remove a profile document and its stored file." })
+  async removeDocument(@Param("id") id: string, @Param("documentId") documentId: string, @CurrentUser() user: AuthenticatedUser) {
+    const scope = await this.dataScope.resolve(user, MANAGE_KEYS);
+    return this.employeesService.removeDocument(id, documentId, user.account?.employeeId ?? undefined, scope);
+  }
+
   @Get(":id")
-  @RequireAnyPermission("employees.department.manage", "system.accounts.manage")
-  @ApiOkResponse({ description: "Single employee profile." })
-  findOne(@Param("id") id: string) {
-    return this.employeesService.findOne(id);
+  @RequireAnyPermission(...DIRECTORY_KEYS)
+  @ApiOkResponse({ description: "Single employee profile; 404 outside the caller's data scope." })
+  async findOne(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.employeesService.findOneInScope(id, await this.dataScope.resolve(user, DIRECTORY_KEYS));
   }
 }

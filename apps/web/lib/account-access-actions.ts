@@ -11,12 +11,15 @@ import {
   resendAccountInvite,
   restorePermissionGroup,
   updateAccount,
+  updateAccountPermissionOverrides,
   updatePermissionGroup,
   type AccountLifecycleStatus,
   type AccountMutationPayload,
   type AccountRole,
-  type PermissionGroupMutationPayload
+  type PermissionGroupMutationPayload,
+  type PermissionOverride
 } from "@/lib/account-access-api";
+import { isDataScopeLevel } from "@/lib/data-scope";
 
 export type AccountFormState = {
   ok: boolean;
@@ -78,6 +81,25 @@ function readCustomPermissionKeys(formData: FormData) {
     .filter((value): value is string => typeof value === "string" && value.length > 0);
 }
 
+// The account edit form posts the overrides it computed against the selected group as JSON
+// (AU-11). Absent: the form did not touch permissions.
+function readPermissionOverrides(formData: FormData) {
+  const raw = formData.get("permissionOverrides");
+  if (typeof raw !== "string" || raw.length === 0) return null;
+
+  const parsed = JSON.parse(raw) as unknown;
+  const overrides = (Array.isArray(parsed) ? parsed : []).filter(
+    (item): item is PermissionOverride =>
+      Boolean(item) && typeof item.key === "string" && (item.mode === "grant" || item.mode === "revoke") && (item.scope === undefined || isDataScopeLevel(item.scope))
+  );
+
+  return {
+    enabled: readBoolean(formData, "customPermissionsEnabled"),
+    overrides,
+    note: readNullableString(formData, "customPermissionNote")
+  };
+}
+
 function readPermissionKeys(formData: FormData) {
   return formData
     .getAll("permissionKeys")
@@ -106,12 +128,32 @@ function readAccountPayload(
   };
 }
 
+// The group form posts one JSON object for the scopes chosen in its dropdowns; the API validates
+// levels and keeps stored scopes for keys that are not sent.
+function readPermissionScopes(formData: FormData) {
+  const raw = formData.get("permissionScopes");
+
+  if (typeof raw !== "string" || raw.length === 0) {
+    return undefined;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as PermissionGroupMutationPayload["permissionScopes"])
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function readGroupPayload(formData: FormData): PermissionGroupMutationPayload {
   return {
     name: readRequiredString(formData, "name"),
     description: readRequiredString(formData, "description"),
     roleScope: readRequiredString(formData, "roleScope") as AccountRole,
-    permissionKeys: readPermissionKeys(formData)
+    permissionKeys: readPermissionKeys(formData),
+    permissionScopes: readPermissionScopes(formData)
   };
 }
 
@@ -159,12 +201,21 @@ export async function createAccountAction(_state: AccountFormState, formData: Fo
 export async function updateAccountAction(_state: AccountFormState, formData: FormData): Promise<AccountFormState> {
   try {
     const accountId = readAccountId(formData);
-    const payload = readAccountPayload(formData);
+    // Custom permissions go through the overrides endpoint below (grant + revoke + scope); the
+    // legacy customPermissionKeys field would only add keys and reset the overrides switch.
+    const payload: AccountMutationPayload = readAccountPayload(formData);
+    delete payload.customPermissionKeys;
+    delete payload.customPermissionNote;
 
     await updateAccount(accountId, {
       ...payload,
       permissionGroupId: readNullableString(formData, "permissionGroupId")
     });
+
+    const overrides = readPermissionOverrides(formData);
+    if (overrides) {
+      await updateAccountPermissionOverrides(accountId, overrides);
+    }
     revalidatePath("/admin/settings/accounts");
     revalidatePath(`/admin/settings/accounts/${accountId}`);
 

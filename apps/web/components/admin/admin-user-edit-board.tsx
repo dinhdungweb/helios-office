@@ -9,9 +9,19 @@ import type {
   AccountAccessData,
   AccountLifecycleStatus,
   AccountPermission,
+  AccountPermissionOverrides,
   ManagedUserAccount,
-  PermissionGroup
+  PermissionGroup,
+  PermissionOverride
 } from "@/lib/account-access-api";
+import type { DataScopeLevel } from "@/lib/data-scope";
+import {
+  defaultGrantScope,
+  noPermissionOption,
+  scopeFromActionValue,
+  scopedOptions,
+  type ScopedPermissionColumn
+} from "@/lib/permission-scope-options";
 import {
   filterGroupPermissionSectionsByCatalog,
   getGroupPermissionActionKeys,
@@ -37,23 +47,10 @@ const statusOptions: Array<{ value: AccountLifecycleStatus; label: string }> = [
 
 type EditSectionKey = "login" | "permissions";
 
-const noPermissionOption: FormSelectOption = { label: "Không có", value: "none" };
-
+// Non-scopable permissions are simply on or off; scopable ones use scopedOptions() (AU-11).
 const permissionActionOptions: Record<GroupPermissionActionColumn, FormSelectOption[]> = {
-  manage: [
-    noPermissionOption,
-    { label: "Quản lý tất cả", value: "manage_all" },
-    { label: "Quản lý công ty", value: "manage_company" },
-    { label: "Quản lý chi nhánh", value: "manage_branch" },
-    { label: "Quản lý phòng ban", value: "manage_department" }
-  ],
-  view: [
-    noPermissionOption,
-    { label: "Xem tất cả", value: "view_all" },
-    { label: "Xem công ty", value: "view_company" },
-    { label: "Xem chi nhánh", value: "view_branch" },
-    { label: "Xem phòng ban", value: "view_department" }
-  ],
+  manage: [noPermissionOption, { label: "Được quản lý", value: "manage_company" }],
+  view: [noPermissionOption, { label: "Được xem", value: "view_company" }],
   create: [
     noPermissionOption,
     { label: "Tạo mới", value: "create" },
@@ -68,8 +65,8 @@ const permissionActionMenuLabels: Record<GroupPermissionActionColumn, string> = 
 };
 
 const permissionActionDefaultValues: Record<GroupPermissionActionColumn, string> = {
-  manage: "manage_all",
-  view: "view_all",
+  manage: "manage_company",
+  view: "view_company",
   create: "create"
 };
 
@@ -159,12 +156,14 @@ function PermissionActionSelect({
   defaultValue,
   disabled,
   onValueChange,
+  options,
   permissionKey
 }: {
   column: GroupPermissionActionColumn;
   defaultValue?: string;
   disabled?: boolean;
   onValueChange: (value: string) => void;
+  options: FormSelectOption[];
   permissionKey: string;
 }) {
   return (
@@ -176,7 +175,7 @@ function PermissionActionSelect({
       menuLabel={permissionActionMenuLabels[column]}
       name={`permissionAction.${permissionKey}.${column}`}
       onValueChange={onValueChange}
-      options={permissionActionOptions[column]}
+      options={options}
       placeholder="Chọn quyền"
     />
   );
@@ -206,10 +205,12 @@ function FloatingField({
 
 export function AdminUserEditBoard({
   account,
-  data
+  data,
+  overrides
 }: {
   account: ManagedUserAccount;
   data: AccountAccessData;
+  overrides: AccountPermissionOverrides;
 }) {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(updateAccountAction, initialState);
@@ -228,7 +229,16 @@ export function AdminUserEditBoard({
   const initialGroupId = account.groupId ?? assignableGroups[0]?.id ?? "";
   const [selectedGroupId, setSelectedGroupId] = useState(initialGroupId);
   const [isPasswordChangeEnabled, setIsPasswordChangeEnabled] = useState(false);
-  const [isCustomPermission, setIsCustomPermission] = useState(account.customPermissionKeys.length > 0);
+  const [isCustomPermission, setIsCustomPermission] = useState(overrides.enabled);
+  const scopablePermissionKeys = useMemo(
+    () => new Set(data.permissions.filter((permission) => permission.scopable).map((permission) => permission.key)),
+    [data.permissions]
+  );
+  const savedOverrideScopes = useMemo(
+    () => Object.fromEntries(overrides.overrides.flatMap((override) => (override.mode === "grant" && override.scope ? [[override.key, override.scope]] : []))),
+    [overrides.overrides]
+  ) as Record<string, DataScopeLevel>;
+  const selectedGroup = data.groups.find((group) => group.id === selectedGroupId);
   const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<Set<string>>(
     () => new Set(editablePermissionKeys(account.effectivePermissionKeys.length > 0 ? account.effectivePermissionKeys : groupPermissions(initialGroupId, data.groups), permissionSections))
   );
@@ -240,10 +250,6 @@ export function AdminUserEditBoard({
   );
   const [permissionActionOverrides, setPermissionActionOverrides] = useState<Record<string, string>>({});
   const [collapsedSections, setCollapsedSections] = useState<Set<EditSectionKey>>(() => new Set());
-  const selectedPermissionKeysToSubmit = useMemo(
-    () => Array.from(selectedPermissionKeys).filter((permissionKey) => visiblePermissionKeys.has(permissionKey)),
-    [selectedPermissionKeys, visiblePermissionKeys]
-  );
 
   const isSectionCollapsed = (sectionKey: EditSectionKey) => collapsedSections.has(sectionKey);
   const toggleSection = (sectionKey: EditSectionKey) => {
@@ -375,7 +381,67 @@ export function AdminUserEditBoard({
       return permissionActionOverrides[overrideKey];
     }
 
-    return hasGroupPermissionAction(item, selectedPermissionKeys, column) ? permissionActionDefaultValues[column] : "";
+    if (!hasGroupPermissionAction(item, selectedPermissionKeys, column)) {
+      return "";
+    }
+
+    if (!isScopedColumn(item, column)) {
+      return permissionActionDefaultValues[column];
+    }
+
+    // The scope this account gets today: its own override, else the selected group's.
+    const scope = getGroupPermissionActionKeys(item, column)
+      .map((permissionKey) => savedOverrideScopes[permissionKey] ?? selectedGroup?.permissionScopes[permissionKey])
+      .find(Boolean);
+
+    return `${column}_${scope ?? defaultGrantScope}`;
+  };
+
+  function isScopedColumn(item: GroupPermissionItem, column: GroupPermissionActionColumn): column is ScopedPermissionColumn {
+    return column !== "create" && getGroupPermissionActionKeys(item, column).some((permissionKey) => scopablePermissionKeys.has(permissionKey));
+  }
+
+  const permissionActionOptionsFor = (item: GroupPermissionItem, column: GroupPermissionActionColumn) =>
+    isScopedColumn(item, column) ? scopedOptions(column) : permissionActionOptions[column];
+
+  // AU-11: what differs from the selected group, sent to PUT /permission-overrides. Unchecked group
+  // keys become revokes, extra keys grants, and a scope different from the group's a re-scoped grant.
+  // Overrides of keys this matrix does not show are kept as they are.
+  const permissionOverridesToSubmit = (): PermissionOverride[] => {
+    if (!isCustomPermission) return [];
+
+    const groupKeys = new Set(selectedGroup?.permissionKeys ?? []);
+    const desiredScopes: Record<string, DataScopeLevel> = {};
+    for (const item of permissionSections.flatMap((section) => section.items)) {
+      for (const column of ["manage", "view"] as const) {
+        if (!isScopedColumn(item, column)) continue;
+        const scope = scopeFromActionValue(column, permissionActionValue(item, column));
+        if (!scope) continue;
+        getGroupPermissionActionKeys(item, column)
+          .filter((permissionKey) => scopablePermissionKeys.has(permissionKey))
+          .forEach((permissionKey) => {
+            desiredScopes[permissionKey] = scope;
+          });
+      }
+    }
+
+    const result: PermissionOverride[] = [];
+    for (const key of visiblePermissionKeys) {
+      const selected = selectedPermissionKeys.has(key);
+      const inGroup = groupKeys.has(key);
+      const scope = scopablePermissionKeys.has(key) ? desiredScopes[key] : undefined;
+      const groupScope = selectedGroup?.permissionScopes[key] ?? defaultGrantScope;
+
+      if (selected && !inGroup) {
+        result.push(scope ? { key, mode: "grant", scope } : { key, mode: "grant" });
+      } else if (!selected && inGroup) {
+        result.push({ key, mode: "revoke" });
+      } else if (selected && inGroup && scope && scope !== groupScope) {
+        result.push({ key, mode: "grant", scope });
+      }
+    }
+
+    return [...result, ...overrides.overrides.filter((override) => !visiblePermissionKeys.has(override.key))];
   };
 
   const hasPermissionActionColumn = (item: GroupPermissionItem, column: GroupPermissionActionColumn) =>
@@ -426,10 +492,9 @@ export function AdminUserEditBoard({
         <input name="email" type="hidden" value={account.email} />
         <input name="displayName" type="hidden" value={account.name} />
         <input name="adminRole" type="hidden" value={account.role} />
-        <input name="customPermissionNote" type="hidden" value={account.customPermissionNote ?? ""} />
-        {isCustomPermission ? selectedPermissionKeysToSubmit.map((permissionKey) => (
-          <input key={permissionKey} name="customPermissionKeys" type="hidden" value={permissionKey} />
-        )) : null}
+        <input name="customPermissionNote" type="hidden" value={overrides.note ?? ""} />
+        <input name="customPermissionsEnabled" type="hidden" value={isCustomPermission ? "on" : ""} />
+        <input name="permissionOverrides" type="hidden" value={JSON.stringify(permissionOverridesToSubmit())} />
 
         <section className="admin-user-edit-section" aria-labelledby="admin-user-edit-login-title">
           <header>
@@ -628,6 +693,7 @@ export function AdminUserEditBoard({
                           <td>
                             <PermissionActionSelect
                               column="manage"
+                              options={permissionActionOptionsFor(permission, "manage")}
                               defaultValue={permissionActionValue(permission, "manage")}
                               disabled={!isChecked || !isCustomPermission}
                               key={`${permission.id}-manage-${permissionActionValue(permission, "manage")}-${isChecked ? "on" : "off"}`}
@@ -638,6 +704,7 @@ export function AdminUserEditBoard({
                           <td>
                             <PermissionActionSelect
                               column="view"
+                              options={permissionActionOptionsFor(permission, "view")}
                               defaultValue={permissionActionValue(permission, "view")}
                               disabled={!isChecked || !isCustomPermission}
                               key={`${permission.id}-view-${permissionActionValue(permission, "view")}-${isChecked ? "on" : "off"}`}
@@ -648,6 +715,7 @@ export function AdminUserEditBoard({
                           <td>
                             <PermissionActionSelect
                               column="create"
+                              options={permissionActionOptionsFor(permission, "create")}
                               defaultValue={permissionActionValue(permission, "create")}
                               disabled={!isChecked || !isCustomPermission}
                               key={`${permission.id}-create-${permissionActionValue(permission, "create")}-${isChecked ? "on" : "off"}`}
@@ -659,7 +727,8 @@ export function AdminUserEditBoard({
                       );
                     })}
                   </Fragment>
-                ))}              </tbody>
+                ))}
+              </tbody>
             </table>
           </div>
           </div>

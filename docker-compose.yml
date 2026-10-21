@@ -20,7 +20,9 @@ services:
     image: redis:7-alpine
     container_name: helios-redis
     ports:
-      - "6379:6379"
+      # Host port 6380: a Redis installed directly on Windows often holds 127.0.0.1:6379, and
+      # "localhost" would then silently switch between the two servers.
+      - "6380:6379"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data

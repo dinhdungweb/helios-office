@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getKeycloakLogoutUrl, getWebAuthConfig } from "@/lib/auth-config";
+import { endKeycloakSession } from "@/lib/auth-account-check";
 import { AUTH_COOKIE_NAMES, clearSessionCookies } from "@/lib/auth-session";
 import { buildRequestUrl, getRequestOrigin } from "@/lib/request-origin";
 
@@ -32,6 +33,28 @@ function localLogoutResponse(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  // The Keycloak session is already gone (signed out from another device or by an admin): only
+  // the cookies are left to clear, and the login page says why.
+  const reason = request.nextUrl.searchParams.get("reason");
+
+  // Idle sign-out (AU-19): end the Keycloak session server-side, then say why on the login page.
+  if (reason === "idle") {
+    try {
+      await endKeycloakSession(getWebAuthConfig(getRequestOrigin(request)), request.cookies.get(AUTH_COOKIE_NAMES.refreshToken)?.value);
+    } catch {
+      // Misconfigured auth: the cookies below are still cleared.
+    }
+    const response = NextResponse.redirect(buildRequestUrl(request, "/login?error=idle"), 303);
+    clearSessionCookies(response);
+    return response;
+  }
+
+  if (reason === "session_revoked") {
+    const response = NextResponse.redirect(buildRequestUrl(request, "/login?error=session_revoked"), 303);
+    clearSessionCookies(response);
+    return response;
+  }
+
   try {
     return buildLogoutResponse(request);
   } catch {

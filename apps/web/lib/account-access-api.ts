@@ -1,5 +1,8 @@
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
+import { isDataScopeLevel, type DataScopeLevel } from "@/lib/data-scope";
+
+export type { DataScopeLevel } from "@/lib/data-scope";
 
 export type AccountRole = "system_admin" | "user";
 export type AccountLifecycleStatus = "pending_activation" | "active" | "closed";
@@ -20,6 +23,8 @@ export type AccountPermission = {
   label: string;
   description?: string | null;
   adminOnly: boolean;
+  // Limited by data scope; see docs/design/data-scope.md.
+  scopable?: boolean;
   sortOrder?: number;
 };
 
@@ -32,6 +37,7 @@ export type PermissionGroup = {
   archivedAt?: string | null;
   memberCount: number;
   permissionKeys: string[];
+  permissionScopes: Record<string, DataScopeLevel>;
 };
 
 export type AccountProvisionEmployee = {
@@ -95,6 +101,7 @@ export type PermissionGroupMutationPayload = {
   description: string;
   roleScope?: AccountRole;
   permissionKeys?: string[];
+  permissionScopes?: Record<string, DataScopeLevel>;
 };
 
 type ApiPermission = {
@@ -103,6 +110,7 @@ type ApiPermission = {
   label: string;
   description?: string | null;
   adminOnly: boolean;
+  scopable?: boolean;
   sortOrder?: number;
 };
 
@@ -115,6 +123,7 @@ type ApiPermissionGroup = {
   archivedAt?: string | null;
   memberCount?: number;
   permissionKeys?: string[];
+  permissionScopes?: Record<string, string>;
 };
 
 type ApiAccount = {
@@ -245,7 +254,10 @@ function normalizeGroup(group: ApiPermissionGroup): PermissionGroup {
     status: group.status === "archived" ? "archived" : "active",
     archivedAt: group.archivedAt ?? null,
     memberCount: group.memberCount ?? 0,
-    permissionKeys: group.permissionKeys ?? []
+    permissionKeys: group.permissionKeys ?? [],
+    permissionScopes: Object.fromEntries(
+      Object.entries(group.permissionScopes ?? {}).filter((entry): entry is [string, DataScopeLevel] => isDataScopeLevel(entry[1]))
+    )
   };
 }
 
@@ -394,5 +406,48 @@ export async function restorePermissionGroup(groupId: string) {
 export async function deletePermissionGroup(groupId: string) {
   return requestJson<unknown>(`/account-access/groups/${groupId}`, {
     method: "DELETE"
+  });
+}
+
+// AU-11: permissions an account gets on top of its group ("grant", optionally re-scoped) or loses
+// ("revoke"). Keys not listed follow the group.
+export type PermissionOverride = { key: string; mode: "grant" | "revoke"; scope?: DataScopeLevel };
+
+export type AccountPermissionOverrides = {
+  accountId: string;
+  enabled: boolean;
+  note: string | null;
+  overrides: PermissionOverride[];
+};
+
+// AU-12: what the account can actually do — group ± overrides, with the data scope of each key.
+export type EffectivePermissionGrant = {
+  key: string;
+  scopable: boolean;
+  scope: string;
+  sources: Array<"group" | "custom" | "system_admin">;
+};
+
+export async function getAccountEffectivePermissions(accountId: string) {
+  const result = await requestJson<{ accountId: string; grants: EffectivePermissionGrant[] }>(
+    `/account-access/accounts/${encodeURIComponent(accountId)}/effective-permissions`
+  );
+  return result.grants;
+}
+
+export async function getAccountPermissionOverrides(accountId: string) {
+  return requestJson<AccountPermissionOverrides>(`/account-access/accounts/${encodeURIComponent(accountId)}/permission-overrides`);
+}
+
+export async function updateAccountPermissionOverrides(
+  accountId: string,
+  payload: { enabled: boolean; overrides: PermissionOverride[]; note?: string | null }
+) {
+  return requestJson<AccountPermissionOverrides>(`/account-access/accounts/${encodeURIComponent(accountId)}/permission-overrides`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
   });
 }

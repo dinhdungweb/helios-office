@@ -1,18 +1,25 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { AccountAdminRole, AccountLifecycleStatus } from "@prisma/client";
+import { Type } from "class-transformer";
 import {
+  ArrayMaxSize,
   ArrayUnique,
   IsArray,
   IsBoolean,
   IsEmail,
   IsEnum,
+  IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   Matches,
+  MaxLength,
   Min,
-  MinLength
+  MinLength,
+  ValidateNested
 } from "class-validator";
+import { SCOPE_LEVELS, type ScopeLevel } from "../../common/data-scope/data-scope.types";
 
 export class CreateUserAccountDto {
   @ApiPropertyOptional({ example: "linhmn" })
@@ -149,6 +156,14 @@ export class CreatePermissionGroupDto {
   @ArrayUnique()
   @IsString({ each: true })
   permissionKeys?: string[];
+
+  @ApiPropertyOptional({
+    description: "Data scope per scopable permission key; invalid levels and non-scopable keys are ignored.",
+    example: { "permission.attendance.view": "department" }
+  })
+  @IsOptional()
+  @IsObject()
+  permissionScopes?: Record<string, string>;
 }
 
 export class UpdatePermissionGroupDto {
@@ -175,6 +190,14 @@ export class UpdatePermissionGroupDto {
   @ArrayUnique()
   @IsString({ each: true })
   permissionKeys?: string[];
+
+  @ApiPropertyOptional({
+    description: "Scopes to change; keys not sent keep their stored scope.",
+    example: { "permission.attendance.view": "department" }
+  })
+  @IsOptional()
+  @IsObject()
+  permissionScopes?: Record<string, string>;
 }
 
 export class CreatePermissionDefinitionDto {
@@ -239,4 +262,46 @@ export class UpdatePermissionDefinitionDto {
   @IsInt()
   @Min(0)
   sortOrder?: number;
+}
+
+export const PERMISSION_OVERRIDE_MODES = ["grant", "revoke"] as const;
+export type PermissionOverrideMode = (typeof PERMISSION_OVERRIDE_MODES)[number];
+
+// One permission that differs from the account's group (AU-11). Keys not listed follow the group.
+export class PermissionOverrideDto {
+  @ApiProperty({ example: "employees.department.manage" })
+  @IsString()
+  @MinLength(1)
+  key!: string;
+
+  @ApiProperty({ enum: PERMISSION_OVERRIDE_MODES, description: "grant: add (or re-scope) the key; revoke: remove it even if the group grants it." })
+  @IsIn(PERMISSION_OVERRIDE_MODES)
+  mode!: PermissionOverrideMode;
+
+  @ApiPropertyOptional({
+    enum: SCOPE_LEVELS,
+    description: "Grants of scopable keys only; replaces the group's scope. Omitted: the group's scope, else the permission default."
+  })
+  @IsOptional()
+  @IsIn(SCOPE_LEVELS)
+  scope?: ScopeLevel;
+}
+
+export class UpdatePermissionOverridesDto {
+  @ApiProperty({ description: "Off: the account uses its group's permissions only (overrides are kept but ignored)." })
+  @IsBoolean()
+  enabled!: boolean;
+
+  @ApiProperty({ type: [PermissionOverrideDto], description: "Replaces every stored override." })
+  @IsArray()
+  @ArrayMaxSize(500)
+  @ValidateNested({ each: true })
+  @Type(() => PermissionOverrideDto)
+  overrides!: PermissionOverrideDto[];
+
+  @ApiPropertyOptional({ example: "Tạm cấp quyền duyệt chấm công trong tháng 10" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string | null;
 }

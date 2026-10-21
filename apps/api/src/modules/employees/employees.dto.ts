@@ -80,22 +80,16 @@ export class CreateEmployeeContractDto {
   endDate?: string;
 }
 
-export class CreateEmployeeDocumentDto {
+// Attaches a file already uploaded through /files (purpose employee_document) to a profile field.
+export class AttachEmployeeDocumentDto {
+  @ApiProperty({ example: "3f2c...", description: "StoredFile id returned by /files/presign + /files/:id/complete." })
   @IsString()
+  fileId!: string;
+
+  @ApiProperty({ example: "identityCardFront", description: "Profile form field the document belongs to." })
+  @IsString()
+  @MinLength(1)
   fieldName!: string;
-
-  @IsString()
-  fileName!: string;
-
-  @IsString()
-  mimeType!: string;
-
-  @IsInt()
-  @Min(1)
-  size!: number;
-
-  @IsString()
-  contentBase64!: string;
 }
 
 export class CreateEmployeeDto {
@@ -188,12 +182,6 @@ export class CreateEmployeeDto {
   @ValidateNested()
   @Type(() => CreateEmployeeContractDto)
   contract?: CreateEmployeeContractDto;
-
-  @ApiPropertyOptional({ type: [CreateEmployeeDocumentDto] })
-  @IsOptional()
-  @ValidateNested({ each: true })
-  @Type(() => CreateEmployeeDocumentDto)
-  documents?: CreateEmployeeDocumentDto[];
 
   @ApiPropertyOptional({ default: true })
   @IsOptional()

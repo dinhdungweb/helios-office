@@ -5,6 +5,7 @@ import { EmployeeEditorDialog } from "@/components/admin/employee-editor-dialog"
 import { ResponsiveToolbarActionMenu } from "@/components/admin/responsive-toolbar-action-menu";
 import { FormCheckbox } from "@/components/ui/form-controls";
 import { ListPagination } from "@/components/ui/list-pagination";
+import { ExportStatus, useServerExport } from "@/components/ui/use-server-export";
 import {
   CaretRight,
   CaretDown,
@@ -29,6 +30,13 @@ import type { EmployeeDirectoryData, EmployeeDirectoryRecord } from "@/lib/emplo
 type PersonnelFilter = "all" | "active" | "resigned";
 
 const pageSize = 50;
+
+// Same split as matchesFilter, as params of the API's "employees" export.
+const EXPORT_STATUS_PARAMS: Record<PersonnelFilter, Record<string, string>> = {
+  all: {},
+  active: { status: "active,onboarding,offboarding" },
+  resigned: { status: "resigned" }
+};
 
 const tabs: Array<{ key: PersonnelFilter; label: string }> = [
   { key: "all", label: "Tất cả" },
@@ -87,6 +95,7 @@ export function PersonnelDirectoryBoard({ data }: { data: EmployeeDirectoryData 
   const [currentPage, setCurrentPage] = useState(1);
   const [editingEmployee, setEditingEmployee] = useState<EmployeeDirectoryRecord | null>(null);
   const bulkMenuRef = useRef<HTMLDivElement | null>(null);
+  const serverExport = useServerExport();
   const filteredEmployees = useMemo(
     () => data.employees.filter((employee) => matchesFilter(employee, activeFilter)),
     [activeFilter, data.employees]
@@ -307,6 +316,8 @@ export function PersonnelDirectoryBoard({ data }: { data: EmployeeDirectoryData 
         </nav>
       )}
 
+      <ExportStatus state={serverExport.state} onDismiss={serverExport.dismiss} />
+
       <section className="admin-user-toolbar department-directory-toolbar personnel-directory-toolbar has-responsive-actions" aria-label="Công cụ danh sách nhân sự">
         <div className="admin-user-toolbar-left">
           <button className="admin-user-filter-trigger" type="button" aria-label="Bộ lọc danh sách nhân sự">
@@ -341,8 +352,11 @@ export function PersonnelDirectoryBoard({ data }: { data: EmployeeDirectoryData 
               {
                 key: "export",
                 icon: <Export size={16} weight="duotone" aria-hidden="true" />,
-                label: "Export",
-                onClick: () => exportEmployees(filteredEmployees)
+                label: serverExport.running ? "Đang xuất..." : "Export",
+                // Built by the API within the user's data scope, not from the rows loaded here.
+                onClick: () => {
+                  if (!serverExport.running) void serverExport.run("employees", EXPORT_STATUS_PARAMS[activeFilter]);
+                }
               },
               {
                 key: "update-address",

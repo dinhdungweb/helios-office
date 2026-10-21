@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
 
@@ -15,13 +16,14 @@ export type CurrentSessionUser = {
     accountStatus: string;
     effectivePermissionKeys: string[];
   } | null;
+  sessionPolicy?: { autoLogoutEnabled: boolean; idleMinutes: number; warningSeconds: number };
 };
 
-export async function getCurrentSessionUser() {
+async function fetchSessionUser(): Promise<{ user: CurrentSessionUser | null; code?: string }> {
   const accessToken = await getSessionAccessToken();
 
   if (!accessToken) {
-    return null;
+    return { user: null };
   }
 
   try {
@@ -33,11 +35,33 @@ export async function getCurrentSessionUser() {
     });
 
     if (!response.ok) {
-      return null;
+      const body = response.status === 401 ? ((await response.json().catch(() => null)) as { code?: unknown } | null) : null;
+      return { user: null, code: typeof body?.code === "string" ? body.code : undefined };
     }
 
-    return response.json() as Promise<CurrentSessionUser>;
+    return { user: (await response.json()) as CurrentSessionUser };
   } catch {
-    return null;
+    return { user: null };
   }
+}
+
+export async function getCurrentSessionUser() {
+  return (await fetchSessionUser()).user;
+}
+
+// For the page frame: a session signed out elsewhere (AU-16/17) still has unexpired cookies, so
+// end it here instead of rendering pages whose API calls are all refused.
+export async function getCurrentSessionUserOrSignOut() {
+  const { user, code } = await fetchSessionUser();
+
+  if (code === "session_revoked") {
+    redirect("/api/auth/logout?reason=session_revoked");
+  }
+
+  // Password accepted, second factor still missing while the company enforces 2FA (AU-18).
+  if (code === "two_factor_required") {
+    redirect("/login/two-factor");
+  }
+
+  return user;
 }

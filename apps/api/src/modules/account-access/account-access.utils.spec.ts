@@ -29,6 +29,28 @@ describe("account access utils", () => {
     ]);
   });
 
+  it("removes revoked keys whether the group or a custom grant includes them (AU-11)", () => {
+    const catalogKeys = ["system.accounts.manage", "reports.company.view", "requests.personal.create"];
+
+    expect(
+      resolveEffectivePermissionKeys(
+        {
+          adminRole: "user",
+          accountStatus: "active",
+          groupPermissionKeys: ["requests.personal.create", "reports.company.view"],
+          customPermissionKeys: ["system.accounts.manage"],
+          revokedPermissionKeys: ["reports.company.view", "system.accounts.manage"]
+        },
+        catalogKeys
+      )
+    ).toEqual(["requests.personal.create"]);
+
+    // system_admin cannot be narrowed by overrides.
+    expect(
+      resolveEffectivePermissionKeys({ adminRole: "system_admin", accountStatus: "active", revokedPermissionKeys: catalogKeys }, catalogKeys)
+    ).toEqual(catalogKeys);
+  });
+
   it("resolves effective permissions from lifecycle, group status, and admin role", () => {
     const catalogKeys = ["system.accounts.manage", "reports.company.view", "requests.personal.create"];
 

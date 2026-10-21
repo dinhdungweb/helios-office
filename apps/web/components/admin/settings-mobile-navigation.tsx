@@ -7,7 +7,8 @@ import { CaretLeft, GearSix, LinkSimple, List, Users, X } from "@/lib/icons";
 const generalSettingsItems = [
   { key: "system", href: "/admin/settings/system", label: "Cài đặt hệ thống" },
   { key: "session", href: "/admin/settings/session", label: "Phiên làm việc" },
-  { key: "two-factor", href: "/admin/settings/two-factor", label: "Bảo mật 2 lớp" }
+  { key: "two-factor", href: "/admin/settings/two-factor", label: "Bảo mật 2 lớp" },
+  { key: "audit-logs", href: "/admin/settings/audit-logs", label: "Nhật ký hệ thống" }
 ] as const;
 
 export function SettingsMobileNavigation({ activeItem }: { activeItem: SettingsWorkspaceItem }) {

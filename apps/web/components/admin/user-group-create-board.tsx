@@ -10,6 +10,13 @@ import {
   type GroupFormState
 } from "@/lib/account-access-actions";
 import type { AccountAccessData, PermissionGroup } from "@/lib/account-access-api";
+import {
+  defaultGrantScope,
+  noPermissionOption,
+  scopeFromActionValue,
+  scopedOptions,
+  type ScopedPermissionColumn
+} from "@/lib/permission-scope-options";
 import { CaretDown } from "@/lib/icons";
 import {
   filterGroupPermissionSectionsByCatalog,
@@ -28,23 +35,11 @@ const initialState: GroupFormState = { ok: false };
 
 type GroupCreateSectionKey = "info" | "permissions";
 
-const noPermissionOption: FormSelectOption = { label: "Không có", value: "none" };
+type ScopedColumn = ScopedPermissionColumn;
 
 const permissionActionOptions: Record<GroupPermissionActionColumn, FormSelectOption[]> = {
-  manage: [
-    noPermissionOption,
-    { label: "Quản lý tất cả", value: "manage_all" },
-    { label: "Quản lý công ty", value: "manage_company" },
-    { label: "Quản lý chi nhánh", value: "manage_branch" },
-    { label: "Quản lý phòng ban", value: "manage_department" }
-  ],
-  view: [
-    noPermissionOption,
-    { label: "Xem tất cả", value: "view_all" },
-    { label: "Xem công ty", value: "view_company" },
-    { label: "Xem chi nhánh", value: "view_branch" },
-    { label: "Xem phòng ban", value: "view_department" }
-  ],
+  manage: [noPermissionOption, { label: "Được quản lý", value: "manage_company" }],
+  view: [noPermissionOption, { label: "Được xem", value: "view_company" }],
   create: [
     noPermissionOption,
     { label: "Tạo mới", value: "create" },
@@ -52,16 +47,11 @@ const permissionActionOptions: Record<GroupPermissionActionColumn, FormSelectOpt
   ]
 };
 
+
 const permissionActionMenuLabels: Record<GroupPermissionActionColumn, string> = {
   manage: "Quyền quản lý",
   view: "Quyền xem",
   create: "Quyền tạo mới"
-};
-
-const permissionActionDefaultValues: Record<GroupPermissionActionColumn, string> = {
-  manage: "manage_all",
-  view: "view_all",
-  create: "create"
 };
 
 function PermissionActionSelect({
@@ -69,12 +59,14 @@ function PermissionActionSelect({
   defaultValue,
   disabled,
   onValueChange,
+  options,
   permissionKey
 }: {
   column: GroupPermissionActionColumn;
   defaultValue?: string;
   disabled?: boolean;
   onValueChange: (value: string) => void;
+  options: FormSelectOption[];
   permissionKey: string;
 }) {
   return (
@@ -86,7 +78,7 @@ function PermissionActionSelect({
       menuLabel={permissionActionMenuLabels[column]}
       name={`permissionAction.${permissionKey}.${column}`}
       onValueChange={onValueChange}
-      options={permissionActionOptions[column]}
+      options={options}
       placeholder="Chọn quyền"
     />
   );
@@ -127,6 +119,10 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
   const [permissionActionOverrides, setPermissionActionOverrides] = useState<Record<string, string>>({});
   const [collapsedSections, setCollapsedSections] = useState<Set<GroupCreateSectionKey>>(() => new Set());
   const knownPermissionKeys = useMemo(() => new Set(data.permissions.map((permission) => permission.key)), [data.permissions]);
+  const scopablePermissionKeys = useMemo(
+    () => new Set(data.permissions.filter((permission) => permission.scopable).map((permission) => permission.key)),
+    [data.permissions]
+  );
   const visiblePermissionKeys = useMemo(
     () => new Set(permissionSections.flatMap((section) => section.items.flatMap((item) => item.permissionKeys))),
     [permissionSections]
@@ -245,6 +241,14 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
     );
   }
 
+  function isScopedColumn(item: GroupPermissionItem, column: GroupPermissionActionColumn): column is ScopedColumn {
+    return column !== "create" && getGroupPermissionActionKeys(item, column).some((permissionKey) => scopablePermissionKeys.has(permissionKey));
+  }
+
+  function permissionActionOptionsFor(item: GroupPermissionItem, column: GroupPermissionActionColumn) {
+    return isScopedColumn(item, column) ? scopedOptions(column) : permissionActionOptions[column];
+  }
+
   function permissionActionValue(item: GroupPermissionItem, column: GroupPermissionActionColumn) {
     const overrideKey = `${item.id}.${column}`;
 
@@ -252,8 +256,42 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
       return permissionActionOverrides[overrideKey];
     }
 
-    return hasGroupPermissionAction(item, selectedPermissionKeys, column) ? permissionActionDefaultValues[column] : "";
+    if (!hasGroupPermissionAction(item, selectedPermissionKeys, column)) {
+      return "";
+    }
+
+    if (column === "create") {
+      return "create";
+    }
+
+    if (!isScopedColumn(item, column)) {
+      return `${column}_company`;
+    }
+
+    const storedScope = getGroupPermissionActionKeys(item, column)
+      .map((permissionKey) => group?.permissionScopes[permissionKey])
+      .find(Boolean);
+
+    return `${column}_${storedScope ?? defaultGrantScope}`;
   }
+
+  // Scopes for the keys driven by the "Quản lý" / "Xem" dropdowns. Keys without a dropdown are not
+  // sent, so the API keeps their stored scope.
+  const permissionScopesToSubmit = Object.fromEntries(
+    permissionSections.flatMap((section) =>
+      section.items.flatMap((item) =>
+        (["manage", "view"] as const).flatMap((column) => {
+          if (!isScopedColumn(item, column)) return [];
+          const scope = scopeFromActionValue(column, permissionActionValue(item, column));
+          return scope
+            ? getGroupPermissionActionKeys(item, column)
+                .filter((permissionKey) => scopablePermissionKeys.has(permissionKey))
+                .map((permissionKey) => [permissionKey, scope] as const)
+            : [];
+        })
+      )
+    )
+  );
 
   function hasPermissionActionColumn(item: GroupPermissionItem, column: GroupPermissionActionColumn) {
     return getGroupPermissionActionKeys(item, column).length > 0 || Boolean(item[column]);
@@ -316,6 +354,7 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
         {selectedPermissionKeysToSubmit.map((permissionKey) => (
           <input key={permissionKey} name="permissionKeys" type="hidden" value={permissionKey} />
         ))}
+        <input name="permissionScopes" type="hidden" value={JSON.stringify(permissionScopesToSubmit)} />
 
         <section className={isInfoCollapsed ? "group-create-section is-collapsed" : "group-create-section"} aria-labelledby="group-create-info-title">
           <header className="group-create-section-header">
@@ -423,6 +462,7 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
                               disabled={!isChecked}
                               key={`${permission.id}-manage-${permissionActionValue(permission, "manage")}-${isChecked ? "on" : "off"}`}
                               onValueChange={(value) => setPermissionAction(permission, "manage", value)}
+                              options={permissionActionOptionsFor(permission, "manage")}
                               permissionKey={permission.id}
                             />
                           </td>
@@ -433,6 +473,7 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
                               disabled={!isChecked}
                               key={`${permission.id}-view-${permissionActionValue(permission, "view")}-${isChecked ? "on" : "off"}`}
                               onValueChange={(value) => setPermissionAction(permission, "view", value)}
+                              options={permissionActionOptionsFor(permission, "view")}
                               permissionKey={permission.id}
                             />
                           </td>
@@ -443,6 +484,7 @@ export function UserGroupCreateBoard({ data, group }: { data: AccountAccessData;
                               disabled={!isChecked}
                               key={`${permission.id}-create-${permissionActionValue(permission, "create")}-${isChecked ? "on" : "off"}`}
                               onValueChange={(value) => setPermissionAction(permission, "create", value)}
+                              options={permissionActionOptionsFor(permission, "create")}
                               permissionKey={permission.id}
                             />
                           </td>

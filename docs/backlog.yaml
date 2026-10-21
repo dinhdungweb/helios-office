@@ -88,48 +88,58 @@ modules:
         status: done
       - id: CORE-10
         title: Chuẩn phân trang/lọc/sắp xếp dùng chung cho mọi list API
-        status: todo
+        status: done
+        note: Helper ListQueryDto/pageArgs/sortArgs/paginated (common/pagination) + test, đang dùng ở /audit-logs và /notifications. List API mới dùng chuẩn này; chuyển các list cũ sang chuẩn là CORE-27 (GET /employees giữ dạng mảng tới HR-33 vì 8 chỗ trên web đang dùng)
       - id: CORE-11
         title: File service MinIO (presign upload, tải, xoá)
-        api: ["POST /files/presign", "POST /files", "GET /files/:id", "DELETE /files/:id"]
-        status: todo
+        api: ["POST /files/presign", "POST /files/:id/complete", "POST /files", "GET /files/:id", "DELETE /files/:id"]
+        status: done
+        note: MinIO/S3 (bucket tạo lúc dùng đầu, API chạy được khi MinIO tắt); presign PUT 10 phút, tải qua redirect 5 phút; FileAccessPolicy theo purpose, purpose chưa có policy bị từ chối; chính sách đầu tiên employee_document theo phạm vi dữ liệu
       - id: CORE-12
         title: Giới hạn loại/dung lượng file, quét file tải lên
-        status: todo
+        status: done
+        note: MIME + dung lượng theo purpose (ảnh 10MB, tài liệu 25MB, FILE_MAX_*), kiểm lại bằng HEAD khi complete. Worker dọn mỗi giờ các upload pending quá 24h (đánh dấu deleted rồi xoá object; có claim theo trạng thái nên chạy song song an toàn). Quét virus tách thành CORE-28
         depends: [CORE-11]
       - id: CORE-13
         title: API xem audit log
         api: ["GET /audit-logs", "GET /audit-logs/:id"]
-        status: todo
+        ui: /admin/settings/audit-logs
+        status: done
+        note: API lọc entity/actor/action/source/khoảng ngày, phân trang, chỉ system.accounts.manage. Trang Nhật ký hệ thống (menu Cài đặt hệ thống) có bộ lọc trên URL, xem giá trị trước/sau từng bản ghi. Thử trình duyệt 2026-10-21
       - id: CORE-14
         title: Interceptor ghi audit log cho mọi mutation HR/công/lương/duyệt
-        status: partial
-        note: Một số service đã ghi audit thủ công
+        status: done
+        note: AuditService.contextFields() gắn tài khoản/IP/user-agent/request id vào 14 chỗ ghi audit ở service; AuditInterceptor ghi mục "http" cho mutation thành công chưa có audit (chỉ lưu tên trường body). @SkipAudit cho user-preferences và attendance/sync
       - id: CORE-15
         title: Phạm vi dữ liệu theo quyền (bản thân/phòng ban/phòng ban con/toàn công ty)
-        status: todo
+        status: done
+        note: DataScopeService + migration 20261020053407_data_scope (39 quyền có phạm vi; quyền cũ giữ company). Áp vào /employees; module khác dùng khi làm (Phase 2–5)
       - id: CORE-16
         title: BullMQ queue + worker nền
-        status: todo
+        status: done
+        note: QueueService (bullmq, kết nối Redis lười, báo QueueUnavailableError khi Redis tắt); worker process riêng src/worker.ts + heartbeat; npm run dev chạy thêm worker (scripts/dev-worker.cjs dùng lại output của API watcher)
       - id: CORE-17
         title: WebSocket gateway xác thực JWT
-        status: todo
-        note: Từ Phase 0, guard toàn cục từ chối mọi message WebSocket cho tới khi có xác thực lúc handshake
+        status: done
+        note: Token xác thực ở middleware handshake (socket không hợp lệ không mở được), room account:<id>, ngắt khi token hết hạn; Redis adapter cho API, worker phát qua @socket.io/redis-emitter
       - id: CORE-18
         title: Import Excel chung (upload → validate → preview → commit)
-        api: ["POST /imports", "GET /imports/:id", "POST /imports/:id/commit"]
-        status: todo
+        api: ["GET /imports/types", "GET /imports/templates/:type", "POST /imports", "GET /imports/:id", "POST /imports/:id/commit"]
+        status: done
+        note: docs/design/import-export.md. UI dùng chung components/ui/import-dialog.tsx (mẫu → upload → lỗi theo dòng + xem trước → nhập), đang dùng ở danh mục vị trí (job_positions). Chưa dọn file import cũ (cùng CORE-12)
         depends: [CORE-11, CORE-16]
       - id: CORE-19
         title: Export Excel chung
-        api: ["POST /exports", "GET /exports/:id"]
-        status: todo
+        api: ["GET /exports/types", "POST /exports", "GET /exports/:id"]
+        status: done
+        note: Hook dùng chung components/ui/use-server-export.tsx; file do worker tạo theo phạm vi dữ liệu, link tải 5 phút. Chưa dọn file export cũ (cùng CORE-12)
         depends: [CORE-16]
       - id: CORE-20
         title: Health check
         api: ["GET /health"]
         public: true
-        status: todo
+        status: done
+        note: database / redis / worker (heartbeat); 503 khi DB down, "degraded" khi Redis hoặc worker down
       - id: CORE-21
         title: Mã hoá trường nhạy cảm (CCCD, tài khoản ngân hàng, lương)
         phase: 4
@@ -151,10 +161,21 @@ modules:
         phase: 9
         status: todo
         note: Chủ yếu react-hooks/set-state-in-effect (27) và <a> thay vì <Link> (22). Hạ --max-warnings trong npm run lint mỗi khi dọn bớt
+      - id: CORE-27
+        title: Chuyển các list API cũ sang chuẩn phân trang/lọc/sắp xếp của CORE-10
+        phase: 9
+        status: todo
+        note: Tách từ CORE-10 khi đóng Phase 1. Các list API viết trước CORE-10 vẫn trả mảng; chuyển kèm sửa chỗ web đang dùng (GET /employees đi cùng HR-33)
+      - id: CORE-28
+        title: Quét virus file tải lên
+        phase: 9
+        status: todo
+        note: Tách từ CORE-12 khi đóng Phase 1. Cần thêm dịch vụ quét (ví dụ ClamAV trong docker-compose) và bước quét trước khi file chuyển sang ready
+        depends: [CORE-12]
       - id: CORE-25
         title: Sửa lỗi hydration mismatch xuất hiện trên mọi trang dùng khung chung
-        status: todo
-        note: Phát hiện 2026-10-20 khi chạy thử; console báo "A tree hydrated but some attributes ... didn't match"
+        status: done
+        note: Phát hiện 2026-10-20 khi chạy thử; console báo "A tree hydrated but some attributes ... didn't match". Nguyên nhân là script trong layout gốc đặt màu giao diện đã lưu lên style của thẻ html trước khi React hydrate (cố ý, để không nháy màu); đặt suppressHydrationWarning trên html (chỉ áp cho thuộc tính của chính thẻ này). Kiểm tra 2026-10-21 trên 7 trang chính (người dùng, admin, HCNS) với màu giao diện đã chọn, 0 lỗi console
 
   # ---------------------------------------------------------------------------
   - code: AU
@@ -212,53 +233,79 @@ modules:
         status: done
       - id: AU-10
         title: Phạm vi dữ liệu trong quyền (scope) và áp vào guard
-        status: todo
+        status: done
+        note: Dropdown Quản lý/Xem trong ma trận nhóm quyền chọn 5 mức phạm vi cho quyền có phạm vi; quyền không hiện dropdown giữ phạm vi đang lưu khi lưu form. Phạm vi cho quyền riêng từng user thuộc AU-11
         depends: [CORE-15]
       - id: AU-11
         title: Ghi đè quyền riêng cho từng user
         api: ["GET /account-access/accounts/:id/permission-overrides", "PUT /account-access/accounts/:id/permission-overrides"]
-        status: todo
+        ui: /admin/settings/accounts/:id/edit
+        status: done
+        note: Mỗi quyền theo nhóm / cấp thêm (kèm phạm vi) / thu hồi (chốt 2026-10-21). Thu hồi thắng; phạm vi đặt riêng thay phạm vi nhóm. Áp dụng ở PermissionGuard, /auth/me và DataScopeService. Ma trận ở trang sửa tài khoản tính chênh lệch so với nhóm (trước đây bỏ tick quyền của nhóm không có tác dụng)
       - id: AU-12
         title: Xem quyền hiệu lực của user
         api: ["GET /account-access/accounts/:id/effective-permissions"]
-        status: todo
+        ui: /admin/settings/accounts/:id (Chi tiết quyền)
+        status: done
+        note: API trả quyền + phạm vi + nguồn; /auth/me trả permissionScopes. Bảng Chi tiết quyền ở trang chi tiết tài khoản hiện phạm vi thật và nguồn (theo nhóm / cấp riêng / quản trị hệ thống). Thử trình duyệt 2026-10-21 với quyền cấp riêng phạm vi phòng ban & cấp dưới
       - id: AU-13
         title: Đổi mật khẩu
         api: ["POST /auth/change-password"]
-        status: todo
+        ui: menu hồ sơ › Đổi mật khẩu
+        status: done
+        note: Kiểm tra mật khẩu cũ bằng password grant (rồi đóng ngay phiên đó) và đặt mật khẩu mới qua Keycloak Admin API
       - id: AU-14
         title: Quên mật khẩu / đặt lại mật khẩu
         api: ["POST /auth/forgot-password"]
+        ui: /login/forgot-password
         public: true
-        status: todo
+        status: done
+        note: Luôn trả cùng một câu trả lời (không lộ tài khoản nào tồn tại); email do Keycloak gửi (execute-actions-email UPDATE_PASSWORD) sau khi trả response; tối đa 1 email / tài khoản / 2 phút; cần bật SMTP
       - id: AU-15
         title: Admin đặt lại mật khẩu cho user
         api: ["POST /account-access/accounts/:id/reset-password"]
-        status: todo
+        ui: /admin/settings/accounts/:id (Gửi mật khẩu / Đổi mật khẩu)
+        status: done
+        note: Gửi email đặt lại hoặc đặt mật khẩu tạm (tự tạo nếu để trống, chỉ hiện một lần); mặc định đăng xuất mọi phiên. Chỉ system admin đặt lại được mật khẩu của system admin
       - id: AU-16
         title: Danh sách phiên đăng nhập và thu hồi phiên
         api: ["GET /auth/sessions", "DELETE /auth/sessions/:id"]
-        status: todo
+        ui: /user/security (menu hồ sơ › Phiên & lịch sử đăng nhập)
+        status: done
+        note: Phiên lấy từ Keycloak, ghép IP/trình duyệt từ lịch sử đăng nhập theo sid (Keycloak chỉ thấy IP của server web). Không thu hồi được phiên đang dùng (dùng Đăng xuất); id phiên của người khác trả 404. Thu hồi có hiệu lực ngay (sid lưu ở UserAccount.revokedSessionIds (giữ 1 giờ), API trả 401 session_revoked và khung trang web đưa thiết bị đó về /login với thông báo). Thử trình duyệt 2026-10-21 trên khanglm (2 thiết bị)
       - id: AU-17
         title: Buộc đăng xuất user
         api: ["POST /account-access/accounts/:id/force-logout"]
-        status: todo
+        ui: /admin/settings/accounts/:id (Buộc đăng xuất)
+        status: done
+        note: Đóng mọi phiên Keycloak và đặt UserAccount.sessionsRevokedAt; API từ chối access token cấp trước thời điểm đó (401 code session_revoked) nên có hiệu lực ngay, không chờ token hết hạn. Đặt lại mật khẩu kèm đăng xuất (AU-15) dùng chung cơ chế. Chỉ system admin buộc đăng xuất được system admin
       - id: AU-18
         title: Chính sách 2FA (bắt buộc theo nhóm/vai trò)
-        api: ["GET /admin-settings/two-factor", "PATCH /admin-settings/two-factor"]
-        ui: /admin/settings/two-factor
-        status: partial
-        note: Có trang UI, chưa có API
+        api:
+          - GET /admin-settings/two-factor
+          - PATCH /admin-settings/two-factor
+          - GET /auth/two-factor
+          - POST /auth/two-factor/totp/setup
+          - POST /auth/two-factor/totp/confirm
+          - DELETE /auth/two-factor/totp
+          - POST /auth/two-factor/email/send
+          - POST /auth/two-factor/verify
+          - POST /account-access/accounts/:id/two-factor/reset
+        ui: /admin/settings/two-factor; /login/two-factor; /user/security (Bảo mật 2 lớp); chi tiết tài khoản (Đặt lại 2FA)
+        status: done
+        note: App xác thực (TOTP RFC 6238, khoá mã hoá bằng SettingsSecretService) là chính, mã qua email (SMTP) dự phòng (chốt 2026-10-21). Khi bắt buộc, API từ chối phiên (sid) chưa qua 2FA với 401 two_factor_required, web chuyển sang /login/two-factor (người chưa có app được hướng dẫn thiết lập ngay). Chống dùng lại mã, khoá 15 phút sau 10 lần sai. Áp dụng cho mọi tài khoản đăng nhập bằng mật khẩu, chưa tách theo nhóm/vai trò. "Xem bảng lương công ty" hỏi lại mã sau verificationMinutes (403 two_factor_step_up_required) — API payroll-cycles đã áp, giao diện lương chưa nối API thật nên phần hỏi lại trên UI làm khi nối module lương
       - id: AU-19
         title: Chính sách phiên (timeout, số phiên đồng thời)
         api: ["GET /admin-settings/session", "PATCH /admin-settings/session"]
         ui: /admin/settings/session
-        status: partial
-        note: Có trang UI, chưa có API
+        status: done
+        note: Cài đặt chung (AdminSetting security.session), trước đây trang lưu vào tuỳ chọn cá nhân của admin nên không có tác dụng. Tự đăng xuất khi không hoạt động — khung trang hiện cảnh báo đếm ngược (đồng bộ giữa các tab), đồng thời đặt ssoSessionIdleTimeout của realm Keycloak (tắt = 30 phút mặc định). Giới hạn số phiên cùng lúc áp khi đăng nhập qua web (phiên ít dùng nhất bị đăng xuất, token bị chặn ngay)
       - id: AU-20
         title: Lịch sử đăng nhập
-        api: ["GET /auth/login-history", "GET /account-access/accounts/:id/login-history"]
-        status: todo
+        api: ["GET /auth/login-history", "GET /account-access/accounts/:id/login-history", "POST /auth/login-events"]
+        ui: /user/security; /admin/settings/accounts/:id (panel Lịch sử đăng nhập)
+        status: done
+        note: Bảng LoginEvent do Helios tự ghi (không dùng Keycloak events vì Keycloak chỉ thấy IP của server web). Route đăng nhập/callback của web gửi mỗi lần thử (thành công, sai mật khẩu, mật khẩu tạm, chưa gắn tài khoản, bị khoá) kèm IP + user agent của trình duyệt tới POST /auth/login-events, xác thực bằng WEB_SERVICE_TOKEN (cấu hình chung web + API); thiếu token thì bỏ qua, không chặn đăng nhập
       - id: AU-21
         title: Uỷ quyền duyệt thay khi vắng mặt
         api: ["GET /delegations", "POST /delegations", "PATCH /delegations/:id", "DELETE /delegations/:id"]
@@ -275,8 +322,15 @@ modules:
         status: todo
       - id: AU-24
         title: Chặn đăng nhập và báo lỗi rõ khi user Keycloak chưa gắn tài khoản Helios
-        status: todo
-        note: Hiện vẫn vào được giao diện nhưng mọi API trả 401 (gặp với dungdd khi DB seed cũ)
+        status: done
+        note: API trả 401 kèm code account_not_linked / account_inactive; web kiểm tra GET /auth/me ở đăng nhập, callback OAuth và refresh token, từ chối thì đóng phiên Keycloak và về /login với thông báo rõ. Thử trình duyệt 2026-10-21 với dungdd (chưa gắn) và tài khoản closed. Ghi lịch sử đăng nhập bị từ chối thuộc AU-20
+      - id: AU-25
+        title: Đổi mật khẩu tạm ở lần đăng nhập đầu
+        api: ["POST /auth/change-temporary-password"]
+        ui: /login/change-password
+        public: true
+        status: done
+        note: Keycloak từ chối password grant với "Account is not fully set up" khi mật khẩu đúng nhưng là mật khẩu tạm (UPDATE_PASSWORD), nên trước đây tài khoản tạo kèm mật khẩu tạm không đăng nhập được qua trang /login. Trang đăng nhập giờ chuyển sang /login/change-password; API tự kiểm tra mật khẩu tạm với Keycloak rồi mới đổi
 
   # ---------------------------------------------------------------------------
   - code: DV
@@ -348,7 +402,7 @@ modules:
         title: Upload / xoá tài liệu hồ sơ qua file service
         api: ["POST /employees/:id/documents", "DELETE /employees/:id/documents/:documentId"]
         status: partial
-        note: Hiện upload đi kèm server action tạo/sửa hồ sơ, chưa có route riêng và chưa dùng MinIO
+        note: API attach/xoá qua file service (MinIO) + web tạo hồ sơ upload qua presign đã xong (2026-10-20); còn thiếu UI xem/xoá tài liệu trong trang hồ sơ
         depends: [CORE-11]
       - id: HR-08
         title: Sơ đồ tổ chức
@@ -376,6 +430,7 @@ modules:
           - "DELETE /job-positions/:id"
         ui: /admin/settings/job-positions
         status: done
+        note: Import Excel (tạo/cập nhật theo mã) qua khung CORE-18, type job_positions
       - id: HR-11
         title: Chức danh CRUD + lưu trữ/khôi phục
         api:
@@ -476,8 +531,9 @@ modules:
         depends: [CORE-18]
       - id: HR-30
         title: Export hồ sơ ra Excel
-        api: ["GET /employees/export"]
-        status: todo
+        api: ["POST /exports"]
+        status: done
+        note: POST /exports type "employees" (phạm vi dữ liệu, lọc status — nhận danh sách — và departmentId); nút Export trên thanh công cụ danh bạ theo tab đang chọn. Export các dòng đang chọn vẫn là CSV phía trình duyệt
         depends: [CORE-19]
       - id: HR-31
         title: Sinh nhật / kỷ niệm ngày vào làm sắp tới (đang mock)
@@ -1101,29 +1157,38 @@ modules:
       - id: NT-01
         title: Số thông báo chưa đọc
         api: ["GET /notifications/unread"]
-        status: partial
-        note: Đang trả mock-data. Khi nối DB phải lấy theo user đăng nhập, bỏ query userId (hiện ai cũng xem được thông báo của người khác)
+        status: done
+        note: Đọc DB theo tài khoản đăng nhập (bỏ query userId); trả 20 thông báo chưa đọc mới nhất
       - id: NT-02
-        title: Danh sách thông báo
-        api: ["GET /notifications"]
-        status: todo
+        title: Danh sách thông báo + số chưa đọc của tài khoản đang đăng nhập
+        api: ["GET /notifications", "GET /notifications/unread-count"]
+        phase: 1
+        status: done
       - id: NT-03
         title: Đánh dấu đã đọc / đọc tất cả
         api: ["POST /notifications/:id/read", "POST /notifications/read-all"]
-        status: todo
+        phase: 1
+        status: done
+        note: Thông báo của người khác trả 404; không ghi audit (@SkipAudit)
       - id: NT-04
         title: Đẩy thông báo realtime qua WebSocket
         phase: 1
-        status: todo
+        ui: chuông thông báo trên thanh trên cùng
+        status: done
+        note: Server (worker → Redis → socket của đúng người) + route web GET /api/auth/socket-token + chuông trên web (badge chưa đọc, danh sách 15 thông báo, đánh dấu đã đọc, nhận thông báo mới không cần tải lại; token socket lấy lại mỗi lần kết nối lại). Handshake socket áp luôn chính sách 2FA. Thử trình duyệt 2026-10-21 bằng POST /notifications/test
         depends: [CORE-17]
       - id: NT-05
         title: Dịch vụ gửi thông báo dùng chung (fan-out qua BullMQ)
+        api: ["POST /notifications/test"]
         phase: 1
-        status: todo
+        status: done
+        note: notify() → hàng đợi → worker (NotificationDeliveryService giải người nhận, bỏ actor, áp preference, sự kiện bắt buộc); Redis tắt thì ghi thẳng in-app. Danh mục 6 sự kiện. POST /notifications/test cho admin kiểm tra đường đi
         depends: [CORE-16]
       - id: NT-06
         title: Kênh email cho thông báo
-        status: todo
+        phase: 1
+        status: done
+        note: Hàng đợi email (thử lại 3 lần khi lỗi gửi, không thử lại khi SMTP tắt/thiếu cấu hình), dùng cấu hình SMTP trong Cài đặt; mẫu email mặc định, chỉ link nội bộ. Chưa gửi thật trên máy dev vì SMTP đang tắt
         depends: [NT-05]
       - id: NT-07
         title: Kênh web push

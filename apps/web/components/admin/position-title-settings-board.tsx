@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState, useTransition, type ChangeEvent } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FormCheckbox, FormSelect } from "@/components/ui/form-controls";
+import { ImportDialog } from "@/components/ui/import-dialog";
 import { FormField, FormInput, FormTextarea, ModalDialog, StateBlock } from "@/components/ui/primitives";
 import {
   archivePositionAction,
@@ -528,29 +529,13 @@ function normalizeSearch(value: string) {
   return value.trim().toLocaleLowerCase("vi");
 }
 
-function splitCsvRow(row: string) {
-  const values: string[] = [];
-  let current = "";
-  let quoted = false;
-
-  for (let index = 0; index < row.length; index += 1) {
-    const character = row[index];
-    if (character === '"' && row[index + 1] === '"') {
-      current += '"';
-      index += 1;
-    } else if (character === '"') {
-      quoted = !quoted;
-    } else if (character === "," && !quoted) {
-      values.push(current.trim());
-      current = "";
-    } else {
-      current += character;
-    }
-  }
-
-  values.push(current.trim());
-  return values;
-}
+// Columns of the API's job_positions import (JobPositionImportHandler).
+const JOB_POSITION_IMPORT_COLUMNS = [
+  { key: "code", header: "Mã vị trí" },
+  { key: "name", header: "Tên vị trí" },
+  { key: "family", header: "Nhóm vị trí" },
+  { key: "description", header: "Mô tả" }
+];
 
 function formatCatalogTimestamp(value?: string | null) {
   if (!value) return "";
@@ -584,11 +569,9 @@ export function PositionTitleSettingsBoard({
   const items: CatalogItem[] = initialKind === "position" ? data.positions : data.titles;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [dialog, setDialog] = useState<{ mode: "create" | "edit"; item?: CatalogItem } | null>(null);
-  const [importMessage, setImportMessage] = useState<string | null>(null);
   const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [isDeleting, startDeleteTransition] = useTransition();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const normalizedQuery = normalizeSearch(query);
   const visibleItems = useMemo(() => {
     if (!normalizedQuery) return items;
@@ -656,49 +639,6 @@ export function PositionTitleSettingsBoard({
     });
   };
 
-  const importItems = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    setIsImporting(true);
-    setImportMessage(null);
-
-    try {
-      const lines = (await file.text()).split(/\r?\n/).filter((line) => line.trim().length > 0);
-      const header = splitCsvRow(lines.shift() ?? "").map(normalizeSearch);
-      const codeIndex = header.indexOf("mã");
-      const nameIndex = header.findIndex((value) => value === "tên vị trí" || value === "tên chức vụ" || value === "tên");
-      const metaIndex = header.findIndex((value) => value === "chức vụ tương ứng" || value === "thứ bậc");
-      const descriptionIndex = header.indexOf("mô tả");
-
-      if (codeIndex < 0 || nameIndex < 0) throw new Error("CSV cần có cột Mã và Tên vị trí/Tên chức vụ.");
-
-      let successCount = 0;
-      for (const line of lines) {
-        const values = splitCsvRow(line);
-        const formData = new FormData();
-        formData.set("code", values[codeIndex] ?? "");
-        formData.set("name", values[nameIndex] ?? "");
-        formData.set("description", descriptionIndex >= 0 ? values[descriptionIndex] ?? "" : "");
-        if (initialKind === "position") formData.set("family", metaIndex >= 0 ? values[metaIndex] ?? "" : "");
-        else formData.set("rank", metaIndex >= 0 ? values[metaIndex] ?? "0" : "0");
-
-        const result = initialKind === "position"
-          ? await createPositionAction(initialState, formData)
-          : await createTitleAction(initialState, formData);
-        if (result.ok) successCount += 1;
-      }
-
-      setImportMessage(`Đã import ${successCount}/${lines.length} bản ghi.`);
-      router.refresh();
-    } catch (error) {
-      setImportMessage(error instanceof Error ? error.message : "Không đọc được file CSV.");
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
   if (initialKind === "level") {
     return <JobLevelCatalog data={data} query={query} />;
   }
@@ -750,18 +690,16 @@ export function PositionTitleSettingsBoard({
           </button>
           {!isTitleCatalog ? (
             <>
-              <button type="button" disabled={isImporting} onClick={() => fileInputRef.current?.click()}>
+              <button type="button" onClick={() => setIsImportOpen(true)}>
                 <UploadSimple size={16} weight="duotone" aria-hidden="true" />
-                {isImporting ? "Đang import" : "Import"}
+                Import
               </button>
-              <input ref={fileInputRef} className="sr-only" type="file" accept=".csv,text/csv" onChange={importItems} />
             </>
           ) : null}
         </div>
       </header>
 
       {deleteMessage ? <p className="personnel-catalog-message is-error" role="alert">{deleteMessage}</p> : null}
-      {importMessage ? <p className="personnel-catalog-message" role="status">{importMessage}</p> : null}
       {data.source === "unavailable" ? (
         <StateBlock tone="error" title="Chưa kết nối được API danh mục">
           {data.error ?? "Hãy bật API server rồi tải lại trang."}
@@ -935,6 +873,16 @@ export function PositionTitleSettingsBoard({
           permissionGroups={permissionGroups}
           positions={data.positions}
           titles={data.titles}
+        />
+      ) : null}
+
+      {isImportOpen ? (
+        <ImportDialog
+          columns={JOB_POSITION_IMPORT_COLUMNS}
+          title="Import vị trí công việc từ Excel"
+          type="job_positions"
+          onClose={() => setIsImportOpen(false)}
+          onImported={() => router.refresh()}
         />
       ) : null}
     </section>

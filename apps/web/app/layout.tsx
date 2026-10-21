@@ -57,8 +57,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // themeBootstrapScript sets the saved theme colours on <html> before React hydrates, so its
+  // style attribute differs from the server HTML on purpose (CORE-25). This silences only <html>'s
+  // own attributes, not mismatches in the page below.
   return (
-    <html lang="vi">
+    <html lang="vi" suppressHydrationWarning>
       <body>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         {children}

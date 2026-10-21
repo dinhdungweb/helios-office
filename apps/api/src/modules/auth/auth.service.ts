@@ -7,7 +7,8 @@ import {
   resolveCustomPermissionKeys,
   resolveEffectivePermissionKeys
 } from "../account-access/account-access.utils";
-import type { AuthenticatedUser } from "./auth.types";
+import { AUTH_ERROR_CODES, type AuthenticatedUser } from "./auth.types";
+import { isSessionRevoked } from "./session-revocation";
 
 @Injectable()
 export class AuthService {
@@ -34,12 +35,38 @@ export class AuthService {
     const name = this.asString(payload.name) ?? this.asString(payload.preferred_username);
     const account = await this.resolveAccount(sub, email);
 
+    // `code` lets the web tell "valid Keycloak login, but no usable Helios account" apart from an
+    // expired token, and refuse the session with a clear message (AU-24).
     if (!account) {
-      throw new UnauthorizedException("No active Helios account is linked to this Keycloak user");
+      throw new UnauthorizedException({
+        statusCode: 401,
+        error: "Unauthorized",
+        code: AUTH_ERROR_CODES.accountNotLinked,
+        message: "No active Helios account is linked to this Keycloak user"
+      });
     }
 
     if (account.accountStatus !== "active") {
-      throw new UnauthorizedException("Helios account is not active");
+      throw new UnauthorizedException({
+        statusCode: 401,
+        error: "Unauthorized",
+        code: AUTH_ERROR_CODES.accountInactive,
+        message: "Helios account is not active"
+      });
+    }
+
+    // Force logout (AU-17) ends the Keycloak sessions, but access tokens already handed out stay
+    // valid until they expire; refuse those here. iat has second precision, so compare in seconds.
+    // A single session signed out from "Phiên đăng nhập" (AU-16) is refused the same way.
+    const { sessionsRevokedAt, revokedSessionIds, ...accountView } = account;
+    const revokedBefore = sessionsRevokedAt && typeof payload.iat === "number" && payload.iat < Math.floor(sessionsRevokedAt.getTime() / 1000);
+    if (revokedBefore || isSessionRevoked(revokedSessionIds, payload.sid)) {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        error: "Unauthorized",
+        code: AUTH_ERROR_CODES.sessionRevoked,
+        message: "This session was signed out"
+      });
     }
 
     return {
@@ -47,9 +74,15 @@ export class AuthService {
       email,
       name,
       roles: this.resolveRoles(payload),
-      account,
+      account: accountView,
       claims: payload
     };
+  }
+
+  // Signature, issuer and expiry only; no account checks. For the web server reporting which
+  // Keycloak user and session a sign-in produced (AU-20), including refused ones.
+  async verifyAccessToken(token: string) {
+    return this.verifyToken(token, this.getAcceptedIssuers(), this.config.get<string>("JWT_AUDIENCE") || undefined);
   }
 
   private async verifyToken(token: string, issuers: string[], audience: string | undefined) {
@@ -136,8 +169,11 @@ export class AuthService {
           displayName: true,
           adminRole: true,
           accountStatus: true,
+          sessionsRevokedAt: true,
+          revokedSessionIds: true,
           customPermissions: true,
           customPermissionsEnabled: true,
+          customRevokedPermissions: true,
           employee: {
             select: {
               id: true
@@ -166,7 +202,8 @@ export class AuthService {
         accountStatus: account.accountStatus,
         permissionGroupStatus: account.permissionGroup?.status,
         groupPermissionKeys: account.permissionGroup?.permissions,
-        customPermissionKeys
+        customPermissionKeys,
+        revokedPermissionKeys: account.customPermissionsEnabled ? account.customRevokedPermissions : []
       },
       permissionCatalog
     );
@@ -178,6 +215,8 @@ export class AuthService {
       employeeId: account.employee?.id ?? null,
       adminRole: account.adminRole,
       accountStatus: account.accountStatus,
+      sessionsRevokedAt: account.sessionsRevokedAt,
+      revokedSessionIds: account.revokedSessionIds,
       effectivePermissionKeys
     };
   }

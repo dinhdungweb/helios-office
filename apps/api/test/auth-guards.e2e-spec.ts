@@ -11,9 +11,18 @@ import type { AuthenticatedUser } from "../src/modules/auth/auth.types";
 // Only the database and Keycloak signature verification are replaced.
 
 const SYNC_TOKEN = "e2e-attendance-sync-token";
+const WEB_SERVICE_TOKEN = "e2e-web-service-token";
 
 // Routes that authenticate without a user session. Adding to this list must be a deliberate decision.
-const PUBLIC_ROUTES = new Set(["POST /api/v1/attendance/sync"]);
+const PUBLIC_ROUTES = new Set([
+  "POST /api/v1/attendance/sync",
+  "GET /api/v1/health",
+  // AU-13/14: people who cannot sign in yet (temporary or forgotten password).
+  "POST /api/v1/auth/change-temporary-password",
+  "POST /api/v1/auth/forgot-password",
+  // AU-20: authenticated by WEB_SERVICE_TOKEN instead of a session (tested below).
+  "POST /api/v1/auth/login-events"
+]);
 
 type Route = { method: string; path: string };
 
@@ -104,6 +113,7 @@ describe("API authentication and permissions (e2e)", () => {
 
   beforeAll(async () => {
     process.env.ATTENDANCE_SYNC_TOKEN = SYNC_TOKEN;
+    process.env.WEB_SERVICE_TOKEN = WEB_SERVICE_TOKEN;
     // Nothing listens on port 9, so JWKS lookups fail deterministically regardless of local Keycloak.
     process.env.KEYCLOAK_ISSUER = "http://127.0.0.1:9/realms/helios-e2e";
     process.env.KEYCLOAK_ISSUERS = "";
@@ -171,6 +181,14 @@ describe("API authentication and permissions (e2e)", () => {
     expect([401, 403]).not.toContain(accepted.status);
   });
 
+  it("accepts login events only from the web server's service token", async () => {
+    const server = app.getHttpServer();
+    await request(server).post("/api/v1/auth/login-events").send({}).expect(401);
+    await request(server).post("/api/v1/auth/login-events").set("Authorization", "Bearer token-system-admin").send({}).expect(401);
+    // Past the guard; the empty body then fails validation.
+    await request(server).post("/api/v1/auth/login-events").set("Authorization", `Bearer ${WEB_SERVICE_TOKEN}`).send({}).expect(400);
+  });
+
   describe("permission rules for routes guarded in Phase 0", () => {
     const cases: Array<{ method: "get" | "post"; path: string; allowed: string[]; denied: string[] }> = [
       {
@@ -202,6 +220,12 @@ describe("API authentication and permissions (e2e)", () => {
         path: "/api/v1/leave-requests",
         allowed: ["token-hr-dashboard", "token-system-admin"],
         denied: ["token-no-permissions", "token-payroll-viewer"]
+      },
+      {
+        method: "get",
+        path: "/api/v1/audit-logs",
+        allowed: ["token-system-admin"],
+        denied: ["token-no-permissions", "token-payroll-viewer", "token-approval-manager"]
       },
       {
         method: "get",

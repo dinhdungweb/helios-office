@@ -218,7 +218,8 @@ function audit() {
   }
 
   const untracked = routes.filter((route) => !tracked.has(route.key));
-  const unguarded = routes.filter((route) => !route.guarded);
+  // Routes declared `public: true` in the backlog are open on purpose; list only accidental ones.
+  const unguarded = routes.filter((route) => !route.guarded && !declaredPublic.has(route.key));
   const publicRoutes = routes.filter((route) => route.public);
   const loginOnly = routes.filter((route) => route.access === "login");
 

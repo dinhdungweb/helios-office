@@ -1,0 +1,214 @@
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import type { StoredFile } from "@prisma/client";
+import { randomUUID } from "node:crypto";
+import type { AuthenticatedUser } from "../../modules/auth/auth.types";
+import { PrismaService } from "../prisma/prisma.service";
+import type { FileAccessPolicy } from "./file-access-policy";
+import { allowedMimeTypes, FILE_PURPOSES, type FilePurpose, maxBytes, safeFileSlug } from "./file-purposes";
+import { ObjectStorageService } from "./object-storage.service";
+
+type UploadRequest = { fileName: string; mimeType: string; size: number; purpose: FilePurpose; ownerId: string };
+
+export const PENDING_FILE_MAX_AGE_MS = 24 * 60 * 60_000;
+
+const publicFields = (file: StoredFile) => ({
+  id: file.id,
+  fileName: file.fileName,
+  mimeType: file.mimeType,
+  size: file.size,
+  purpose: file.purpose,
+  ownerType: file.ownerType,
+  ownerId: file.ownerId,
+  status: file.status,
+  createdAt: file.createdAt
+});
+
+// Upload: presign → browser PUTs to storage → complete (size/type re-checked against storage).
+// Download: access check → short-lived presigned URL. Access is decided by the purpose's policy.
+@Injectable()
+export class FilesService {
+  private readonly policies = new Map<FilePurpose, FileAccessPolicy>();
+  private readonly limitsMb: { image: number; document: number };
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: ObjectStorageService,
+    config: ConfigService
+  ) {
+    this.limitsMb = {
+      image: Number(config.get("FILE_MAX_IMAGE_MB") ?? 10),
+      document: Number(config.get("FILE_MAX_DOCUMENT_MB") ?? 25)
+    };
+  }
+
+  registerPolicy(policy: FileAccessPolicy) {
+    this.policies.set(policy.purpose, policy);
+  }
+
+  async presignUpload(user: AuthenticatedUser, request: UploadRequest) {
+    const file = await this.createPending(user, request);
+    const uploadUrl = await this.storage.presignUpload(file.objectKey, file.mimeType);
+    return { file: publicFields(file), uploadUrl, method: "PUT", headers: { "Content-Type": file.mimeType } };
+  }
+
+  // Confirms a presigned upload: the object must exist and match the declared type and limits.
+  async complete(user: AuthenticatedUser, fileId: string) {
+    const file = await this.findForUploader(user, fileId);
+    if (file.status === "ready") return publicFields(file);
+    if (file.status !== "pending") throw new NotFoundException(`File ${fileId} was not found`);
+
+    const stored = await this.storage.head(file.objectKey);
+    if (!stored) {
+      throw new ConflictException("The file has not been uploaded to storage yet");
+    }
+
+    const limit = maxBytes(file.purpose as FilePurpose, this.limitsMb);
+    const typeMatches = stored.contentType.split(";")[0].trim() === file.mimeType;
+    if (stored.size > limit || stored.size === 0 || !typeMatches) {
+      await this.storage.delete(file.objectKey);
+      await this.prisma.storedFile.update({ where: { id: file.id }, data: { status: "deleted", deletedAt: new Date() } });
+      throw new BadRequestException(
+        !typeMatches ? "Uploaded content type does not match the declared type" : `File size must be between 1 byte and ${limit} bytes`
+      );
+    }
+
+    const ready = await this.prisma.storedFile.update({
+      where: { id: file.id },
+      data: { status: "ready", size: stored.size, checksum: stored.etag }
+    });
+    return publicFields(ready);
+  }
+
+  // Multipart fallback for scripts and integrations; the API holds the bytes, so keep it small.
+  async uploadDirect(user: AuthenticatedUser, purpose: FilePurpose, ownerId: string, upload: { originalname: string; mimetype: string; size: number; buffer: Buffer }) {
+    const file = await this.createPending(user, { fileName: upload.originalname, mimeType: upload.mimetype, size: upload.size, purpose, ownerId });
+    const { etag } = await this.storage.put(file.objectKey, upload.buffer, file.mimeType);
+    const ready = await this.prisma.storedFile.update({ where: { id: file.id }, data: { status: "ready", checksum: etag } });
+    return publicFields(ready);
+  }
+
+  async downloadUrl(user: AuthenticatedUser, fileId: string) {
+    const file = await this.prisma.storedFile.findUnique({ where: { id: fileId } });
+    // Missing, unfinished, deleted and forbidden all look the same: no existence leak.
+    if (!file || file.status !== "ready" || !(await this.policyFor(file).canRead(user, file))) {
+      throw new NotFoundException(`File ${fileId} was not found`);
+    }
+    return this.storage.presignDownload(file.objectKey, file.fileName, file.mimeType);
+  }
+
+  async remove(user: AuthenticatedUser, fileId: string) {
+    const file = await this.prisma.storedFile.findUnique({ where: { id: fileId } });
+    if (!file || file.status === "deleted" || !(await this.policyFor(file).canRead(user, file))) {
+      throw new NotFoundException(`File ${fileId} was not found`);
+    }
+    if (!(await this.policyFor(file).canDelete(user, file))) {
+      throw new ForbiddenException("You may not delete this file");
+    }
+
+    await this.storage.delete(file.objectKey);
+    await this.prisma.storedFile.update({ where: { id: file.id }, data: { status: "deleted", deletedAt: new Date() } });
+    return { id: file.id, deleted: true };
+  }
+
+  // CORE-12: uploads that were presigned but never completed (tab closed, upload failed) leave a
+  // pending row and maybe a partial object. Each row is claimed with a status-guarded update first,
+  // so a `complete` racing the cleanup wins or loses cleanly, then its object is removed.
+  async purgeStalePending(olderThanMs = PENDING_FILE_MAX_AGE_MS, batchSize = 200) {
+    const stale = await this.prisma.storedFile.findMany({
+      where: { status: "pending", createdAt: { lt: new Date(Date.now() - olderThanMs) } },
+      select: { id: true, objectKey: true },
+      orderBy: { createdAt: "asc" },
+      take: batchSize
+    });
+    let purged = 0;
+
+    for (const file of stale) {
+      const claimed = await this.prisma.storedFile.updateMany({
+        where: { id: file.id, status: "pending" },
+        data: { status: "deleted", deletedAt: new Date() }
+      });
+      if (claimed.count === 0) continue;
+
+      await this.storage.delete(file.objectKey);
+      purged += 1;
+    }
+
+    return { purged };
+  }
+
+  private async createPending(user: AuthenticatedUser, request: UploadRequest) {
+    const purpose = FILE_PURPOSES[request.purpose];
+    const owner = { ownerType: purpose.ownerType, ownerId: request.ownerId };
+
+    if (!allowedMimeTypes(request.purpose).includes(request.mimeType)) {
+      throw new BadRequestException(`${request.mimeType} is not allowed for ${request.purpose}`);
+    }
+    const limit = maxBytes(request.purpose, this.limitsMb);
+    if (request.size > limit) {
+      throw new BadRequestException(`File is larger than ${limit / 1024 / 1024} MB`);
+    }
+    const policy = this.policies.get(request.purpose);
+    if (!policy || !(await policy.canUpload(user, owner))) {
+      throw new ForbiddenException("You may not upload this file");
+    }
+
+    const id = randomUUID();
+
+    return this.prisma.storedFile.create({
+      data: {
+        id,
+        bucket: this.storage.bucket,
+        objectKey: this.objectKey(request.purpose, id, request.fileName),
+        fileName: request.fileName,
+        mimeType: request.mimeType,
+        size: request.size,
+        purpose: request.purpose,
+        ...owner,
+        uploadedById: user.account?.id
+      }
+    });
+  }
+
+  // Stores a file the server produced itself (exports, reports): no upload policy, ready at once.
+  async saveGenerated(input: { purpose: FilePurpose; ownerId: string; fileName: string; mimeType: string; body: Buffer; createdById?: string }) {
+    const id = randomUUID();
+    const objectKey = this.objectKey(input.purpose, id, input.fileName);
+    const { etag } = await this.storage.put(objectKey, input.body, input.mimeType);
+
+    return this.prisma.storedFile.create({
+      data: {
+        id,
+        bucket: this.storage.bucket,
+        objectKey,
+        fileName: input.fileName,
+        mimeType: input.mimeType,
+        size: input.body.length,
+        checksum: etag,
+        purpose: input.purpose,
+        ownerType: FILE_PURPOSES[input.purpose].ownerType,
+        ownerId: input.ownerId,
+        status: "ready",
+        uploadedById: input.createdById
+      }
+    });
+  }
+
+  private objectKey(purpose: FilePurpose, id: string, fileName: string) {
+    const now = new Date();
+    const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+    return `${purpose}/${now.getUTCFullYear()}/${month}/${id}-${safeFileSlug(fileName)}`;
+  }
+
+  private async findForUploader(user: AuthenticatedUser, fileId: string) {
+    const file = await this.prisma.storedFile.findUnique({ where: { id: fileId } });
+    if (!file || file.uploadedById !== user.account?.id) {
+      throw new NotFoundException(`File ${fileId} was not found`);
+    }
+    return file;
+  }
+
+  private policyFor(file: StoredFile): Pick<FileAccessPolicy, "canRead" | "canDelete"> {
+    return this.policies.get(file.purpose as FilePurpose) ?? { canRead: async () => false, canDelete: async () => false };
+  }
+}

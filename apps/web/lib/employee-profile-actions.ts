@@ -8,6 +8,8 @@ export type EmployeeCreateFormState = {
   ok: boolean;
   error?: string;
   employeeId?: string;
+  // Set when the profile was created but some attachments could not be uploaded.
+  warning?: string;
 };
 
 const employeeCoreFields = new Set([
@@ -45,14 +47,10 @@ function readProfileData(formData: FormData) {
   return profileData;
 }
 
-async function readDocuments(formData: FormData) {
-  const documents: Array<{
-    fieldName: string;
-    fileName: string;
-    mimeType: string;
-    size: number;
-    contentBase64: string;
-  }> = [];
+type PendingDocument = { fieldName: string; file: File };
+
+function readDocuments(formData: FormData) {
+  const documents: PendingDocument[] = [];
   let totalSize = 0;
 
   for (const [fieldName, value] of formData.entries()) {
@@ -65,16 +63,54 @@ async function readDocuments(formData: FormData) {
       throw new Error("Tổng dung lượng tệp đính kèm vượt quá giới hạn 20 MB.");
     }
 
-    documents.push({
-      fieldName,
-      fileName: value.name,
-      mimeType: value.type || "application/octet-stream",
-      size: value.size,
-      contentBase64: Buffer.from(await value.arrayBuffer()).toString("base64")
-    });
+    documents.push({ fieldName, file: value });
   }
 
   return documents;
+}
+
+// Uploads each attachment straight to object storage (presign → PUT → complete) and attaches it to
+// the new profile; the API never receives the bytes. Returns the names of files that failed.
+async function uploadDocuments(employeeId: string, documents: PendingDocument[], headers: Headers) {
+  const apiBase = getApiBaseUrl();
+  const failed: string[] = [];
+
+  for (const { fieldName, file } of documents) {
+    try {
+      const presign = await fetch(`${apiBase}/files/presign`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          fileName: file.name,
+          mimeType: file.type || "application/octet-stream",
+          size: file.size,
+          purpose: "employee_document",
+          ownerId: employeeId
+        }),
+        cache: "no-store"
+      });
+      if (!presign.ok) throw new Error(`presign ${presign.status}`);
+      const upload = (await presign.json()) as { file: { id: string }; uploadUrl: string; headers: Record<string, string> };
+
+      const stored = await fetch(upload.uploadUrl, { method: "PUT", headers: upload.headers, body: Buffer.from(await file.arrayBuffer()) });
+      if (!stored.ok) throw new Error(`storage ${stored.status}`);
+
+      const completed = await fetch(`${apiBase}/files/${upload.file.id}/complete`, { method: "POST", headers, cache: "no-store" });
+      if (!completed.ok) throw new Error(`complete ${completed.status}`);
+
+      const attached = await fetch(`${apiBase}/employees/${employeeId}/documents`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ fileId: upload.file.id, fieldName }),
+        cache: "no-store"
+      });
+      if (!attached.ok) throw new Error(`attach ${attached.status}`);
+    } catch {
+      failed.push(file.name);
+    }
+  }
+
+  return failed;
 }
 
 function readOptionalString(formData: FormData, key: string) {
@@ -129,10 +165,13 @@ export async function createEmployeeProfileAction(
 ): Promise<EmployeeCreateFormState> {
   const createAccount = readBoolean(formData, "createAccount");
   let response: Response;
+  let headers: Headers;
+  let documents: PendingDocument[];
 
   try {
     const accessToken = await getSessionAccessToken();
-    const headers = new Headers({
+    documents = readDocuments(formData);
+    headers = new Headers({
       "Content-Type": "application/json"
     });
 
@@ -158,7 +197,6 @@ export async function createEmployeeProfileAction(
       payrollTemplate: readOptionalString(formData, "payrollTemplate"),
       standardWorkdays: readNumber(formData, "standardWorkdays"),
       profileData: readProfileData(formData),
-      documents: await readDocuments(formData),
       contract: readOptionalString(formData, "contractType") && readOptionalString(formData, "contractStartDate")
         ? {
             type: readRequiredString(formData, "contractType"),
@@ -203,6 +241,8 @@ export async function createEmployeeProfileAction(
   }
 
   const employee = (await response.json()) as { id?: string };
+  // The profile exists now; an attachment that fails is reported, not treated as a failed create.
+  const failedUploads = employee.id && documents.length ? await uploadDocuments(employee.id, documents, headers) : [];
 
   revalidatePath("/admin/settings/accounts");
   revalidatePath("/hcns/employees");
@@ -212,5 +252,11 @@ export async function createEmployeeProfileAction(
   revalidatePath("/personnel-profile-profile");
   revalidatePath("/personnel-profile-profile/add");
 
-  return { ok: true, employeeId: employee.id };
+  return {
+    ok: true,
+    employeeId: employee.id,
+    warning: failedUploads.length
+      ? `Đã tạo hồ sơ, nhưng chưa tải lên được: ${failedUploads.join(", ")}. Kiểm tra định dạng (PDF, Word, Excel, ảnh) và thử lại trong hồ sơ.`
+      : undefined
+  };
 }
