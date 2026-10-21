@@ -8,6 +8,37 @@ File này dùng để theo dõi tiến độ triển khai Helios Office: đã l�
 - Ghi rõ phạm vi, file/module chính, trạng thái kiểm tra và việc tiếp theo.
 - Những phần chưa hoàn tất phải ghi là `Chưa xong` hoặc `Tiếp theo` để tránh nhầm là đã chạy thật.
 
+## 2026-10-21
+
+### Phase 1 (roadmap mới) - Hạ tầng dùng chung
+
+Trạng thái: Đã triển khai và kiểm tra trên nhánh `feat/phase-1`, chưa merge vào `main`. Plan chi tiết và kết quả từng task: `docs/plans/phase-1.md`. Thiết kế: `docs/design/data-scope.md`, `file-storage.md`, `notification.md`, `import-export.md`.
+
+Toàn bộ 39 item của phase đã `done` (CORE-10 → CORE-20, CORE-25, AU-10 → AU-20, AU-24, AU-25, NT-04, NT-05). Hai phần tách sang Phase 9: CORE-27 (chuyển list API cũ sang phân trang chuẩn), CORE-28 (quét virus file).
+
+- Phạm vi dữ liệu theo quyền (CORE-15, AU-10): bản thân / phòng ban / phòng ban & cấp dưới / chi nhánh / toàn công ty, áp ở service; quyền riêng từng người cấp thêm / thu hồi / đổi phạm vi (AU-11); xem quyền hiệu lực kèm nguồn (AU-12).
+- Chuẩn phân trang/lọc (CORE-10); audit log cho mọi mutation + trang Nhật ký hệ thống (CORE-13, CORE-14).
+- File MinIO presign/tải có kiểm quyền, giới hạn loại/dung lượng, dọn upload treo (CORE-11, CORE-12).
+- BullMQ + worker riêng (CORE-16), thông báo in-app/email (NT-05), WebSocket + chuông thông báo realtime (CORE-17, NT-04).
+- Import/Export Excel dùng chung (CORE-18, CORE-19).
+- Tài khoản: đổi / quên / admin đặt lại mật khẩu, mật khẩu tạm lần đầu (AU-13 → AU-15, AU-25); phiên đăng nhập, buộc đăng xuất có hiệu lực ngay, lịch sử đăng nhập do Helios tự ghi (AU-16, AU-17, AU-20); bảo mật 2 lớp bằng app xác thực + email, áp ở API (AU-18); chính sách phiên: tự đăng xuất khi không hoạt động, giới hạn số phiên (AU-19); chặn user Keycloak chưa gắn tài khoản (AU-24).
+- Sửa lỗi hydration trên mọi trang (CORE-25).
+
+Kiểm tra:
+
+- `npm run test`: 152 unit + 45 e2e pass. `npm run lint`: pass (89 cảnh báo cũ, không tăng). `npm run audit:features -- --strict`: pass. Typecheck API pass.
+- `npm run build` và `npm run typecheck` (web): chờ chạy khi dừng dev server (build xoá `dist/` mà dev đang dùng; typecheck web cần `.next/types` do build sinh lại).
+- Chạy thật trên dev stack (Postgres, Keycloak, Redis, MinIO) + trình duyệt (Playwright) cho từng task, chi tiết trong plan. Ba tiêu chí của roadmap: user cấp phòng ban chỉ thấy nhân sự phòng mình qua `GET /employees`; upload → MinIO → tải về có kiểm quyền; sự kiện mẫu sinh thông báo realtime tới đúng người.
+
+Chưa xong / ghi nhận:
+
+- Máy dev thiếu bộ nhớ ảo (commit gần chạm 31,7 GB) là nguyên nhân API dev bị tắt nhiều lần trong ngày; giải phóng bộ nhớ hoặc tăng pagefile.
+- Gửi email thật (quên mật khẩu, mã 2FA qua email) chưa thử vì máy dev chưa cấu hình SMTP.
+- "Xem bảng lương công ty" đòi xác thực lại 2FA mới có ở API; giao diện lương chưa nối API nên làm cùng Phase 5.
+- Lịch sử đăng nhập và giới hạn phiên cần `WEB_SERVICE_TOKEN` (đã thêm vào `.env.example`).
+
+Tiếp theo: Phase 2 - Ca làm việc & engine tính công. Cần viết trước `docs/design/attendance-engine.md` và lấy xác nhận quy tắc tính công của HR (muộn/sớm, ca qua đêm, nghỉ giữa ca, ngày lễ, thiếu log) trước khi code; chuẩn bị một tháng dữ liệu chấm công thật để đối chiếu.
+
 ## 2026-10-20
 
 ### Phase 0 (roadmap mới) - Vá bảo mật & chuẩn hoá repo
