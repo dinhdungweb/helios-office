@@ -65,7 +65,7 @@ Chia thành 6 cụm, làm theo thứ tự. Mỗi cụm là một (hoặc vài) c
 
 | # | Item | Việc | Kiểm tra | Trạng thái |
 |---|---|---|---|---|
-| 20 | AU-24 | Đăng nhập: user Keycloak chưa gắn tài khoản Helios → báo lỗi rõ, không cho vào | Trình duyệt với user `dungdd` hiện tại | 🔄 Code + 4 unit (mã lỗi 401) xong; đăng nhập bằng form, callback OAuth và refresh đều kiểm tra tài khoản, từ chối thì đóng phiên Keycloak. API không trả lời được thì vẫn cho đăng nhập (API vẫn chặn từng request). Chờ thử trình duyệt |
+| 20 | AU-24 | Đăng nhập: user Keycloak chưa gắn tài khoản Helios → báo lỗi rõ, không cho vào | Trình duyệt với user `dungdd` hiện tại | ✅ 4 unit (mã lỗi 401); đăng nhập bằng form, callback OAuth và refresh đều kiểm tra tài khoản, từ chối thì đóng phiên Keycloak. API không trả lời được thì vẫn cho đăng nhập (API vẫn chặn từng request). Trình duyệt: dungdd → /login báo "chưa được cấp quyền", không cookie phiên, phiên Keycloak đã đóng; tài khoản closed → báo "bị khoá"; admin vẫn vào bình thường |
 | 21 | AU-11 | Ghi đè quyền riêng (có phạm vi) | E2E | |
 | 22 | AU-13, AU-14, AU-15 | Đổi mật khẩu, quên mật khẩu (email qua 1c), admin đặt lại mật khẩu — qua Keycloak Admin API | E2E với Keycloak local | |
 | 23 | AU-16, AU-17, AU-20 | Phiên đăng nhập, buộc đăng xuất, lịch sử đăng nhập (từ Keycloak events) | E2E | |
