@@ -694,8 +694,8 @@ modules:
         note: Nghỉ lễ / ngày làm bù / công ty nghỉ, có hoặc không hưởng công, mỗi ngày một dòng. Seed ngày lễ dương lịch cố định 2026-2027, nút thêm cho năm khác; lễ âm lịch HR nhập theo lịch Chính phủ. Thử trình duyệt 2026-10-22 (thêm, trùng ngày bị từ chối, làm bù, sửa, thêm lễ cố định 2028)
       - id: AT-11
         title: Engine tính công (muộn, sớm, thiếu công, công thực tế theo ca)
-        status: doing
-        note: Engine thuần calculateDay + assignPunches + giờ theo múi giờ công ty (modules/attendance/engine), 26 test. Còn lưu kết quả (AttendanceDay) và nối đồng bộ máy chấm công (task 8 của plan)
+        status: done
+        note: Engine thuần (modules/attendance/engine) lưu kết quả vào AttendanceDay qua AttendanceCalculationService; đồng bộ máy chấm công tính lại ngày bị ảnh hưởng (gồm ngày trước cho ca đêm), giờ đọc theo múi giờ công ty; chỉ ghi khi kết quả đổi để giữ nguồn thay đổi của ô. Script tính lại toàn bộ npm run attendance:recalculate. 39 test. Thử thật 2026-10-22 (đồng bộ 08:10–17:05 → muộn 10 phút, 0,98 công)
         depends: [AT-05, AT-07, AT-10]
       - id: AT-12
         title: Tính lại công cho khoảng ngày

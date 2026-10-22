@@ -353,6 +353,8 @@ model Employee {
   documents                 EmployeeDocument[]
   attendanceRecords         AttendanceRecord[]
   attendanceRawLogs         AttendanceRawLog[]
+  attendanceDays            AttendanceDay[]
+  attendanceAdjustments     AttendanceAdjustment[]
   shiftAssignments          ShiftAssignment[]
   leaveRequests             LeaveRequest[]
   payrollItems              PayrollItem[]
@@ -470,6 +472,7 @@ model Shift {
   createdAt                DateTime           @default(now())
   updatedAt                DateTime           @updatedAt
   shiftAssignments         ShiftAssignment[]
+  attendanceDays           AttendanceDay[]
 }
 
 // A person's shift on one date (AT-07), overriding the department and company defaults. A row
@@ -886,6 +889,83 @@ model AttendanceRecord {
   updatedAt  DateTime         @updatedAt
 
   @@unique([employeeId, workDate, source])
+}
+
+enum AttendanceDayStatus {
+  on_time
+  late
+  early_leave
+  late_and_early
+  missing_checkin
+  missing_checkout
+  absent
+  holiday
+  day_off
+}
+
+// Engine result for one person on one work date (AT-11), recomputed from AttendanceRawLog, the
+// shift schedule, holidays, policy and HR's adjustments. Replaces AttendanceRecord once reads move
+// over (task 10). See docs/design/attendance-engine.md §6.
+model AttendanceDay {
+  id                  String              @id @default(uuid())
+  employeeId          String
+  employee            Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  workDate            DateTime            @db.Date
+  shiftId             String?
+  shift               Shift?              @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  scheduledStart      DateTime?
+  scheduledEnd        DateTime?
+  checkIn             DateTime?
+  checkOut            DateTime?
+  workedMinutes       Int                 @default(0)
+  lateMinutes         Int                 @default(0)
+  earlyMinutes        Int                 @default(0)
+  outsideShiftMinutes Int                 @default(0)
+  nightMinutes        Int                 @default(0)
+  workUnits           Decimal             @default(0) @db.Decimal(5, 2)
+  paidLeaveUnits      Decimal             @default(0) @db.Decimal(5, 2)
+  status              AttendanceDayStatus
+  flags               String[]            @default([])
+  holidayType         HolidayType?
+  punchCount          Int                 @default(0)
+  // Policy and shift rules the engine used, so a figure can be explained later.
+  policySnapshot      Json?
+  // What last changed the day, shown as the cell's history like 1Office: punch_sync, recalculation, manual.
+  lastChangeSource    String
+  calculatedAt        DateTime            @default(now())
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@unique([employeeId, workDate])
+  @@index([workDate])
+}
+
+enum AttendanceAdjustmentType {
+  manual
+}
+
+// A change to one work date that the engine applies last (AT-15; Phase 3 adds approved requests).
+// The latest adjustment not revoked wins.
+model AttendanceAdjustment {
+  id          String                   @id @default(uuid())
+  employeeId  String
+  employee    Employee                 @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  workDate    DateTime                 @db.Date
+  type        AttendanceAdjustmentType @default(manual)
+  checkIn     DateTime?
+  checkOut    DateTime?
+  // Whether checkIn / checkOut were set by HR, as opposed to left to the recorded punches.
+  punchesSet  Boolean                  @default(false)
+  workUnits   Decimal?                 @db.Decimal(5, 2)
+  status      AttendanceDayStatus?
+  reason      String
+  before      Json?
+  createdById String?
+  createdAt   DateTime                 @default(now())
+  revokedAt   DateTime?
+  revokedById String?
+
+  @@index([employeeId, workDate])
 }
 
 model ApprovalWorkflowDefinition {

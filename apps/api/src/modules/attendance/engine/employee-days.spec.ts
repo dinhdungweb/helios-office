@@ -1,0 +1,177 @@
+import { calculateEmployeeDays, type CalcPolicy, type CalcShift, type EmployeeDaysInput } from "./employee-days";
+import { parsePunchTime } from "../attendance.service";
+
+const TZ = "Asia/Ho_Chi_Minh";
+// Wall-clock time in Vietnam (UTC+7) as an instant.
+const vn = (date: string, time: string) => new Date(`${date}T${time}:00+07:00`);
+
+const policy: CalcPolicy = {
+  timezone: TZ,
+  workWeekdays: [1, 2, 3, 4, 5],
+  defaultShiftId: "hc",
+  lateGraceMinutes: 0,
+  earlyGraceMinutes: 0,
+  lateCountMode: "full",
+  missingPunchMode: "pending",
+  punchWindowBeforeMinutes: 240,
+  punchWindowAfterMinutes: 240,
+  roundingMinutes: 0,
+  punchPairing: "first_last",
+  overnightAttribution: "shift_start",
+  workUnitMode: "actual",
+  workUnitRoundingHundredths: 1,
+  outsideShiftMode: "record",
+  holidayPaid: true
+};
+
+const shift = (id: string, startMinute: number, endMinute: number, extra: Partial<CalcShift> = {}): CalcShift => ({
+  id,
+  code: id.toUpperCase(),
+  type: "fixed",
+  startMinute,
+  endMinute,
+  breakStartMinute: null,
+  breakEndMinute: null,
+  requiredMinutes: null,
+  workUnits: 1,
+  lateGraceMinutes: null,
+  earlyGraceMinutes: null,
+  lateCountMode: null,
+  missingPunchMode: null,
+  punchWindowBeforeMinutes: null,
+  punchWindowAfterMinutes: null,
+  ...extra
+});
+
+const shifts = new Map([
+  ["hc", shift("hc", 8 * 60, 17 * 60, { breakStartMinute: 12 * 60, breakEndMinute: 13 * 60 })],
+  ["night", shift("night", 22 * 60, 6 * 60)]
+]);
+
+function run(overrides: Partial<EmployeeDaysInput>) {
+  return calculateEmployeeDays({
+    from: "2026-10-19",
+    to: "2026-10-23",
+    policy,
+    shifts,
+    holidays: new Map(),
+    assignments: new Map(),
+    departmentDefaultShiftId: null,
+    employment: { startDate: "2020-01-01", endDate: null },
+    punches: [],
+    manual: new Map(),
+    ...overrides
+  });
+}
+
+const byDate = (days: ReturnType<typeof run>) => new Map(days.map((day) => [day.workDate, day]));
+
+describe("calculateEmployeeDays (AT-11)", () => {
+  it("counts a night shift past midnight once, on the day it starts", () => {
+    const days = byDate(
+      run({
+        from: "2026-10-21",
+        to: "2026-10-22",
+        assignments: new Map([["2026-10-21", "night"], ["2026-10-22", null]]),
+        punches: [vn("2026-10-21", "21:58"), vn("2026-10-22", "06:01")]
+      })
+    );
+
+    const night = days.get("2026-10-21")!.result!;
+    expect(night.status).toBe("on_time");
+    expect(night.workUnits).toBe(1);
+    expect(night.nightMinutes).toBe(480);
+    expect(night.checkOut).toEqual(vn("2026-10-22", "06:01"));
+    expect(days.get("2026-10-22")!.result!.status).toBe("day_off");
+    expect(days.get("2026-10-22")!.punchCount).toBe(0);
+  });
+
+  it("splits punches between a night shift and the next morning's shift", () => {
+    const days = byDate(
+      run({
+        from: "2026-10-20",
+        to: "2026-10-21",
+        assignments: new Map([["2026-10-20", "night"]]),
+        punches: [vn("2026-10-20", "22:00"), vn("2026-10-21", "06:00"), vn("2026-10-21", "07:58"), vn("2026-10-21", "17:00")]
+      })
+    );
+
+    expect(days.get("2026-10-20")!.result!.checkOut).toEqual(vn("2026-10-21", "06:00"));
+    const morning = days.get("2026-10-21")!.result!;
+    expect(morning.checkIn).toEqual(vn("2026-10-21", "07:58"));
+    expect(morning.workUnits).toBe(1);
+  });
+
+  it("uses the company default shift on working days and records work on a weekend", () => {
+    const days = byDate(
+      run({
+        from: "2026-10-23",
+        to: "2026-10-24",
+        punches: [vn("2026-10-23", "08:12"), vn("2026-10-23", "17:00"), vn("2026-10-24", "09:00"), vn("2026-10-24", "11:00")]
+      })
+    );
+
+    const friday = days.get("2026-10-23")!;
+    expect(friday.shiftCode).toBe("HC");
+    expect(friday.result!.lateMinutes).toBe(12);
+    expect(friday.result!.status).toBe("late");
+    const saturday = days.get("2026-10-24")!.result!;
+    expect(saturday.status).toBe("day_off");
+    expect(saturday.flags).toContain("worked_on_day_off");
+    expect(saturday.outsideShiftMinutes).toBe(120);
+  });
+
+  it("prefers the department's default shift and a make-up working day", () => {
+    const days = byDate(
+      run({
+        from: "2026-10-24",
+        to: "2026-10-24",
+        departmentDefaultShiftId: "night",
+        holidays: new Map([["2026-10-24", { type: "compensatory_workday" as const, paid: true }]])
+      })
+    );
+
+    expect(days.get("2026-10-24")!.shiftCode).toBe("NIGHT");
+    expect(days.get("2026-10-24")!.result!.status).toBe("absent");
+  });
+
+  it("returns no result outside employment and applies HR's adjustment last", () => {
+    const days = byDate(
+      run({
+        from: "2026-10-19",
+        to: "2026-10-20",
+        employment: { startDate: "2026-10-20", endDate: null },
+        manual: new Map([["2026-10-20", { workUnits: 0.5 }]])
+      })
+    );
+
+    expect(days.get("2026-10-19")!.result).toBeNull();
+    const adjusted = days.get("2026-10-20")!.result!;
+    expect(adjusted.status).toBe("absent");
+    expect(adjusted.workUnits).toBe(0.5);
+    expect(adjusted.flags).toContain("adjusted");
+  });
+
+  it("treats an archived shift on the schedule as no shift", () => {
+    const days = byDate(run({ from: "2026-10-19", to: "2026-10-19", assignments: new Map([["2026-10-19", "gone"]]) }));
+    expect(days.get("2026-10-19")!.result!.status).toBe("day_off");
+  });
+});
+
+describe("parsePunchTime", () => {
+  it("reads a time without offset as company wall-clock time", () => {
+    expect(parsePunchTime("2026-10-21 08:05:30", TZ)).toEqual(new Date("2026-10-21T01:05:30.000Z"));
+    expect(parsePunchTime("2026-10-21T23:59:59.5", TZ)).toEqual(new Date("2026-10-21T16:59:59.500Z"));
+  });
+
+  it("keeps an explicit offset", () => {
+    expect(parsePunchTime("2026-10-21 08:05:30Z", TZ)).toEqual(new Date("2026-10-21T08:05:30.000Z"));
+    expect(parsePunchTime("2026-10-21 08:05:30+0700", TZ)).toEqual(new Date("2026-10-21T01:05:30.000Z"));
+  });
+
+  it("rejects impossible dates and other formats", () => {
+    expect(parsePunchTime("2026-02-30 08:00:00", TZ)).toBeNull();
+    expect(parsePunchTime("2026-10-21 24:00:00", TZ)).toBeNull();
+    expect(parsePunchTime("21/10/2026 08:00", TZ)).toBeNull();
+  });
+});

@@ -1,11 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { AttendanceStatus, EmployeeStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { AttendanceCalculationService } from "./attendance-calculation.service";
 import {
   type AttendanceSyncErrorResult,
   AttendanceSyncDto,
   type AttendanceSyncLogDto
 } from "./attendance-sync.dto";
+import { localDate, zonedInstant } from "./engine/zoned-time";
 
 type AcceptedPunch = {
   employeeId: string;
@@ -14,7 +16,10 @@ type AcceptedPunch = {
 
 @Injectable()
 export class AttendanceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly calculation: AttendanceCalculationService
+  ) {}
 
   findRecords() {
     return this.prisma.attendanceRecord.findMany({
@@ -93,6 +98,7 @@ export class AttendanceService {
       }
     });
 
+    const timeZone = await this.calculation.timezone();
     const employeeCodes = Array.from(new Set(dto.logs.map((log) => log.employee_code.trim())));
     const employees = await this.prisma.employee.findMany({
       where: {
@@ -124,7 +130,7 @@ export class AttendanceService {
 
     for (const log of dto.logs) {
       const employeeCode = log.employee_code.trim();
-      const punchTime = this.parsePunchTime(log.punch_time);
+      const punchTime = parsePunchTime(log.punch_time, timeZone);
 
       if (!punchTime) {
         errors.push(await this.recordSyncError(device.deviceId, dto.store_code, log, null, "INVALID_PUNCH_TIME", "Thời gian chấm công không hợp lệ"));
@@ -173,7 +179,8 @@ export class AttendanceService {
       }
     }
 
-    await this.rebuildDailyAttendance(acceptedPunches);
+    await this.rebuildDailyAttendance(acceptedPunches, timeZone);
+    await this.calculation.recalculateForPunches(acceptedPunches);
 
     return this.syncResponse(inserted, duplicated, errors);
   }
@@ -233,17 +240,18 @@ export class AttendanceService {
     };
   }
 
-  private async rebuildDailyAttendance(punches: AcceptedPunch[]) {
-    const dayKeys = new Map<string, { employeeId: string; workDate: Date }>();
+  // Old per-calendar-day record, kept until reads move to AttendanceDay (plan task 10).
+  private async rebuildDailyAttendance(punches: AcceptedPunch[], timeZone: string) {
+    const dayKeys = new Map<string, { employeeId: string; workDate: Date; nextDay: Date }>();
 
     for (const punch of punches) {
-      const workDate = new Date(punch.punchTime.getFullYear(), punch.punchTime.getMonth(), punch.punchTime.getDate());
-      dayKeys.set(`${punch.employeeId}:${workDate.toISOString()}`, { employeeId: punch.employeeId, workDate });
+      const date = localDate(punch.punchTime.getTime(), timeZone);
+      const workDate = new Date(zonedInstant(date, 0, timeZone));
+      const nextDay = new Date(zonedInstant(date, 1440, timeZone));
+      dayKeys.set(`${punch.employeeId}:${date}`, { employeeId: punch.employeeId, workDate, nextDay });
     }
 
-    for (const { employeeId, workDate } of dayKeys.values()) {
-      const nextDay = new Date(workDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+    for (const { employeeId, workDate, nextDay } of dayKeys.values()) {
       const logs = await this.prisma.attendanceRawLog.findMany({
         where: {
           employeeId,
@@ -284,39 +292,37 @@ export class AttendanceService {
       });
     }
   }
+}
 
-  private parsePunchTime(value: string) {
-    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(Z|[+-]\d{2}:?\d{2})?$/);
-    if (!match) {
-      return null;
-    }
-
-    const [, yearText, monthText, dayText, hourText, minuteText, secondText, millisecondText, zone] = match;
-    const year = Number(yearText);
-    const month = Number(monthText);
-    const day = Number(dayText);
-    const hour = Number(hourText);
-    const minute = Number(minuteText);
-    const second = Number(secondText);
-    const millisecond = Number((millisecondText ?? "0").padEnd(3, "0"));
-    const parsed = zone
-      ? new Date(`${yearText}-${monthText}-${dayText}T${hourText}:${minuteText}:${secondText}.${String(millisecond).padStart(3, "0")}${zone}`)
-      : new Date(year, month - 1, day, hour, minute, second, millisecond);
-
-    if (
-      Number.isNaN(parsed.getTime()) ||
-      (!zone && (
-        parsed.getFullYear() !== year ||
-        parsed.getMonth() !== month - 1 ||
-        parsed.getDate() !== day ||
-        parsed.getHours() !== hour ||
-        parsed.getMinutes() !== minute ||
-        parsed.getSeconds() !== second
-      ))
-    ) {
-      return null;
-    }
-
-    return parsed;
+// Device timestamps: "YYYY-MM-DD HH:mm:ss[.SSS]" with an optional offset. Without one, the time is
+// read as wall-clock time in the company time zone, whatever the server's own zone is.
+export function parsePunchTime(value: string, timeZone: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?(Z|[+-]\d{2}:?\d{2})?$/);
+  if (!match) {
+    return null;
   }
+
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, millisecondText, zone] = match;
+  const [year, month, day, hour, minute, second] = [yearText, monthText, dayText, hourText, minuteText, secondText].map(Number);
+  const millisecond = Number((millisecondText ?? "0").padEnd(3, "0"));
+
+  // Rejects dates such as 2026-02-30 or 24:00:00.
+  const check = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  if (
+    check.getUTCFullYear() !== year ||
+    check.getUTCMonth() !== month - 1 ||
+    check.getUTCDate() !== day ||
+    check.getUTCHours() !== hour ||
+    check.getUTCMinutes() !== minute ||
+    check.getUTCSeconds() !== second
+  ) {
+    return null;
+  }
+
+  if (zone) {
+    const parsed = new Date(`${yearText}-${monthText}-${dayText}T${hourText}:${minuteText}:${secondText}.${String(millisecond).padStart(3, "0")}${zone}`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  return new Date(zonedInstant(`${yearText}-${monthText}-${dayText}`, hour * 60 + minute, timeZone) + second * 1000 + millisecond);
 }
