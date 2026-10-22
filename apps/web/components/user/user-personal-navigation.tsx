@@ -20,7 +20,6 @@ import {
   ChartLineUp,
   CheckCircle,
   ClipboardText,
-  Clock,
   CurrencyDollar,
   DotsThree,
   FileClock,
@@ -87,7 +86,7 @@ const moduleCatalog: PersonalModule[] = [
   {
     key: "attendance",
     label: "Công",
-    href: "/user?customMenu=user-board-attendance",
+    href: "/user/attendance",
     group: "Cá nhân",
     icon: CalendarCheck,
     permissionKey: "menu.user.attendance"
@@ -158,15 +157,6 @@ const moduleCatalog: PersonalModule[] = [
     group: "WORKPLACE",
     icon: FileText,
     permissionKey: "menu.work.documents"
-  },
-  {
-    key: "hcns-dashboard",
-    label: "Dashboard HCNS",
-    href: "/hcns",
-    group: "HRM",
-    icon: Users,
-    permissionKey: "menu.hrm.dashboard",
-    legacyPermissionKeys: ["hr.dashboard.modules.view"]
   },
   {
     key: "hcns-employees",
@@ -298,7 +288,6 @@ const adminModuleCatalog: PersonalModule[] = [
 const hcnsModuleCatalog: PersonalModule[] = [
   { key: "dashboard", label: "Trang chủ", href: "/hcns", group: "HRM", icon: House, exact: true },
   { key: "attendance", label: "Công", href: "/hcns#attendance", group: "HRM", icon: CalendarCheck },
-  { key: "shift-schedule", label: "Lịch ca", href: "/hcns/shift-schedule", group: "HRM", icon: Clock },
   { key: "requests", label: "Đơn từ", href: "/hcns#requests", group: "HRM", icon: ClipboardText },
   { key: "people", label: "Hồ sơ", href: "/apps/personnel-profile-profile", group: "HRM", icon: Users },
   { key: "contracts", label: "Hợp đồng", href: "/apps/personnel-contract-contract", group: "HRM", icon: Briefcase },
@@ -328,7 +317,7 @@ const sidebarVariantConfig = {
   },
   hcns: {
     aiLabel: "AI Support",
-    defaultKeys: ["dashboard", "attendance", "shift-schedule", "requests", "people", "contracts"],
+    defaultKeys: ["dashboard", "attendance", "requests", "people", "contracts"],
     groupOrder: ["HRM"],
     mobileKeys: ["dashboard", "attendance", "requests", "people", "contracts"],
     navLabel: "Module HCNS",

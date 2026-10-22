@@ -125,7 +125,7 @@ export function ShiftScheduleBoard({ data, departmentId, patterns, view }: Board
   return (
     <section className="shift-schedule" aria-labelledby="shift-schedule-title">
       <header className="shift-schedule-header">
-        <h1 id="shift-schedule-title">Lịch ca</h1>
+        <h1 id="shift-schedule-title">Phân ca</h1>
         <nav className="shift-schedule-view" aria-label="Kiểu xem">
           <a aria-current={view === "week" ? "page" : undefined} href={href(grid.from, "week")}>Tuần</a>
           <a aria-current={view === "month" ? "page" : undefined} href={href(grid.from, "month")}>Tháng</a>

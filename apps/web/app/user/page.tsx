@@ -11,6 +11,7 @@ import {
   WarningCircle
 } from "@/lib/icons";
 import { AbsenceRequestCreateBoard } from "@/components/user/absence-request-create-board";
+import { AttendanceModuleTabs } from "@/components/attendance/attendance-module-tabs";
 import { AttendanceBoard } from "@/components/user/attendance-board";
 import { CheckinOutRequestCreateBoard } from "@/components/user/checkin-out-request-create-board";
 import { LeaveRequestCreateBoard } from "@/components/user/leave-request-create-board";
@@ -28,6 +29,7 @@ import { getCurrentSessionUser } from "@/lib/auth-user";
 import { announcements } from "@/lib/mock-data";
 import { getEmployeeDirectoryData } from "@/lib/employee-directory-api";
 import { getMyAttendanceData, getMyShiftSchedule, resolveAttendanceMonth } from "@/lib/attendance-api";
+import { getAttendanceModuleTabs } from "@/lib/attendance-module";
 
 type UserPageProps = {
   searchParams?: Promise<{
@@ -261,11 +263,11 @@ function UserHome() {
 
 async function UserAttendance({ month }: { month?: string }) {
   const attendanceMonth = resolveAttendanceMonth(month);
-  const [data, schedule] = await Promise.all([getMyAttendanceData(attendanceMonth), getMyShiftSchedule(attendanceMonth)]);
+  const [data, schedule, tabs] = await Promise.all([getMyAttendanceData(attendanceMonth), getMyShiftSchedule(attendanceMonth), getAttendanceModuleTabs("personal")]);
 
   return (
     <UserFrame activeModule="attendance">
-      <AttendanceBoard data={data} key={schedule.month} schedule={schedule} />
+      <AttendanceBoard data={data} key={schedule.month} moduleTabs={<AttendanceModuleTabs tabs={tabs} />} schedule={schedule} />
     </UserFrame>
   );
 }

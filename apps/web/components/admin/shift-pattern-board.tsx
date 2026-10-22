@@ -129,7 +129,7 @@ export function ShiftPatternBoard({ data, shifts }: { data: ShiftPatternData; sh
         </div>
       </header>
       <p className="shift-catalog-hint">
-        Dùng ở <a href="/hcns/shift-schedule">Lịch ca</a> → Xếp ca hàng loạt. Sửa hay xoá mẫu không làm đổi lịch đã xếp.
+        Dùng ở <a href="/user/attendance/shift-schedule">Công → Phân ca</a> → Xếp ca hàng loạt. Sửa hay xoá mẫu không làm đổi lịch đã xếp.
       </p>
       {message ? <p className="personnel-catalog-message is-error" role="alert">{message}</p> : null}
 

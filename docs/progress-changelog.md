@@ -20,6 +20,7 @@ Trạng thái: nhánh `feat/phase-2`, chưa push. Plan: `docs/plans/phase-2.md`.
 - Lịch ca của tôi (AT-09): bảng công cá nhân hiện ca từng ngày, ngày lễ, công chuẩn theo lịch ca; chi tiết ngày có thông tin ca.
 - Tính lại công (AT-12): tự tính lại khi đổi lịch ca, ngày lễ, chính sách, ca; HR tính lại thủ công và theo dõi lịch sử ở Cài đặt → Tính lại công. Worker dev giờ tự khởi động lại khi bất kỳ file build nào đổi.
 - Công đọc từ kết quả engine (task 10): `/attendance` có phân trang, lọc, phạm vi dữ liệu; bảng công cá nhân hiện giờ làm, V khi vi phạm, phút muộn/sớm, số công; dashboard HCNS dùng trạng thái mới. Bỏ bảng cũ `AttendanceRecord`.
+- Phân hệ Công tổ chức như 1Office: tab Bảng công cá nhân (mọi người), Phân ca và Cài đặt (theo quyền HCNS); Phân ca chuyển từ `/hcns/shift-schedule` về `/user/attendance/shift-schedule` (link cũ tự chuyển), bỏ mục Dashboard HCNS khỏi menu. HCNS chỉ là nhóm quyền, không phải khu riêng.
 - Đồng bộ máy chấm công đọc giờ không kèm múi giờ theo giờ công ty (không theo giờ máy chủ) và tính lại ngay các ngày bị ảnh hưởng, gồm ngày trước đó cho ca đêm. Tính lại toàn bộ: `npm run attendance:recalculate -- [--from] [--to]` (chạy lại không đổi gì nếu dữ liệu không đổi).
 
 Kiểm tra: 261 unit + 45 e2e pass, audit pass. Thử thật: đồng bộ 08:10–17:05 → muộn 10 phút, 0,98 công.

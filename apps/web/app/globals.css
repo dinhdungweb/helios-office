@@ -25553,3 +25553,32 @@ small {
   color: var(--color-text-secondary);
   font-size: 12px;
 }
+
+/* "Công" module tabs are links (1Office-style module tabs). */
+.attendance-board-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  color: var(--color-text-secondary);
+  border-bottom: 2px solid transparent;
+  text-decoration: none;
+}
+
+.attendance-board-tabs a:hover,
+.attendance-board-tabs a:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.attendance-board-tabs a.is-active {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-info);
+  font-weight: var(--font-weight-strong);
+}
+
+.attendance-module-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  margin-bottom: var(--space-7);
+}

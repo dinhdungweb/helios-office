@@ -147,19 +147,19 @@ export async function addFixedHolidaysAction(year: number) {
 // AT-07 schedule edits from the HCNS schedule grid.
 export async function assignShiftsAction(employeeIds: string[], dates: string[], shiftId: string | null) {
   const result = await send("/shift-assignments", "POST", { employeeIds, dates, shiftId });
-  if (result.ok) revalidatePath("/hcns/shift-schedule");
+  if (result.ok) revalidatePath("/user/attendance/shift-schedule");
   return result;
 }
 
 export async function clearAssignmentsAction(employeeIds: string[], dates: string[]) {
   const result = await send("/shift-assignments/clear", "POST", { employeeIds, dates });
-  if (result.ok) revalidatePath("/hcns/shift-schedule");
+  if (result.ok) revalidatePath("/user/attendance/shift-schedule");
   return result;
 }
 
 export async function setDepartmentDefaultShiftAction(departmentId: string, shiftId: string | null) {
   const result = await send(`/departments/${encodeURIComponent(departmentId)}/default-shift`, "PUT", { shiftId });
-  if (result.ok) revalidatePath("/hcns/shift-schedule");
+  if (result.ok) revalidatePath("/user/attendance/shift-schedule");
   return result;
 }
 
@@ -174,7 +174,7 @@ export async function deleteShiftPatternAction(patternId: string) {
 
 export async function bulkAssignAction(input: BulkAssignInput, preview: boolean) {
   const result = await request<BulkAssignSummary>("/shift-assignments/bulk", "POST", { ...input, preview });
-  if (result.ok && !preview) revalidatePath("/hcns/shift-schedule");
+  if (result.ok && !preview) revalidatePath("/user/attendance/shift-schedule");
   return result;
 }
 

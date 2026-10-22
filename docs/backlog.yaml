@@ -675,14 +675,14 @@ modules:
       - id: AT-07
         title: Xếp ca cho nhân sự / phòng ban
         api: ["GET /shift-assignments", "POST /shift-assignments", "DELETE /shift-assignments/:id", "POST /shift-assignments/clear", "PUT /departments/:id/default-shift"]
-        ui: /hcns/shift-schedule
+        ui: /user/attendance/shift-schedule
         status: done
         note: Lịch ca theo tuần (người × ngày) áp phạm vi dữ liệu; ca theo thứ bậc lịch riêng → ca mặc định phòng ban → ca mặc định công ty, chỉ ngày làm việc (ngày làm bù tính là ngày làm). Xếp / về mặc định cho nhiều ô, ca mặc định phòng ban. Thử trình duyệt 2026-10-22 (thứ 7 làm bù hiện ca, xếp nghỉ / xếp ca / về mặc định, ca mặc định phòng ban, người không có quyền thấy thông báo rõ). Chặn xếp vào kỳ đã chốt làm cùng AT-17
         depends: [AT-05]
       - id: AT-08
         title: Xếp ca hàng loạt / theo lịch lặp
         api: ["POST /shift-assignments/bulk", "GET /shift-patterns", "POST /shift-patterns", "PATCH /shift-patterns/:id", "DELETE /shift-patterns/:id"]
-        ui: /hcns/shift-schedule
+        ui: /user/attendance/shift-schedule
         status: done
         note: Một ca vào các thứ đã chọn hoặc mẫu lặp N ngày (tạo ở Cài đặt ca) cho người / cả phòng ban trong phạm vi, tối đa 366 ngày; bắt buộc xem trước số ô mới / ghi đè / không đổi; tuỳ chọn giữ ô đã xếp riêng. Lịch ca xem theo tháng như Phân ca 1Office. Thử trình duyệt 2026-10-22 (mẫu 14 ngày, xem trước, lưu, lưới tháng đúng mẫu, dọn)
         depends: [AT-07]

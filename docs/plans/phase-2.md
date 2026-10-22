@@ -77,6 +77,8 @@ Chia 7 cụm, làm theo thứ tự. Đóng cụm nào chạy `npm run typecheck 
 
 ### 2h. Bổ sung theo 1Office
 
+Tổ chức màn hình (2026-10-22): HCNS là nhóm quyền như 1Office, không có khu riêng. Mọi màn chấm công nằm trong phân hệ **Công** (`/user/attendance/...`) với tab hiện theo quyền: Bảng công cá nhân, Phân ca, Cài đặt; Bảng chấm công (task 12) và Máy chấm (task 16) thêm vào cùng chỗ.
+
 Đọc 1Office ngày 2026-10-22 (chỉ xem): [1office-attendance-reference.md](../design/1office-attendance-reference.md). Quyết định ở thiết kế mục 9a. Ngưỡng muộn/sớm đã đổi mặc định về 0 (migration `20261022040000_zero_late_grace`).
 
 | # | Item | Việc | Kiểm tra | Trạng thái |

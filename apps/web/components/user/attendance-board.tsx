@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import type { Route } from "next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { AttendanceData, AttendanceDayResult, AttendanceDayStatus, MyScheduleData, MyScheduleDay, MyScheduleShift } from "@/lib/attendance-api";
@@ -575,7 +575,7 @@ function shiftMonth(month: string, delta: number) {
 
 // AT-09: personal monthly attendance calendar with each day's shift from the schedule. Pages key it
 // by month, so selection and the picker reset when the month changes.
-export function AttendanceBoard({ data, schedule }: { data: AttendanceData; schedule: MyScheduleData }) {
+export function AttendanceBoard({ data, moduleTabs, schedule }: { data: AttendanceData; moduleTabs: ReactNode; schedule: MyScheduleData }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -638,14 +638,7 @@ export function AttendanceBoard({ data, schedule }: { data: AttendanceData; sche
         </div>
       ) : null}
       <header className="attendance-board-toolbar">
-        <div className="attendance-board-tabs" role="tablist" aria-label="Chế độ xem công">
-          <button className="is-active" type="button" role="tab" aria-selected="true">
-            Bảng công cá nhân
-          </button>
-          <button type="button" role="tab" aria-selected="false">
-            Danh sách
-          </button>
-        </div>
+        {moduleTabs}
 
         <div className="attendance-month-picker">
           <button className="attendance-month-step" type="button" aria-label="Tháng trước" disabled={isNavigating} onClick={() => goToMonth(shiftMonth(month, -1))}>
