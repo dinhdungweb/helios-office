@@ -96,53 +96,53 @@ enum JobCatalogStatus {
 }
 
 model UserAccount {
-  id                       String                 @id @default(uuid())
-  keycloakUserId           String                 @unique
-  email                    String                 @unique
-  displayName              String
-  employee                 Employee?
-  roles                    String[]
-  adminRole                AccountAdminRole       @default(user)
-  licensePlan              LicensePlan            @default(standard)
-  accountStatus            AccountLifecycleStatus @default(pending_activation)
-  permissionGroupId        String?
-  permissionGroup          PermissionGroup?       @relation(fields: [permissionGroupId], references: [id])
+  id                        String                   @id @default(uuid())
+  keycloakUserId            String                   @unique
+  email                     String                   @unique
+  displayName               String
+  employee                  Employee?
+  roles                     String[]
+  adminRole                 AccountAdminRole         @default(user)
+  licensePlan               LicensePlan              @default(standard)
+  accountStatus             AccountLifecycleStatus   @default(pending_activation)
+  permissionGroupId         String?
+  permissionGroup           PermissionGroup?         @relation(fields: [permissionGroupId], references: [id])
   // Per-account overrides of the group (AU-11), applied only while customPermissionsEnabled:
   // granted keys are added, revoked keys removed (revoke wins), and a scope set here replaces the
   // group's scope for that key.
-  customPermissionsEnabled Boolean                @default(false)
+  customPermissionsEnabled  Boolean                  @default(false)
   // Granted permission keys (string[]).
-  customPermissions        Json?
+  customPermissions         Json?
   // Revoked permission keys (string[]).
-  customRevokedPermissions Json?
+  customRevokedPermissions  Json?
   // { "<permission key>": "self" | "department" | "department_tree" | "branch" | "company" } for custom grants
-  customPermissionScopes   Json?
-  customPermissionNote     String?
-  passwordResetRequired    Boolean                @default(false)
+  customPermissionScopes    Json?
+  customPermissionNote      String?
+  passwordResetRequired     Boolean                  @default(false)
   temporaryPasswordIssuedAt DateTime?
-  inviteEmailRequested     Boolean                @default(false)
-  inviteSentAt             DateTime?
-  activatedAt              DateTime?
-  closedAt                 DateTime?
+  inviteEmailRequested      Boolean                  @default(false)
+  inviteSentAt              DateTime?
+  activatedAt               DateTime?
+  closedAt                  DateTime?
   // Access tokens issued before this instant are refused (AU-17 force logout), so signing an
   // account out takes effect at once instead of when its short-lived tokens expire.
-  sessionsRevokedAt        DateTime?
+  sessionsRevokedAt         DateTime?
   // Keycloak session ids (sid) signed out one by one (AU-16): [{ "sid": string, "at": ISO date }].
   // Kept only as long as a token of that session could still be valid.
-  revokedSessionIds        Json?
-  loginEvents              LoginEvent[]
-  twoFactorCredential      TwoFactorCredential?
-  twoFactorSessions        TwoFactorSession[]
-  twoFactorEmailCodes      TwoFactorEmailCode[]
-  preferences              UserPreference[]
-  auditLogs                AuditLog[]
-  notifications            Notification[]
-  notificationPreferences  NotificationPreference[]
-  uploadedFiles            StoredFile[]
-  importJobs               ImportJob[]
-  exportJobs               ExportJob[]
-  createdAt                DateTime               @default(now())
-  updatedAt                DateTime               @updatedAt
+  revokedSessionIds         Json?
+  loginEvents               LoginEvent[]
+  twoFactorCredential       TwoFactorCredential?
+  twoFactorSessions         TwoFactorSession[]
+  twoFactorEmailCodes       TwoFactorEmailCode[]
+  preferences               UserPreference[]
+  auditLogs                 AuditLog[]
+  notifications             Notification[]
+  notificationPreferences   NotificationPreference[]
+  uploadedFiles             StoredFile[]
+  importJobs                ImportJob[]
+  exportJobs                ExportJob[]
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
 }
 
 enum TwoFactorMethod {
@@ -208,9 +208,9 @@ enum LoginOutcome {
 // Sign-in attempts through the Helios login page (AU-20), reported by the web server with the
 // browser's IP and user agent; Keycloak only sees the web server.
 model LoginEvent {
-  id             String        @id @default(uuid())
+  id             String       @id @default(uuid())
   accountId      String?
-  account        UserAccount?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  account        UserAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
   keycloakUserId String?
   username       String
   outcome        LoginOutcome
@@ -218,7 +218,7 @@ model LoginEvent {
   sessionId      String?
   ipAddress      String?
   userAgent      String?
-  createdAt      DateTime      @default(now())
+  createdAt      DateTime     @default(now())
 
   @@index([accountId, createdAt])
   @@index([sessionId])
@@ -244,33 +244,33 @@ model UserPreference {
 }
 
 model PermissionGroup {
-  id          String                @id @default(uuid())
-  name        String                @unique
-  description String
-  roleScope   AccountAdminRole      @default(user)
-  licensePlan LicensePlan           @default(standard)
-  permissions String[]
+  id               String                @id @default(uuid())
+  name             String                @unique
+  description      String
+  roleScope        AccountAdminRole      @default(user)
+  licensePlan      LicensePlan           @default(standard)
+  permissions      String[]
   // Data scope per scopable permission key; see docs/design/data-scope.md
   permissionScopes Json                  @default("{}")
-  status      PermissionGroupStatus @default(active)
-  archivedAt  DateTime?
-  accounts    UserAccount[]
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
+  status           PermissionGroupStatus @default(active)
+  archivedAt       DateTime?
+  accounts         UserAccount[]
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 }
 
 model PermissionDefinition {
-  key         String   @id
-  category    String
-  label       String
-  description String?
-  adminOnly   Boolean  @default(false)
+  key          String   @id
+  category     String
+  label        String
+  description  String?
+  adminOnly    Boolean  @default(false)
   // Scopable permissions are filtered by data scope (self ... company); others are yes/no only.
-  scopable     Boolean @default(false)
+  scopable     Boolean  @default(false)
   defaultScope String?
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model AdminSetting {
@@ -323,49 +323,49 @@ model DeviceAuthRequest {
 }
 
 model Employee {
-  id                String             @id @default(uuid())
-  code              String             @unique
-  fullName          String
-  title             String
-  positionId        String?
-  jobTitleId        String?
-  status            EmployeeStatus     @default(active)
-  startDate         DateTime
-  officialStartDate DateTime?
-  endDate           DateTime?
-  employeeType      String?
-  avatarUrl         String?
-  attendanceCode    String?            @unique
-  attendanceMode    String?
-  payrollTemplate   String?
-  standardWorkdays  Int?
-  profileData       Json?
-  userAccountId     String?            @unique
-  departmentId      String
-  managerId         String?
-  userAccount       UserAccount?       @relation(fields: [userAccountId], references: [id])
-  department        Department         @relation(fields: [departmentId], references: [id])
-  position          JobPosition?       @relation(fields: [positionId], references: [id])
-  jobTitle          JobTitle?          @relation(fields: [jobTitleId], references: [id])
-  manager           Employee?          @relation("EmployeeManager", fields: [managerId], references: [id])
-  directReports     Employee[]         @relation("EmployeeManager")
-  contracts         Contract[]
-  documents         EmployeeDocument[]
-  attendanceRecords AttendanceRecord[]
-  attendanceRawLogs AttendanceRawLog[]
-  leaveRequests     LeaveRequest[]
-  payrollItems      PayrollItem[]
-  assetAssignments  AssetAssignment[]
-  deviceAuthRequests DeviceAuthRequest[]
-  auditLogs         AuditLog[]
-  createdInternalPenalties InternalPenalty[] @relation("InternalPenaltyCreator")
-  createdWelfareBenefits   WelfareBenefit[]   @relation("WelfareBenefitCreator")
-  createdWelfarePackages   WelfarePackage[]   @relation("WelfarePackageCreator")
+  id                        String                       @id @default(uuid())
+  code                      String                       @unique
+  fullName                  String
+  title                     String
+  positionId                String?
+  jobTitleId                String?
+  status                    EmployeeStatus               @default(active)
+  startDate                 DateTime
+  officialStartDate         DateTime?
+  endDate                   DateTime?
+  employeeType              String?
+  avatarUrl                 String?
+  attendanceCode            String?                      @unique
+  attendanceMode            String?
+  payrollTemplate           String?
+  standardWorkdays          Int?
+  profileData               Json?
+  userAccountId             String?                      @unique
+  departmentId              String
+  managerId                 String?
+  userAccount               UserAccount?                 @relation(fields: [userAccountId], references: [id])
+  department                Department                   @relation(fields: [departmentId], references: [id])
+  position                  JobPosition?                 @relation(fields: [positionId], references: [id])
+  jobTitle                  JobTitle?                    @relation(fields: [jobTitleId], references: [id])
+  manager                   Employee?                    @relation("EmployeeManager", fields: [managerId], references: [id])
+  directReports             Employee[]                   @relation("EmployeeManager")
+  contracts                 Contract[]
+  documents                 EmployeeDocument[]
+  attendanceRecords         AttendanceRecord[]
+  attendanceRawLogs         AttendanceRawLog[]
+  leaveRequests             LeaveRequest[]
+  payrollItems              PayrollItem[]
+  assetAssignments          AssetAssignment[]
+  deviceAuthRequests        DeviceAuthRequest[]
+  auditLogs                 AuditLog[]
+  createdInternalPenalties  InternalPenalty[]            @relation("InternalPenaltyCreator")
+  createdWelfareBenefits    WelfareBenefit[]             @relation("WelfareBenefitCreator")
+  createdWelfarePackages    WelfarePackage[]             @relation("WelfarePackageCreator")
   followedApprovalWorkflows ApprovalWorkflowDefinition[] @relation("ApprovalWorkflowFollower")
   createdApprovalWorkflows  ApprovalWorkflowDefinition[] @relation("ApprovalWorkflowCreator")
   updatedApprovalWorkflows  ApprovalWorkflowDefinition[] @relation("ApprovalWorkflowUpdater")
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  createdAt                 DateTime                     @default(now())
+  updatedAt                 DateTime                     @updatedAt
 
   @@index([positionId])
   @@index([jobTitleId])
@@ -388,10 +388,117 @@ model Department {
   children            Department[]     @relation("DepartmentTree")
   employees           Employee[]
   workplaces          Workplace[]
+  // Shift for the department's working days when nobody scheduled one (AT-07, design §5.3).
+  defaultShiftId      String?
+  defaultShift        Shift?           @relation("DepartmentDefaultShift", fields: [defaultShiftId], references: [id], onDelete: SetNull)
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 
   @@unique([parentId, name])
+}
+
+enum ShiftType {
+  fixed
+  flexible
+}
+
+enum LateCountMode {
+  // Past the grace period, every minute counts.
+  full
+  // Past the grace period, only the minutes beyond it count.
+  excess
+}
+
+enum PunchPairingMode {
+  first_last
+  pairs
+}
+
+enum OvernightAttribution {
+  shift_start
+  shift_end
+}
+
+enum MissingPunchMode {
+  // 0 units, flagged for an explanation or an HR fix.
+  pending
+  half
+  // Use the shift's scheduled time for the missing punch.
+  scheduled
+}
+
+enum WorkUnitMode {
+  // units × worked / required minutes
+  actual
+  // full units when both punches exist
+  presence
+}
+
+enum OutsideShiftMode {
+  record
+  ignore
+}
+
+// Shift template (AT-05, AT-06). Times are minutes after midnight in the company time zone; an end
+// at or before the start means the shift ends the next day. Override fields left null use the
+// company AttendancePolicy. See docs/design/attendance-engine.md §5.
+model Shift {
+  id                       String             @id @default(uuid())
+  code                     String             @unique
+  name                     String
+  type                     ShiftType          @default(fixed)
+  color                    String?
+  startMinute              Int
+  endMinute                Int
+  breakStartMinute         Int?
+  breakEndMinute           Int?
+  // Flexible shifts: minutes to work inside the window. Fixed shifts: derived (length − break).
+  requiredMinutes          Int?
+  workUnits                Decimal            @default(1) @db.Decimal(4, 2)
+  lateGraceMinutes         Int?
+  earlyGraceMinutes        Int?
+  lateCountMode            LateCountMode?
+  missingPunchMode         MissingPunchMode?
+  punchWindowBeforeMinutes Int?
+  punchWindowAfterMinutes  Int?
+  description              String?
+  status                   JobCatalogStatus   @default(active)
+  archivedAt               DateTime?
+  departmentsDefault       Department[]       @relation("DepartmentDefaultShift")
+  policiesDefault          AttendancePolicy[] @relation("PolicyDefaultShift")
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+}
+
+// Company-wide attendance rules (AT-06); one row with id "default". Every rule is a setting so HR
+// can match how they count by hand. See docs/design/attendance-engine.md §4.
+model AttendancePolicy {
+  id                           String               @id @default("default")
+  timezone                     String               @default("Asia/Ho_Chi_Minh")
+  // ISO weekdays, 1 = Monday … 7 = Sunday.
+  workWeekdays                 Int[]                @default([1, 2, 3, 4, 5])
+  defaultShiftId               String?
+  defaultShift                 Shift?               @relation("PolicyDefaultShift", fields: [defaultShiftId], references: [id], onDelete: SetNull)
+  lateGraceMinutes             Int                  @default(5)
+  earlyGraceMinutes            Int                  @default(5)
+  lateCountMode                LateCountMode        @default(full)
+  roundingMinutes              Int                  @default(0)
+  punchPairing                 PunchPairingMode     @default(first_last)
+  punchWindowBeforeMinutes     Int                  @default(240)
+  punchWindowAfterMinutes      Int                  @default(240)
+  overnightAttribution         OvernightAttribution @default(shift_start)
+  missingPunchMode             MissingPunchMode     @default(pending)
+  workUnitMode                 WorkUnitMode         @default(actual)
+  // Rounding step for work units in hundredths: 1 = 0.01, 25 = 0.25, 50 = 0.5.
+  workUnitRoundingHundredths   Int                  @default(1)
+  outsideShiftMode             OutsideShiftMode     @default(record)
+  overtimeWeekdayPercent       Int                  @default(150)
+  overtimeRestDayPercent       Int                  @default(200)
+  overtimeHolidayPercent       Int                  @default(300)
+  nightAllowancePercent        Int                  @default(30)
+  holidayPaid                  Boolean              @default(true)
+  requireTimesheetConfirmation Boolean              @default(false)
+  updatedAt                    DateTime             @updatedAt
 }
 
 enum StoredFileStatus {
@@ -403,32 +510,32 @@ enum StoredFileStatus {
 // A file kept in object storage (MinIO/S3). Business tables reference it by id; access is decided
 // per purpose by a FileAccessPolicy. See docs/design/file-storage.md.
 model StoredFile {
-  id           String           @id @default(uuid())
-  bucket       String
-  objectKey    String           @unique
-  fileName     String
-  mimeType     String
-  size         Int
+  id               String            @id @default(uuid())
+  bucket           String
+  objectKey        String            @unique
+  fileName         String
+  mimeType         String
+  size             Int
   // Storage ETag after upload is confirmed.
-  checksum     String?
-  purpose      String
-  ownerType    String?
-  ownerId      String?
-  status       StoredFileStatus @default(pending)
-  uploadedById String?
-  uploadedBy   UserAccount?     @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  checksum         String?
+  purpose          String
+  ownerType        String?
+  ownerId          String?
+  status           StoredFileStatus  @default(pending)
+  uploadedById     String?
+  uploadedBy       UserAccount?      @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
   employeeDocument EmployeeDocument?
-  importJobs   ImportJob[]      @relation("ImportJobFile")
-  exportJob    ExportJob?       @relation("ExportJobFile")
-  createdAt    DateTime         @default(now())
-  deletedAt    DateTime?
+  importJobs       ImportJob[]       @relation("ImportJobFile")
+  exportJob        ExportJob?        @relation("ExportJobFile")
+  createdAt        DateTime          @default(now())
+  deletedAt        DateTime?
 
   @@index([ownerType, ownerId])
   @@index([status, createdAt])
 }
 
 model EmployeeDocument {
-  id         String   @id @default(uuid())
+  id         String      @id @default(uuid())
   employeeId String
   fieldName  String
   fileName   String
@@ -438,8 +545,8 @@ model EmployeeDocument {
   content    Bytes?
   fileId     String?     @unique
   file       StoredFile? @relation(fields: [fileId], references: [id])
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
+  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now())
 
   @@index([employeeId, fieldName])
 }
@@ -506,48 +613,48 @@ model ExportJob {
 }
 
 model JobPosition {
-  id          String           @id @default(uuid())
-  code        String           @unique
-  name        String           @unique
-  family      String?
-  description String?
-  status      JobCatalogStatus @default(active)
-  archivedAt  DateTime?
-  employees   Employee[]
+  id              String           @id @default(uuid())
+  code            String           @unique
+  name            String           @unique
+  family          String?
+  description     String?
+  status          JobCatalogStatus @default(active)
+  archivedAt      DateTime?
+  employees       Employee[]
   welfarePackages WelfarePackage[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model JobTitle {
-  id          String           @id @default(uuid())
-  code        String           @unique
-  name        String           @unique
-  rank        Int              @default(0)
-  levelId     String?
-  description String?
-  status      JobCatalogStatus @default(active)
-  archivedAt  DateTime?
-  level       JobLevel?        @relation(fields: [levelId], references: [id], onDelete: SetNull)
-  employees   Employee[]
+  id              String           @id @default(uuid())
+  code            String           @unique
+  name            String           @unique
+  rank            Int              @default(0)
+  levelId         String?
+  description     String?
+  status          JobCatalogStatus @default(active)
+  archivedAt      DateTime?
+  level           JobLevel?        @relation(fields: [levelId], references: [id], onDelete: SetNull)
+  employees       Employee[]
   welfarePackages WelfarePackage[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([levelId])
 }
 
 model JobLevel {
-  id          String           @id @default(uuid())
-  name        String           @unique
-  description String?
-  sortOrder   Int              @default(0)
-  status      JobCatalogStatus @default(active)
-  archivedAt  DateTime?
-  jobTitles   JobTitle[]
+  id              String           @id @default(uuid())
+  name            String           @unique
+  description     String?
+  sortOrder       Int              @default(0)
+  status          JobCatalogStatus @default(active)
+  archivedAt      DateTime?
+  jobTitles       JobTitle[]
   welfarePackages WelfarePackage[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model Workplace {
@@ -583,24 +690,24 @@ model InternalPenalty {
 }
 
 model WelfareBenefit {
-  id          String           @id @default(uuid())
-  name        String
-  amount      Int              @default(0)
-  description String?
-  status      JobCatalogStatus @default(active)
-  archivedAt  DateTime?
-  createdById String?
-  createdBy   Employee?        @relation("WelfareBenefitCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  id           String               @id @default(uuid())
+  name         String
+  amount       Int                  @default(0)
+  description  String?
+  status       JobCatalogStatus     @default(active)
+  archivedAt   DateTime?
+  createdById  String?
+  createdBy    Employee?            @relation("WelfareBenefitCreator", fields: [createdById], references: [id], onDelete: SetNull)
   packageItems WelfarePackageItem[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
   @@index([createdById])
   @@index([status])
 }
 
 model WelfarePackage {
-  id          String           @id @default(uuid())
+  id          String               @id @default(uuid())
   name        String
   startDate   DateTime?
   endDate     DateTime?
@@ -608,16 +715,16 @@ model WelfarePackage {
   jobTitleId  String?
   jobLevelId  String?
   description String?
-  status      JobCatalogStatus @default(active)
+  status      JobCatalogStatus     @default(active)
   archivedAt  DateTime?
   createdById String?
-  position    JobPosition?     @relation(fields: [positionId], references: [id], onDelete: SetNull)
-  jobTitle    JobTitle?        @relation(fields: [jobTitleId], references: [id], onDelete: SetNull)
-  jobLevel    JobLevel?        @relation(fields: [jobLevelId], references: [id], onDelete: SetNull)
-  createdBy   Employee?        @relation("WelfarePackageCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  position    JobPosition?         @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  jobTitle    JobTitle?            @relation(fields: [jobTitleId], references: [id], onDelete: SetNull)
+  jobLevel    JobLevel?            @relation(fields: [jobLevelId], references: [id], onDelete: SetNull)
+  createdBy   Employee?            @relation("WelfarePackageCreator", fields: [createdById], references: [id], onDelete: SetNull)
   items       WelfarePackageItem[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 
   @@index([positionId])
   @@index([jobTitleId])
@@ -655,18 +762,18 @@ model Contract {
 }
 
 model Post {
-  id          String     @id @default(uuid())
+  id          String         @id @default(uuid())
   authorId    String
   scope       PostScope
   title       String
   body        String
-  requiresAck Boolean    @default(false)
+  requiresAck Boolean        @default(false)
   publishedAt DateTime?
   comments    Comment[]
   reactions   Reaction[]
   readMarks   PostReadMark[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 }
 
 model Comment {
@@ -691,11 +798,11 @@ model Reaction {
 }
 
 model PostReadMark {
-  id        String   @id @default(uuid())
-  postId    String
-  userId    String
-  readAt    DateTime @default(now())
-  post      Post     @relation(fields: [postId], references: [id])
+  id     String   @id @default(uuid())
+  postId String
+  userId String
+  readAt DateTime @default(now())
+  post   Post     @relation(fields: [postId], references: [id])
 
   @@unique([postId, userId])
 }
@@ -740,28 +847,28 @@ model AttendanceRecord {
 }
 
 model ApprovalWorkflowDefinition {
-  id                            String                 @id @default(uuid())
-  code                          String?                @unique
-  name                          String
-  status                        ApprovalWorkflowStatus @default(active)
-  objectType                    String
-  subObject                     String                 @default("all")
-  versionMode                   Boolean                @default(true)
-  approvalType                  String                 @default("workflow")
-  followerId                    String?
-  showFlowInObject              Boolean                @default(false)
-  allowAttachmentsAfterApproved Boolean                @default(false)
-  allowDocumentChangesAfterApproved Boolean            @default(false)
-  allowDiscussionAfterApproved Boolean                 @default(true)
-  overdueAction                 String                 @default("none")
-  flowDefinition                Json
-  follower                      Employee?              @relation("ApprovalWorkflowFollower", fields: [followerId], references: [id], onDelete: SetNull)
-  createdById                   String?
-  createdBy                     Employee?              @relation("ApprovalWorkflowCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedById                   String?
-  updatedBy                     Employee?              @relation("ApprovalWorkflowUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
-  createdAt                     DateTime                @default(now())
-  updatedAt                     DateTime                @updatedAt
+  id                                String                 @id @default(uuid())
+  code                              String?                @unique
+  name                              String
+  status                            ApprovalWorkflowStatus @default(active)
+  objectType                        String
+  subObject                         String                 @default("all")
+  versionMode                       Boolean                @default(true)
+  approvalType                      String                 @default("workflow")
+  followerId                        String?
+  showFlowInObject                  Boolean                @default(false)
+  allowAttachmentsAfterApproved     Boolean                @default(false)
+  allowDocumentChangesAfterApproved Boolean                @default(false)
+  allowDiscussionAfterApproved      Boolean                @default(true)
+  overdueAction                     String                 @default("none")
+  flowDefinition                    Json
+  follower                          Employee?              @relation("ApprovalWorkflowFollower", fields: [followerId], references: [id], onDelete: SetNull)
+  createdById                       String?
+  createdBy                         Employee?              @relation("ApprovalWorkflowCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById                       String?
+  updatedBy                         Employee?              @relation("ApprovalWorkflowUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt                         DateTime               @default(now())
+  updatedAt                         DateTime               @updatedAt
 
   @@index([status])
   @@index([objectType])
@@ -771,16 +878,16 @@ model ApprovalWorkflowDefinition {
 }
 
 model AttendanceDevice {
-  id         String             @id @default(uuid())
-  deviceId   String             @unique
+  id         String                @id @default(uuid())
+  deviceId   String                @unique
   deviceName String?
   storeCode  String?
-  status     String             @default("active")
+  status     String                @default("active")
   lastSyncAt DateTime?
   rawLogs    AttendanceRawLog[]
   syncErrors AttendanceSyncError[]
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
 }
 
 model AttendanceRawLog {
@@ -802,7 +909,7 @@ model AttendanceRawLog {
 }
 
 model AttendanceSyncError {
-  id           String            @id @default(uuid())
+  id           String           @id @default(uuid())
   deviceId     String
   employeeCode String?
   storeCode    String?
@@ -810,25 +917,25 @@ model AttendanceSyncError {
   errorType    String
   errorMessage String
   rawPayload   Json?
-  device       AttendanceDevice  @relation(fields: [deviceId], references: [deviceId])
-  createdAt    DateTime          @default(now())
+  device       AttendanceDevice @relation(fields: [deviceId], references: [deviceId])
+  createdAt    DateTime         @default(now())
 
   @@index([deviceId, createdAt])
   @@index([employeeCode, createdAt])
 }
 
 model LeaveRequest {
-  id          String         @id @default(uuid())
-  employeeId  String
-  type        String
-  fromDate    DateTime
-  toDate      DateTime
-  totalDays   Decimal
-  reason      String?
-  status      ApprovalStatus @default(pending)
-  employee    Employee       @relation(fields: [employeeId], references: [id])
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id         String         @id @default(uuid())
+  employeeId String
+  type       String
+  fromDate   DateTime
+  toDate     DateTime
+  totalDays  Decimal
+  reason     String?
+  status     ApprovalStatus @default(pending)
+  employee   Employee       @relation(fields: [employeeId], references: [id])
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
 }
 
 model PayrollCycle {
@@ -846,41 +953,41 @@ model PayrollCycle {
 model PayrollItem {
   id             String       @id @default(uuid())
   payrollCycleId String
-  employeeId      String
-  grossAmount     Decimal
-  netAmount       Decimal
-  currency        String       @default("VND")
-  payload         Json
-  payrollCycle    PayrollCycle @relation(fields: [payrollCycleId], references: [id])
-  employee        Employee     @relation(fields: [employeeId], references: [id])
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  employeeId     String
+  grossAmount    Decimal
+  netAmount      Decimal
+  currency       String       @default("VND")
+  payload        Json
+  payrollCycle   PayrollCycle @relation(fields: [payrollCycleId], references: [id])
+  employee       Employee     @relation(fields: [employeeId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@unique([payrollCycleId, employeeId])
 }
 
 model Objective {
-  id          String   @id @default(uuid())
-  ownerId     String
-  cycle       String
-  title       String
-  progress    Decimal  @default(0)
-  status      String
-  parentId    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  ownerId   String
+  cycle     String
+  title     String
+  progress  Decimal  @default(0)
+  status    String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TrainingCourse {
-  id          String   @id @default(uuid())
+  id          String               @id @default(uuid())
   title       String
   ownerId     String
   startDate   DateTime
   endDate     DateTime?
   status      String
   enrollments TrainingEnrollment[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 }
 
 model TrainingEnrollment {
@@ -961,7 +1068,7 @@ model NotificationEventType {
 }
 
 model AuditLog {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   // Employee behind the action (null for accounts without an employee profile, e.g. admin).
   actorId        String?
   // Account that performed the action; always set for requests made by a signed-in user.
@@ -977,9 +1084,9 @@ model AuditLog {
   requestId      String?
   // "domain": written by a service with before/after values; "http": safety-net entry written by
   // AuditInterceptor for a mutation that recorded nothing itself.
-  source         String   @default("domain")
-  employee       Employee? @relation(fields: [actorId], references: [id])
-  createdAt      DateTime @default(now())
+  source         String       @default("domain")
+  employee       Employee?    @relation(fields: [actorId], references: [id])
+  createdAt      DateTime     @default(now())
 
   @@index([createdAt])
   @@index([entityType, entityId])

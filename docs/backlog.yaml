@@ -659,11 +659,16 @@ modules:
         status: done
       - id: AT-05
         title: Danh mục ca làm việc
-        api: ["GET /shifts", "POST /shifts", "PATCH /shifts/:id", "DELETE /shifts/:id"]
-        status: todo
+        api: ["GET /shifts", "POST /shifts", "PATCH /shifts/:id", "DELETE /shifts/:id", "POST /shifts/:id/archive", "POST /shifts/:id/restore"]
+        ui: /admin/settings/shifts
+        status: doing
+        note: Ca cố định / linh hoạt / qua đêm, nghỉ giữa ca, số công, quy tắc riêng ghi đè chính sách. Ca đang là ca mặc định không lưu trữ / xoá được. Seed ca HC 08:00-17:00. Chờ thử trên DB thật + trình duyệt (Docker tắt khi viết)
       - id: AT-06
         title: Ca qua đêm, ca linh hoạt, nghỉ giữa ca, ngưỡng đi muộn cho phép
-        status: todo
+        api: ["GET /attendance-policy", "PATCH /attendance-policy"]
+        ui: /admin/settings/attendance-policy
+        status: doing
+        note: Chính sách chấm công chung (docs/design/attendance-engine.md mục 4) + quy tắc riêng từng ca. Chờ thử thật
         depends: [AT-05]
       - id: AT-07
         title: Xếp ca cho nhân sự / phòng ban

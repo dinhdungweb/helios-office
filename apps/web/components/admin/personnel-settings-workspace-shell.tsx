@@ -18,7 +18,15 @@ import {
   SlidersHorizontal
 } from "@/lib/icons";
 
-export type PersonnelSettingsItem = "position" | "title" | "workplace" | "internal-penalty" | "benefits" | "approval";
+export type PersonnelSettingsItem =
+  | "position"
+  | "title"
+  | "workplace"
+  | "internal-penalty"
+  | "benefits"
+  | "shift"
+  | "attendance-policy"
+  | "approval";
 
 type PersonnelSettingsWorkspaceShellProps = {
   activeItem: PersonnelSettingsItem;
@@ -34,7 +42,8 @@ const generalItems = [
   { key: "internal-penalty", href: "/admin/settings/internal-penalties", label: "Phạt nội bộ" },
   { key: "benefits", href: "/admin/settings/welfare-benefits", label: "Chế độ phúc lợi" },
   { key: "career-path", label: "Lộ trình thăng tiến" },
-  { key: "shift", label: "Cài đặt ca" },
+  { key: "shift", href: "/admin/settings/shifts", label: "Cài đặt ca" },
+  { key: "attendance-policy", href: "/admin/settings/attendance-policy", label: "Chính sách chấm công" },
   { key: "approval", href: "/admin/settings/approval-workflows", label: "Quy trình duyệt" }
 ] as const;
 

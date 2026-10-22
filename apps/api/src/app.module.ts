@@ -25,6 +25,7 @@ import { EmployeeTransferModule } from "./modules/employees/employee-transfer.mo
 import { LeaveRequestsModule } from "./modules/leave-requests/leave-requests.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { TwoFactorModule } from "./modules/two-factor/two-factor.module";
+import { ShiftsModule } from "./modules/shifts/shifts.module";
 import { PayrollModule } from "./modules/payroll/payroll.module";
 import { PostsModule } from "./modules/posts/posts.module";
 import { ReportsModule } from "./modules/reports/reports.module";
@@ -68,7 +69,8 @@ import { UserPreferencesModule } from "./modules/user-preferences/user-preferenc
     ReportsModule,
     UserPreferencesModule,
     NotificationsModule,
-    TwoFactorModule
+    TwoFactorModule,
+    ShiftsModule
   ],
   // Global guards run in this order: rate limit first so rejected tokens still count, then
   // authentication. Every route requires a verified session unless it is marked @Public().
