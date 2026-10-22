@@ -9,7 +9,8 @@ import { parseCalendarDate } from "./holidays.service";
 import { planBulkCells, previewBulk, type BulkCell, type BulkRule } from "./shift-bulk";
 import { patternDays } from "./shift-patterns.service";
 import { datesBetween, resolveDayShift } from "./shift-resolver";
-import { MAX_BULK_DAYS, type AssignShiftsDto, type BulkAssignDto, type ClearAssignmentsDto, type ScheduleQueryDto } from "./shift-assignments.dto";
+import { requiredMinutesFor } from "./shift-rules";
+import { MAX_BULK_DAYS, type AssignShiftsDto, type BulkAssignDto, type ClearAssignmentsDto, type MyScheduleQueryDto, type ScheduleQueryDto } from "./shift-assignments.dto";
 import { ATTENDANCE_READ_PERMISSIONS, ATTENDANCE_SETUP_PERMISSION } from "./shifts.controller";
 
 const MAX_RANGE_DAYS = 62;
@@ -145,6 +146,78 @@ export class ShiftAssignmentsService {
     });
     await this.writeAudit("shift_assignment.clear", "ShiftAssignment", "bulk", null, { employeeIds: dto.employeeIds, dates: dto.dates }, user.account?.employeeId ?? undefined);
     return { cleared: result.count };
+  }
+
+  // AT-09: the signed-in person's own shifts, for their attendance calendar. Needs no attendance
+  // permission; days outside their employment carry no shift.
+  async mySchedule(user: AuthenticatedUser, query: MyScheduleQueryDto) {
+    const dates = this.range(query.from, query.to);
+    const employeeId = user.account?.employeeId;
+    if (!employeeId) throw new NotFoundException("Tài khoản chưa gắn với hồ sơ nhân sự.");
+
+    const from = parseCalendarDate(query.from);
+    const to = parseCalendarDate(query.to);
+    const [employee, assignments, holidays, policy, shifts] = await Promise.all([
+      this.prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: { startDate: true, endDate: true, department: { select: { defaultShiftId: true } } }
+      }),
+      this.prisma.shiftAssignment.findMany({ where: { employeeId, date: { gte: from, lte: to } }, select: { date: true, shiftId: true, note: true } }),
+      this.prisma.holiday.findMany({ where: { date: { gte: from, lte: to } } }),
+      this.prisma.attendancePolicy.findUnique({ where: { id: "default" } }),
+      this.prisma.shift.findMany()
+    ]);
+    if (!employee) throw new NotFoundException("Không tìm thấy hồ sơ nhân sự.");
+
+    const timeZone = policy?.timezone ?? "Asia/Ho_Chi_Minh";
+    const startDate = localDate(employee.startDate.getTime(), timeZone);
+    const endDate = employee.endDate ? localDate(employee.endDate.getTime(), timeZone) : null;
+    const assignmentByDate = new Map(assignments.map((assignment) => [dateKey(assignment.date), assignment]));
+    const holidayByDate = new Map(holidays.map((holiday) => [dateKey(holiday.date), holiday]));
+    const shiftsById = new Map(shifts.map((shift) => [shift.id, shift]));
+
+    return {
+      from: query.from,
+      to: query.to,
+      days: dates.map((date) => {
+        const holiday = holidayByDate.get(date);
+        const assignment = assignmentByDate.get(date);
+        const employed = date >= startDate && (!endDate || date <= endDate);
+        const resolved = employed
+          ? resolveDayShift({
+              date,
+              assignment: assignment ? { shiftId: assignment.shiftId } : undefined,
+              departmentDefaultShiftId: employee.department.defaultShiftId,
+              companyDefaultShiftId: policy?.defaultShiftId,
+              workWeekdays: policy?.workWeekdays ?? [1, 2, 3, 4, 5],
+              holiday
+            })
+          : { shiftId: null, source: "none" as const };
+        const shift = resolved.shiftId ? shiftsById.get(resolved.shiftId) : undefined;
+        return {
+          date,
+          employed,
+          source: resolved.source,
+          note: assignment?.note ?? null,
+          holiday: holiday ? { name: holiday.name, type: holiday.type, paid: holiday.paid } : null,
+          shift: shift
+            ? {
+                id: shift.id,
+                code: shift.code,
+                name: shift.name,
+                type: shift.type,
+                color: shift.color,
+                startMinute: shift.startMinute,
+                endMinute: shift.endMinute,
+                breakStartMinute: shift.breakStartMinute,
+                breakEndMinute: shift.breakEndMinute,
+                requiredMinutes: requiredMinutesFor(shift),
+                workUnits: Number(shift.workUnits)
+              }
+            : null
+        };
+      })
+    };
   }
 
   // AT-08: one shift on chosen weekdays, or a repeating pattern, over a date range for people and

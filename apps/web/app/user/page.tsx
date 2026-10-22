@@ -27,13 +27,14 @@ import { UserFrame } from "@/components/user/user-frame";
 import { getCurrentSessionUser } from "@/lib/auth-user";
 import { announcements } from "@/lib/mock-data";
 import { getEmployeeDirectoryData } from "@/lib/employee-directory-api";
-import { getMyAttendanceData } from "@/lib/attendance-api";
+import { getMyAttendanceData, getMyShiftSchedule, resolveAttendanceMonth } from "@/lib/attendance-api";
 
 type UserPageProps = {
   searchParams?: Promise<{
     customMenu?: string;
     create?: string;
     employeeId?: string;
+    month?: string;
     profileTab?: string;
     tab?: string;
   }>;
@@ -258,12 +259,12 @@ function UserHome() {
   );
 }
 
-async function UserAttendance() {
-  const data = await getMyAttendanceData();
+async function UserAttendance({ month }: { month?: string }) {
+  const [data, schedule] = await Promise.all([getMyAttendanceData(), getMyShiftSchedule(resolveAttendanceMonth(month))]);
 
   return (
     <UserFrame activeModule="attendance">
-      <AttendanceBoard data={data} />
+      <AttendanceBoard data={data} key={schedule.month} schedule={schedule} />
     </UserFrame>
   );
 }
@@ -437,7 +438,7 @@ export default async function UserPage({ searchParams }: UserPageProps) {
   const params = searchParams ? await searchParams : undefined;
 
   if (params?.customMenu === "user-board-attendance") {
-    return <UserAttendance />;
+    return <UserAttendance month={params.month} />;
   }
 
   if (

@@ -36,7 +36,7 @@ Chia 7 cụm, làm theo thứ tự. Đóng cụm nào chạy `npm run typecheck 
 |---|---|---|---|---|
 | 4 | AT-07 | `ShiftAssignment` (duy nhất `employeeId + date`), API xếp/xoá; `ShiftResolver`: lịch riêng → ca phòng ban → ca công ty → nghỉ; trang lịch ca theo tuần (người × ngày), lọc theo phòng ban, áp phạm vi dữ liệu | Unit theo bảng cho resolver. Từ chối xếp vào kỳ đã chốt | ✅ 10 unit resolver + 7 unit service. Trang Lịch ca trong HCNS; thật: làm bù thứ 7 hiện ca, xếp / về mặc định, ca mặc định phòng ban. Chặn kỳ đã chốt làm ở task 13 |
 | 5 | AT-08 | `POST /shift-assignments/bulk`: chọn người/phòng ban × khoảng ngày × ca hoặc mẫu lặp (`ShiftPattern`); xem trước số dòng tạo/ghi đè trước khi lưu | Unit: sinh lịch lặp 2 tuần trong 3 tháng. Trình duyệt | ✅ `ShiftPattern` + `POST /shift-assignments/bulk` (xem trước / ghi đè hoặc giữ), 14 unit mới. Trình duyệt: mẫu 14 ngày → lưới tháng đúng mẫu |
-| 6 | AT-09 | `GET /shift-assignments/me` + lịch ca của tôi (tháng) trên `/user/attendance` | Trình duyệt với `khanglm` | |
+| 6 | AT-09 | `GET /shift-assignments/me` + lịch ca của tôi (tháng) trên `/user/attendance` | Trình duyệt với `khanglm` | ✅ 2 unit. Bảng công cá nhân: ca từng ngày, ngày lễ, công chuẩn theo lịch ca, xem chi tiết ca; bỏ số liệu cứng (26 công, 208 giờ, tiền phạt mẫu) |
 
 ### 2c. Engine tính công
 

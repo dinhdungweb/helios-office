@@ -19,6 +19,16 @@ export class ScheduleQueryDto {
   departmentId?: string;
 }
 
+export class MyScheduleQueryDto {
+  @ApiProperty({ example: "2026-11-01" })
+  @Matches(DATE_PATTERN, { message: DATE_MESSAGE })
+  from!: string;
+
+  @ApiProperty({ example: "2026-11-30" })
+  @Matches(DATE_PATTERN, { message: DATE_MESSAGE })
+  to!: string;
+}
+
 export class AssignShiftsDto {
   @ApiProperty({ type: [String] })
   @IsArray()

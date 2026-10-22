@@ -687,7 +687,9 @@ modules:
       - id: AT-09
         title: Lịch ca của tôi
         api: ["GET /shift-assignments/me"]
-        status: todo
+        ui: /user/attendance
+        status: done
+        note: Chỉ cần đăng nhập. Bảng công cá nhân hiện ca từng ngày (mã ca, giờ ca, nguồn xếp), ngày lễ, ngày ngoài thời gian làm việc; công chuẩn và giờ chuẩn tính từ lịch ca thay cho số cố định; chuyển tháng theo URL. Thử trình duyệt 2026-10-22 với khanglm (tháng 10 có 22 công chuẩn, tháng 11 có 21) và admin chưa gắn hồ sơ (thông báo rõ)
       - id: AT-10
         title: Ngày lễ, ngày làm bù
         api: ["GET /holidays", "POST /holidays", "PATCH /holidays/:id", "DELETE /holidays/:id", "POST /holidays/fixed"]

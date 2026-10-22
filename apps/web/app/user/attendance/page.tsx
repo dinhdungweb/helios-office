@@ -1,13 +1,18 @@
 import { AttendanceBoard } from "@/components/user/attendance-board";
 import { UserFrame } from "@/components/user/user-frame";
-import { getMyAttendanceData } from "@/lib/attendance-api";
+import { getMyAttendanceData, getMyShiftSchedule, resolveAttendanceMonth } from "@/lib/attendance-api";
 
-export default async function UserAttendancePage() {
-  const data = await getMyAttendanceData();
+type UserAttendancePageProps = {
+  searchParams?: Promise<{ month?: string }>;
+};
+
+export default async function UserAttendancePage({ searchParams }: UserAttendancePageProps) {
+  const params = searchParams ? await searchParams : undefined;
+  const [data, schedule] = await Promise.all([getMyAttendanceData(), getMyShiftSchedule(resolveAttendanceMonth(params?.month))]);
 
   return (
     <UserFrame activeModule="attendance">
-      <AttendanceBoard data={data} />
+      <AttendanceBoard data={data} key={schedule.month} schedule={schedule} />
     </UserFrame>
   );
 }

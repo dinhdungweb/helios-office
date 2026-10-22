@@ -1,42 +1,44 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
-import type { AttendanceData, AttendanceRecord } from "@/lib/attendance-api";
+import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type MouseEvent } from "react";
+import type { Route } from "next";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type { AttendanceData, AttendanceRecord, MyScheduleData, MyScheduleDay, MyScheduleShift } from "@/lib/attendance-api";
 import {
   CalendarBlank,
   CalendarCheck,
   CaretDown,
+  CaretLeft,
+  CaretRight,
   CheckCircle,
   Clock,
   X
 } from "@/lib/icons";
 
+type ScoreTone = "success" | "danger" | "muted" | "info";
+
 type AttendanceDay = {
-  day?: string;
-  fullDate?: string;
-  score?: string;
-  scoreTone?: "success" | "danger" | "muted" | "info";
-  time?: string;
-  shift?: string;
   isEmpty?: boolean;
-  isSelected?: boolean;
+  date?: string;
+  label?: string;
+  fullDate?: string;
+  weekday?: string;
+  score?: string;
+  scoreTone?: ScoreTone;
+  // Recorded check-in and check-out, "08:01 - 17:05".
+  time?: string;
+  // Second line under the score: the shift's hours or a short status.
+  caption?: string;
+  captionTone?: "danger" | "muted";
+  schedule?: MyScheduleDay;
+  record?: AttendanceRecord;
+  isToday?: boolean;
+  isFuture?: boolean;
 };
 
 type AttendanceStat = {
   label: string;
   value: string;
-};
-
-type AttendanceDetail = {
-  fullDate: string;
-  checkIn: string;
-  checkOut: string;
-  plannedTime: string;
-  hours: string;
-  workday: string;
-  statusIn: string;
-  statusOut: string;
-  fingerprint: string;
 };
 
 type AttendanceDetailPosition = {
@@ -45,7 +47,31 @@ type AttendanceDetailPosition = {
 };
 
 const weekdays = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"];
+const longWeekdays = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
 const months = Array.from({ length: 12 }, (_, index) => index + 1);
+const SOURCE_LABELS: Record<MyScheduleDay["source"], string> = {
+  assignment: "Xếp riêng cho bạn",
+  department: "Ca mặc định của phòng ban",
+  company: "Ca mặc định của công ty",
+  none: ""
+};
+
+function pad(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function minuteToTime(minute: number) {
+  return `${pad(Math.floor(minute / 60) % 24)}:${pad(minute % 60)}`;
+}
+
+function shiftHours(shift: MyScheduleShift) {
+  return `${minuteToTime(shift.startMinute)} - ${minuteToTime(shift.endMinute)}`;
+}
+
+function formatHours(minutes: number) {
+  const hours = minutes / 60;
+  return Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
+}
 
 function formatTime(value: string | null) {
   if (!value) {
@@ -57,60 +83,90 @@ function formatTime(value: string | null) {
     return null;
   }
 
-  return new Intl.DateTimeFormat("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).format(date);
+  return new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Ho_Chi_Minh" }).format(date);
+}
+
+function vietnamDate(value: Date) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(value);
 }
 
 function recordDateKey(record: AttendanceRecord) {
   const date = new Date(record.workDate);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return Number.isNaN(date.getTime()) ? null : vietnamDate(date);
 }
 
-function buildAttendanceDays(year: number, month: number, records: AttendanceRecord[]): AttendanceDay[] {
+function isDayOffHoliday(schedule: MyScheduleDay | undefined) {
+  return Boolean(schedule?.holiday && schedule.holiday.type !== "compensatory_workday");
+}
+
+// Hours between check-in and check-out, less the shift's break when the stay covers it.
+function recordedMinutes(record: AttendanceRecord, shift: MyScheduleShift | null) {
+  if (!record.checkIn || !record.checkOut) return 0;
+  let minutes = Math.max(0, new Date(record.checkOut).getTime() - new Date(record.checkIn).getTime()) / 60_000;
+  const checkIn = formatTime(record.checkIn);
+  const checkOut = formatTime(record.checkOut);
+  if (shift?.breakStartMinute != null && shift.breakEndMinute != null && checkIn && checkOut) {
+    const toMinute = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+    if (toMinute(checkIn) <= shift.breakStartMinute && toMinute(checkOut) >= shift.breakEndMinute) {
+      minutes -= shift.breakEndMinute - shift.breakStartMinute;
+    }
+  }
+  return minutes;
+}
+
+function buildAttendanceDays(month: string, records: AttendanceRecord[], scheduleDays: MyScheduleDay[] | null): AttendanceDay[] {
+  const [year, monthNumber] = month.split("-").map(Number);
   const recordMap = new Map(records.map((record) => [recordDateKey(record), record]));
-  const firstDate = new Date(year, month - 1, 1);
-  const lastDay = new Date(year, month, 0).getDate();
-  const leadingEmptyCells = (firstDate.getDay() + 6) % 7;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const scheduleMap = new Map((scheduleDays ?? []).map((day) => [day.date, day]));
+  const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  const leadingEmptyCells = (new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay() + 6) % 7;
+  const today = vietnamDate(new Date());
   const days: AttendanceDay[] = Array.from({ length: leadingEmptyCells }, () => ({ isEmpty: true }));
 
   for (let day = 1; day <= lastDay; day += 1) {
-    const date = new Date(year, month - 1, day);
-    const key = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const record = recordMap.get(key);
+    const date = `${year}-${pad(monthNumber)}-${pad(day)}`;
+    const record = recordMap.get(date);
+    const schedule = scheduleMap.get(date);
+    const shift = schedule?.shift ?? null;
+    const isFuture = date > today;
     const checkIn = record ? formatTime(record.checkIn) : null;
     const checkOut = record ? formatTime(record.checkOut) : null;
-    const isWeekend = date.getDay() === 0;
-    const isFuture = date.getTime() > today.getTime();
-    const fullDate = `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
+    const base: AttendanceDay = {
+      date,
+      label: day === 1 ? `${pad(day)}/${pad(monthNumber)}` : pad(day),
+      fullDate: `${pad(day)}/${pad(monthNumber)}/${year}`,
+      weekday: longWeekdays[new Date(Date.UTC(year, monthNumber - 1, day)).getUTCDay()],
+      schedule,
+      record,
+      isToday: date === today,
+      isFuture,
+      caption: shift ? shiftHours(shift) : undefined,
+      captionTone: "muted"
+    };
 
     if (record) {
+      const minutes = recordedMinutes(record, shift);
       days.push({
-        day: day === 1 ? `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}` : String(day).padStart(2, "0"),
-        fullDate,
-        score: checkIn && checkOut ? "8" : "0",
+        ...base,
+        score: minutes > 0 ? formatHours(minutes) : "0",
         scoreTone: checkIn && checkOut ? "success" : "info",
-        time: checkIn ? `${checkIn} - ${checkOut ?? "--:--"}` : undefined,
-        shift: record.source === "machine" ? "Máy chấm công" : "Chấm công ứng dụng"
+        time: checkIn ? `${checkIn} - ${checkOut ?? "--:--"}` : undefined
       });
-    } else if (isWeekend) {
-      days.push({ day: String(day).padStart(2, "0"), fullDate, score: "N", scoreTone: isFuture ? "muted" : "success" });
+    } else if (schedule && !schedule.employed) {
+      days.push({ ...base, score: "–", scoreTone: "muted", caption: "Ngoài thời gian làm việc" });
+    } else if (isDayOffHoliday(schedule)) {
+      days.push({ ...base, score: "L", scoreTone: "info", caption: schedule!.holiday!.name });
+    } else if (scheduleDays && !shift) {
+      days.push({ ...base, score: "N", scoreTone: "muted", caption: "Không có ca" });
+    } else if (!scheduleDays) {
+      // No schedule (e.g. an account without an employee profile): only recorded days are known.
+      days.push({ ...base, score: "–", scoreTone: "muted" });
+    } else if (isFuture) {
+      days.push({ ...base, score: "0", scoreTone: "muted" });
+    } else if (base.isToday) {
+      days.push({ ...base, score: "0", scoreTone: "info" });
     } else {
-      days.push({
-        day: day === 1 ? `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}` : String(day).padStart(2, "0"),
-        fullDate,
-        score: isFuture ? "0" : "x",
-        scoreTone: isFuture ? "muted" : "danger",
-        shift: "Chưa có dữ liệu"
-      });
+      days.push({ ...base, score: "x", scoreTone: "danger", caption: "Chưa có công", captionTone: "danger" });
     }
   }
 
@@ -157,29 +213,12 @@ const inactiveAttendanceStats: AttendanceStat[] = [
   { label: "Số công nghỉ phép", value: "0" }
 ];
 
-function getAttendanceDetail(day: AttendanceDay): AttendanceDetail {
-  const fullDate = day.fullDate ?? day.day ?? "--";
-  const [checkIn = "--", checkOut = "--"] = day.time?.split(" - ") ?? [];
-  const isUnexcusedAbsence = day.score === "x";
-  const isCurrentUnchecked = day.score === "0" && day.scoreTone === "info";
-  const isFutureUnarrived = day.score === "0" && day.scoreTone === "muted";
-  const isMissingAttendance = isUnexcusedAbsence || isCurrentUnchecked || isFutureUnarrived;
-  const hasTimeLogs = Boolean(day.time) && day.score !== "N" && !isMissingAttendance;
-  const isFullWorkday = day.score === "8";
-  const workday = isFullWorkday ? "1" : "0";
-  const hours = isFullWorkday ? "8" : "0";
-
-  return {
-    fullDate,
-    checkIn: isMissingAttendance ? "--:--" : hasTimeLogs ? checkIn : "--",
-    checkOut: isMissingAttendance ? "--:--" : hasTimeLogs ? checkOut : "--",
-    plannedTime: day.time ?? "8:30 - 18:00",
-    hours,
-    workday,
-    statusIn: hasTimeLogs ? "Đến đúng giờ" : day.score === "N" ? "Nghỉ" : "Chưa có dữ liệu",
-    statusOut: hasTimeLogs ? "Về đúng giờ" : day.score === "N" ? "Nghỉ" : "Chưa có dữ liệu",
-    fingerprint: hasTimeLogs ? day.time ?? "--" : "--"
-  };
+function ShiftChip({ shift }: { shift: MyScheduleShift }) {
+  return (
+    <span className="attendance-shift-chip" style={{ "--shift-color": shift.color ?? "#64748b" } as CSSProperties} title={`${shift.name} ${shiftHours(shift)}`}>
+      {shift.code}
+    </span>
+  );
 }
 
 function AttendanceDayCell({
@@ -195,31 +234,34 @@ function AttendanceDayCell({
     return <div className="attendance-month-cell attendance-month-cell--empty" aria-hidden="true" />;
   }
 
-  const shouldReserveScheduleSpace = day.score === "N" && !day.time && !day.shift;
+  const shift = day.schedule?.shift ?? null;
+  const classes = [
+    "attendance-month-cell",
+    isSelected ? "is-selected" : "",
+    day.isToday ? "is-today" : "",
+    day.schedule && !day.schedule.employed ? "is-outside" : "",
+    isDayOffHoliday(day.schedule) ? "is-holiday" : ""
+  ].filter(Boolean);
 
   return (
     <button
-      className={isSelected ? "attendance-month-cell is-selected" : "attendance-month-cell"}
+      className={classes.join(" ")}
       type="button"
-      aria-label={`Ngày ${day.day}, công ${day.score}`}
+      aria-label={`${day.weekday} ${day.fullDate}${shift ? `, ca ${shift.code}` : ""}, công ${day.score}`}
+      aria-current={day.isToday ? "date" : undefined}
       onClick={(event) => onSelect(day, event)}
     >
-      <span className="attendance-day-number">{day.day}</span>
+      <span className="attendance-day-head">
+        <span className="attendance-day-number">{day.label}</span>
+        {shift ? <ShiftChip shift={shift} /> : isDayOffHoliday(day.schedule) ? <span className="attendance-shift-chip is-holiday">Lễ</span> : null}
+      </span>
       <strong className={`attendance-day-score attendance-day-score--${day.scoreTone ?? "muted"}`}>
-        {day.score === "x" ? <X size={18} weight="bold" aria-label="Nghỉ không lý do" /> : day.score}
+        {day.score === "x" ? <X size={18} weight="bold" aria-label="Không có dữ liệu chấm công" /> : day.score}
       </strong>
-      {day.time ? <span className={day.scoreTone === "danger" ? "attendance-day-time is-danger" : "attendance-day-time"}>{day.time}</span> : null}
-      {day.shift ? <span className="attendance-day-shift">{day.shift}</span> : null}
-      {shouldReserveScheduleSpace ? (
-        <>
-          <span className="attendance-day-time attendance-day-placeholder" aria-hidden="true">
-            8:30 - 18:00
-          </span>
-          <span className="attendance-day-shift attendance-day-placeholder" aria-hidden="true">
-            Office Full SC
-          </span>
-        </>
-      ) : null}
+      <span className="attendance-day-lines">
+        {day.time ? <span className="attendance-day-time">{day.time}</span> : null}
+        {day.caption ? <span className={day.captionTone === "danger" ? "attendance-day-shift is-danger" : "attendance-day-shift"}>{day.caption}</span> : null}
+      </span>
     </button>
   );
 }
@@ -233,12 +275,22 @@ function AttendanceDetailDialog({
   onClose: () => void;
   position: AttendanceDetailPosition;
 }) {
-  const detail = getAttendanceDetail(day);
-  const isUnexcusedAbsence = day.score === "x";
-  const isCurrentUnchecked = day.score === "0" && day.scoreTone === "info";
-  const isFutureUnarrived = day.score === "0" && day.scoreTone === "muted";
-  const isDayOff = day.score === "N";
-  const isMissingAttendance = isUnexcusedAbsence || isCurrentUnchecked || isFutureUnarrived;
+  const record = day.record;
+  const schedule = day.schedule;
+  const shift = schedule?.shift ?? null;
+  const checkIn = record ? formatTime(record.checkIn) : null;
+  const checkOut = record ? formatTime(record.checkOut) : null;
+  const hasLogs = Boolean(checkIn);
+  const minutes = record ? recordedMinutes(record, shift) : 0;
+  const workUnits = shift && minutes > 0 ? Math.min(1, minutes / shift.requiredMinutes) * shift.workUnits : 0;
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   return (
     <div className="attendance-detail-layer" role="presentation">
@@ -250,110 +302,132 @@ function AttendanceDetailDialog({
         aria-labelledby="attendance-detail-title"
       >
         <header className="attendance-detail-header">
-          <h2 id="attendance-detail-title">Chấm công, ngày {detail.fullDate}</h2>
+          <h2 id="attendance-detail-title">
+            {day.weekday}, {day.fullDate}
+          </h2>
           <button className="icon-button" type="button" aria-label="Đóng chi tiết chấm công" onClick={onClose}>
             <X size={18} weight="duotone" aria-hidden="true" />
           </button>
         </header>
 
         <div className="attendance-detail-summary">
-          <article className={isMissingAttendance ? "attendance-detail-card attendance-detail-card--missing" : "attendance-detail-card attendance-detail-card--success"}>
+          <article className={hasLogs ? "attendance-detail-card attendance-detail-card--success" : "attendance-detail-card attendance-detail-card--missing"}>
             <span>Giờ vào</span>
-            <strong>{detail.checkIn}</strong>
-            {isMissingAttendance ? null : <small>{detail.statusIn}</small>}
-            {isMissingAttendance ? null : <CheckCircle size={23} weight="duotone" aria-hidden="true" />}
+            <strong>{checkIn ?? "--:--"}</strong>
+            {hasLogs ? <CheckCircle size={23} weight="duotone" aria-hidden="true" /> : null}
           </article>
 
-          <article className={isMissingAttendance ? "attendance-detail-card attendance-detail-card--missing" : "attendance-detail-card attendance-detail-card--success"}>
+          <article className={checkOut ? "attendance-detail-card attendance-detail-card--success" : "attendance-detail-card attendance-detail-card--missing"}>
             <span>Giờ ra</span>
-            <strong>{detail.checkOut}</strong>
-            {isMissingAttendance ? null : <small>{detail.statusOut}</small>}
-            {isMissingAttendance ? null : <CheckCircle size={23} weight="duotone" aria-hidden="true" />}
+            <strong>{checkOut ?? "--:--"}</strong>
+            {checkOut ? <CheckCircle size={23} weight="duotone" aria-hidden="true" /> : null}
           </article>
 
           <article className="attendance-detail-card attendance-detail-card--workday">
             <span>
-              {isMissingAttendance ? null : <Clock size={17} weight="duotone" aria-hidden="true" />}
-              {isMissingAttendance ? "-" : `${detail.hours}h`}
+              <Clock size={17} weight="duotone" aria-hidden="true" />
+              {minutes > 0 ? `${formatHours(minutes)}h` : "-"}
             </span>
             <div aria-hidden="true" />
-            <strong>{detail.workday}</strong>
+            <strong>{workUnits > 0 ? Number(workUnits.toFixed(2)) : 0}</strong>
           </article>
         </div>
 
-        {isDayOff ? null : <p className="attendance-detail-shift">Ca làm việc {day.shift ?? "Office Full SC"} - Hành chính SC</p>}
-
-        {isDayOff ? null : (
-          <dl className="attendance-detail-table">
-            <div>
-              <dt>Thời gian</dt>
-              <dd>{detail.plannedTime}</dd>
-            </div>
-            <div>
-              <dt>Số giờ</dt>
-              <dd>{detail.hours}</dd>
-            </div>
-            <div>
-              <dt>Số công</dt>
-              <dd>{detail.workday}</dd>
-            </div>
-            {isMissingAttendance ? null : (
-              <div>
-                <dt>Chốt vân tay</dt>
-                <dd>{detail.fingerprint}</dd>
-              </div>
-            )}
-          </dl>
-        )}
-
-        {isDayOff || isFutureUnarrived ? null : isMissingAttendance ? (
+        <p className="attendance-detail-shift">Ca làm việc</p>
+        {shift ? (
           <>
-            <p className="attendance-detail-shift">Tiền phạt</p>
-            <div className="attendance-detail-logs">
-              <p>
-                <span>Phạt nghỉ không lý do</span>
-                <strong>200,000</strong>
-              </p>
+            <div className="attendance-detail-shift-card">
+              <ShiftChip shift={shift} />
+              <div>
+                <strong>{shift.name}</strong>
+                <small>
+                  {SOURCE_LABELS[schedule!.source]}
+                  {schedule!.note ? ` · ${schedule!.note}` : ""}
+                </small>
+              </div>
             </div>
+            <dl className="attendance-detail-table">
+              <div>
+                <dt>Giờ làm</dt>
+                <dd>
+                  {shift.type === "flexible" ? `Linh hoạt trong ${shiftHours(shift)}` : shiftHours(shift)}
+                  {shift.endMinute <= shift.startMinute ? " (qua đêm)" : ""}
+                </dd>
+              </div>
+              <div>
+                <dt>Nghỉ giữa ca</dt>
+                <dd>{shift.breakStartMinute != null && shift.breakEndMinute != null ? `${minuteToTime(shift.breakStartMinute)} - ${minuteToTime(shift.breakEndMinute)}` : "Không"}</dd>
+              </div>
+              <div>
+                <dt>Giờ công chuẩn</dt>
+                <dd>{formatHours(shift.requiredMinutes)} giờ</dd>
+              </div>
+              <div>
+                <dt>Số công của ca</dt>
+                <dd>{shift.workUnits}</dd>
+              </div>
+            </dl>
           </>
         ) : (
-          <>
-            <p className="attendance-detail-shift">Chốt công trong ngày</p>
-            <div className="attendance-detail-logs">
+          <p className="attendance-detail-empty">
+            {schedule && !schedule.employed
+              ? "Ngày này nằm ngoài thời gian làm việc của bạn."
+              : schedule
+                ? "Bạn không có ca làm việc ngày này."
+                : "Chưa xem được lịch ca của bạn."}
+          </p>
+        )}
+        {schedule?.holiday ? (
+          <p className="attendance-detail-holiday">
+            {schedule.holiday.type === "compensatory_workday" ? "Ngày làm bù" : "Ngày nghỉ lễ"}: <strong>{schedule.holiday.name}</strong>
+            {schedule.holiday.type !== "compensatory_workday" ? (schedule.holiday.paid ? " · có hưởng công" : " · không hưởng công") : null}
+          </p>
+        ) : null}
+
+        <p className="attendance-detail-shift">Chốt công trong ngày</p>
+        {hasLogs ? (
+          <div className="attendance-detail-logs">
+            <p>
+              <span>Vào {checkIn}</span>
+              <strong>{record!.source === "machine" ? "Máy chấm công" : "Ứng dụng"}</strong>
+            </p>
+            {checkOut ? (
               <p>
-                <span>{detail.checkIn}, {detail.fullDate}, Mã máy: VP</span>
-                <strong>(máy)</strong>
+                <span>Ra {checkOut}</span>
+                <strong>{record!.source === "machine" ? "Máy chấm công" : "Ứng dụng"}</strong>
               </p>
+            ) : (
               <p>
-                <span>{detail.checkOut}, {detail.fullDate}, Mã máy: VP</span>
-                <strong>(máy)</strong>
+                <span>Chưa có giờ ra</span>
+                <strong>--</strong>
               </p>
-            </div>
-          </>
+            )}
+          </div>
+        ) : (
+          <p className="attendance-detail-empty">{day.isFuture ? "Chưa tới ngày này." : "Không có log chấm công."}</p>
         )}
       </section>
     </div>
   );
 }
 
-function AttendanceStatsPanel({ month, records, year }: { month: number; records: AttendanceRecord[]; year: number }) {
+function AttendanceStatsPanel({ days, month, scheduleAvailable }: { days: AttendanceDay[]; month: string; scheduleAvailable: boolean }) {
   const [activeStatTab, setActiveStatTab] = useState<"active" | "inactive">("active");
-  const monthRecords = records.filter((record) => {
-    const date = new Date(record.workDate);
-    return !Number.isNaN(date.getTime()) && date.getFullYear() === year && date.getMonth() === month - 1;
-  });
-  const actualHours = monthRecords.reduce((total, record) => {
-    if (!record.checkIn || !record.checkOut) {
-      return total;
-    }
-
-    return total + Math.max(0, new Date(record.checkOut).getTime() - new Date(record.checkIn).getTime()) / 3_600_000;
-  }, 0);
+  const [year, monthNumber] = month.split("-").map(Number);
+  const monthDays = days.filter((day) => !day.isEmpty);
+  const monthRecords = monthDays.flatMap((day) => (day.record ? [day.record] : []));
+  const actualHours = monthDays.reduce((total, day) => total + (day.record ? recordedMinutes(day.record, day.schedule?.shift ?? null) / 60 : 0), 0);
+  // Standard: the shifts scheduled this month, minus days off for a holiday.
+  const scheduled = monthDays.filter((day) => day.schedule?.employed && day.schedule.shift && !isDayOffHoliday(day.schedule));
+  const standardUnits = scheduled.reduce((total, day) => total + day.schedule!.shift!.workUnits, 0);
+  const standardHours = scheduled.reduce((total, day) => total + day.schedule!.shift!.requiredMinutes / 60, 0);
   const missingCheckoutCount = monthRecords.filter((record) => !record.checkOut).length;
+  const standard = (value: number) => (scheduleAvailable ? String(Number(value.toFixed(2))) : "--");
   const generatedStats: AttendanceStat[] = [
     { label: "Công làm việc", value: String(monthRecords.length) },
     { label: "Giờ làm việc thực tính", value: actualHours.toFixed(2) },
-    { label: "Số công chuẩn", value: "26" },
+    { label: "Số công chuẩn (theo lịch ca)", value: standard(standardUnits) },
+    { label: "Số ngày có ca", value: scheduleAvailable ? String(scheduled.length) : "--" },
     { label: "Số lần quên check in/out", value: String(missingCheckoutCount) },
     { label: "Log từ máy chấm công", value: String(monthRecords.filter((record) => record.source === "machine").length) }
   ];
@@ -362,7 +436,7 @@ function AttendanceStatsPanel({ month, records, year }: { month: number; records
   return (
     <aside className="attendance-stats-panel" aria-labelledby="attendance-stats-title">
       <header className="attendance-stats-header">
-        <h2 id="attendance-stats-title">Thống kê T{String(month).padStart(2, "0")}, {year}</h2>
+        <h2 id="attendance-stats-title">Thống kê T{pad(monthNumber)}, {year}</h2>
       </header>
 
       <div className="attendance-summary-grid">
@@ -372,7 +446,9 @@ function AttendanceStatsPanel({ month, records, year }: { month: number; records
           </span>
           <div>
             <p>Công thực tế</p>
-            <strong>{monthRecords.length}/26</strong>
+            <strong>
+              {monthRecords.length}/{standard(standardUnits)}
+            </strong>
           </div>
         </article>
         <article className="attendance-summary-card">
@@ -381,7 +457,9 @@ function AttendanceStatsPanel({ month, records, year }: { month: number; records
           </span>
           <div>
             <p>Giờ làm thực tế</p>
-            <strong>{actualHours.toFixed(1)}/208</strong>
+            <strong>
+              {actualHours.toFixed(1)}/{standard(standardHours)}
+            </strong>
           </div>
         </article>
       </div>
@@ -419,24 +497,36 @@ function AttendanceStatsPanel({ month, records, year }: { month: number; records
   );
 }
 
-export function AttendanceBoard({ data }: { data: AttendanceData }) {
+function shiftMonth(month: string, delta: number) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year, monthNumber - 1 + delta, 1));
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}`;
+}
+
+// AT-09: personal monthly attendance calendar with each day's shift from the schedule. Pages key it
+// by month, so selection and the picker reset when the month changes.
+export function AttendanceBoard({ data, schedule }: { data: AttendanceData; schedule: MyScheduleData }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const calendarPanelRef = useRef<HTMLDivElement>(null);
-  const now = new Date();
-  const [selectedDay, setSelectedDay] = useState<AttendanceDay | null>(null);
-  const [detailDay, setDetailDay] = useState<AttendanceDay | null>(null);
+  const month = schedule.month;
+  const [year, monthNumber] = month.split("-").map(Number);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [detailPosition, setDetailPosition] = useState<AttendanceDetailPosition>({ top: 0, left: 0 });
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
-  const [monthPickerYear, setMonthPickerYear] = useState(now.getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
-  const attendanceDaysForMonth = useMemo(
-    () => buildAttendanceDays(monthPickerYear, selectedMonth, data.records),
-    [data.records, monthPickerYear, selectedMonth]
-  );
+  const [monthPickerYear, setMonthPickerYear] = useState(year);
+  const [isNavigating, startNavigation] = useTransition();
+  const scheduleDays = schedule.source === "api" ? schedule.days : null;
+  const attendanceDays = useMemo(() => buildAttendanceDays(month, data.records, scheduleDays), [data.records, month, scheduleDays]);
+  const detailDay = attendanceDays.find((day) => day.date === selectedDate) ?? null;
 
-  useEffect(() => {
-    setSelectedDay(null);
-    setDetailDay(null);
-  }, [monthPickerYear, selectedMonth]);
+  function goToMonth(target: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("month", target);
+    setIsMonthPickerOpen(false);
+    startNavigation(() => router.push(`${pathname}?${params.toString()}` as Route, { scroll: false }));
+  }
 
   function handleSelectDay(day: AttendanceDay, event: MouseEvent<HTMLButtonElement>) {
     const panel = calendarPanelRef.current;
@@ -444,19 +534,13 @@ export function AttendanceBoard({ data }: { data: AttendanceData }) {
     if (panel) {
       const panelRect = panel.getBoundingClientRect();
       const cellRect = event.currentTarget.getBoundingClientRect();
-      const gap = 0;
       const edge = 16;
       const dialogWidth = 524;
-      const isDayOff = day.score === "N";
-      const isFutureUnarrived = day.score === "0" && day.scoreTone === "muted";
-      const isMissingAttendance = day.score === "x" || (day.score === "0" && day.scoreTone === "info");
-      const dialogHeight = isDayOff ? 190 : isFutureUnarrived ? 340 : isMissingAttendance ? 420 : 480;
-      const rightSideLeft = cellRect.right - panelRect.left + gap;
-      const leftSideLeft = cellRect.left - panelRect.left - dialogWidth - gap;
-      const hasRightSpace = cellRect.right + gap + dialogWidth <= window.innerWidth - edge;
+      const dialogHeight = day.schedule?.shift ? 560 : 400;
+      const hasRightSpace = cellRect.right + dialogWidth <= window.innerWidth - edge;
+      const rawLeft = hasRightSpace ? cellRect.right - panelRect.left : cellRect.left - panelRect.left - dialogWidth;
       const minLeft = edge - panelRect.left;
       const maxLeft = window.innerWidth - edge - dialogWidth - panelRect.left;
-      const rawLeft = hasRightSpace ? rightSideLeft : leftSideLeft;
       const rawTop = cellRect.top - panelRect.top - 4;
       const maxTop = window.innerHeight - edge - dialogHeight - panelRect.top;
 
@@ -466,8 +550,7 @@ export function AttendanceBoard({ data }: { data: AttendanceData }) {
       });
     }
 
-    setSelectedDay(day);
-    setDetailDay(day);
+    setSelectedDate(day.date ?? null);
   }
 
   return (
@@ -476,6 +559,12 @@ export function AttendanceBoard({ data }: { data: AttendanceData }) {
         <div className="account-api-banner" role="status">
           <strong>Chưa tải được dữ liệu chấm công</strong>
           <span>{data.error}</span>
+        </div>
+      ) : null}
+      {schedule.source === "unavailable" ? (
+        <div className="account-api-banner" role="status">
+          <strong>Chưa xem được lịch ca</strong>
+          <span>{schedule.error}</span>
         </div>
       ) : null}
       <header className="attendance-board-toolbar">
@@ -489,6 +578,9 @@ export function AttendanceBoard({ data }: { data: AttendanceData }) {
         </div>
 
         <div className="attendance-month-picker">
+          <button className="attendance-month-step" type="button" aria-label="Tháng trước" disabled={isNavigating} onClick={() => goToMonth(shiftMonth(month, -1))}>
+            <CaretLeft size={16} weight="bold" aria-hidden="true" />
+          </button>
           <button
             className="attendance-month-select"
             type="button"
@@ -497,34 +589,34 @@ export function AttendanceBoard({ data }: { data: AttendanceData }) {
             onClick={() => setIsMonthPickerOpen((current) => !current)}
           >
             <CalendarBlank size={16} weight="duotone" aria-hidden="true" />
-            {String(selectedMonth).padStart(2, "0")}/{monthPickerYear}
+            {pad(monthNumber)}/{year}
             <CaretDown size={14} weight="duotone" aria-hidden="true" />
+          </button>
+          <button className="attendance-month-step" type="button" aria-label="Tháng sau" disabled={isNavigating} onClick={() => goToMonth(shiftMonth(month, 1))}>
+            <CaretRight size={16} weight="bold" aria-hidden="true" />
           </button>
 
           {isMonthPickerOpen ? (
             <div className="attendance-month-menu" role="dialog" aria-label="Chọn tháng chấm công">
               <header>
-                <button type="button" aria-label="Năm trước" onClick={() => setMonthPickerYear((year) => year - 1)}>
-                  <CaretDown size={18} weight="duotone" aria-hidden="true" />
+                <button type="button" aria-label="Năm trước" onClick={() => setMonthPickerYear((current) => current - 1)}>
+                  <CaretLeft size={18} weight="bold" aria-hidden="true" />
                 </button>
                 <strong>{monthPickerYear}</strong>
-                <button type="button" aria-label="Năm sau" onClick={() => setMonthPickerYear((year) => year + 1)}>
-                  <CaretDown size={18} weight="duotone" aria-hidden="true" />
+                <button type="button" aria-label="Năm sau" onClick={() => setMonthPickerYear((current) => current + 1)}>
+                  <CaretRight size={18} weight="bold" aria-hidden="true" />
                 </button>
               </header>
 
               <div className="attendance-month-grid">
-                {months.map((month) => (
+                {months.map((item) => (
                   <button
-                    className={month === selectedMonth ? "is-active" : undefined}
+                    className={item === monthNumber && monthPickerYear === year ? "is-active" : undefined}
                     type="button"
-                    key={month}
-                    onClick={() => {
-                      setSelectedMonth(month);
-                      setIsMonthPickerOpen(false);
-                    }}
+                    key={item}
+                    onClick={() => goToMonth(`${monthPickerYear}-${pad(item)}`)}
                   >
-                    {month}
+                    {item}
                   </button>
                 ))}
               </div>
@@ -533,10 +625,10 @@ export function AttendanceBoard({ data }: { data: AttendanceData }) {
         </div>
       </header>
 
-      <section className="attendance-board-layout">
+      <section className={isNavigating ? "attendance-board-layout is-loading" : "attendance-board-layout"} aria-busy={isNavigating}>
         <div className="attendance-calendar-panel" aria-labelledby="attendance-calendar-title" ref={calendarPanelRef}>
           <h2 className="sr-only" id="attendance-calendar-title">
-            Bảng công tháng {String(selectedMonth).padStart(2, "0")}/{monthPickerYear}
+            Bảng công tháng {pad(monthNumber)}/{year}
           </h2>
           <div className="attendance-calendar-grid">
             {weekdays.map((weekday) => (
@@ -544,21 +636,21 @@ export function AttendanceBoard({ data }: { data: AttendanceData }) {
                 {weekday}
               </div>
             ))}
-            {attendanceDaysForMonth.map((day, index) => (
-              <AttendanceDayCell
-                day={day}
-                isSelected={selectedDay === day}
-                key={`${day.day ?? "empty"}-${index}`}
-                onSelect={handleSelectDay}
-              />
+            {attendanceDays.map((day, index) => (
+              <AttendanceDayCell day={day} isSelected={Boolean(day.date) && day.date === selectedDate} key={day.date ?? `empty-${index}`} onSelect={handleSelectDay} />
             ))}
           </div>
-          {detailDay ? (
-            <AttendanceDetailDialog day={detailDay} onClose={() => setDetailDay(null)} position={detailPosition} />
-          ) : null}
+          <div className="attendance-calendar-legend" aria-label="Chú thích">
+            <span><strong className="attendance-day-score--danger">✕</strong> Có ca nhưng không có dữ liệu chấm</span>
+            <span><strong>N</strong> Không có ca</span>
+            <span><strong className="attendance-day-score--info">L</strong> Nghỉ lễ</span>
+            <span><strong className="attendance-day-score--info">0</strong> Hôm nay, chưa chấm</span>
+            <span><strong>0</strong> Chưa tới ngày</span>
+          </div>
+          {detailDay ? <AttendanceDetailDialog day={detailDay} onClose={() => setSelectedDate(null)} position={detailPosition} /> : null}
         </div>
 
-        <AttendanceStatsPanel month={selectedMonth} records={data.records} year={monthPickerYear} />
+        <AttendanceStatsPanel days={attendanceDays} month={month} scheduleAvailable={schedule.source === "api"} />
       </section>
     </main>
   );

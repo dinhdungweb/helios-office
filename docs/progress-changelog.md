@@ -17,11 +17,12 @@ Trạng thái: nhánh `feat/phase-2`, chưa push. Plan: `docs/plans/phase-2.md`.
 - Xong: danh mục ca + chính sách chấm công (AT-05, AT-06), ngày lễ / làm bù (AT-10), lịch ca tuần (AT-07), engine tính công lưu vào `AttendanceDay` (AT-11).
 - Đối chiếu 1Office (chỉ xem): ngưỡng muộn/sớm mặc định đổi về 0; thêm AT-25 → AT-30 (công chuẩn, cài đặt kiểu 1Office, tự nhận ca, mẫu bảng chấm công, công thức tuỳ biến ở Phase 5, ca nhiều khoảng ở Phase 9).
 - Xếp ca hàng loạt (AT-08): một ca theo thứ hoặc mẫu lặp N ngày cho người / phòng ban, xem trước rồi mới lưu; lịch ca xem theo tháng như 1Office.
+- Lịch ca của tôi (AT-09): bảng công cá nhân hiện ca từng ngày, ngày lễ, công chuẩn theo lịch ca; chi tiết ngày có thông tin ca.
 - Đồng bộ máy chấm công đọc giờ không kèm múi giờ theo giờ công ty (không theo giờ máy chủ) và tính lại ngay các ngày bị ảnh hưởng, gồm ngày trước đó cho ca đêm. Tính lại toàn bộ: `npm run attendance:recalculate -- [--from] [--to]` (chạy lại không đổi gì nếu dữ liệu không đổi).
 
 Kiểm tra: 246 unit + 45 e2e pass, audit pass. Thử thật: đồng bộ 08:10–17:05 → muộn 10 phút, 0,98 công.
 
-Tiếp theo: lịch ca của tôi (AT-09), hàng đợi tính lại (AT-12), chuyển `/attendance` sang đọc `AttendanceDay`.
+Tiếp theo: hàng đợi tính lại (AT-12), chuyển `/attendance` sang đọc `AttendanceDay`.
 
 ## 2026-10-21
 
