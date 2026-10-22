@@ -26,7 +26,7 @@ function setup() {
     attendancePolicy: { findUnique: jest.fn().mockResolvedValue({ timezone: "Asia/Ho_Chi_Minh", defaultShiftId: "hc", workWeekdays: [1, 2, 3, 4, 5] }) },
     shift: { findMany: jest.fn().mockResolvedValue([hc, sat]) }
   };
-  return { service: new ShiftAssignmentsService(prisma as never, {} as never, {} as never, {} as never), prisma };
+  return { service: new ShiftAssignmentsService(prisma as never, {} as never, {} as never, {} as never, {} as never), prisma };
 }
 
 describe("ShiftAssignmentsService.mySchedule (AT-09)", () => {

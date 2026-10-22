@@ -59,6 +59,7 @@ function JobResult({ job }: { job: RecalcJob }) {
     <span>
       {job.result.days} ngày công · <strong>{job.result.changed}</strong> thay đổi
       {job.result.removed ? ` · ${job.result.removed} gỡ bỏ` : ""}
+      {job.result.skipped ? ` · ${job.result.skipped} ngày kỳ đã chốt bỏ qua` : ""}
     </span>
   );
 }

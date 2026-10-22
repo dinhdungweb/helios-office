@@ -351,6 +351,12 @@ export const accountPermissionCatalog = [
     adminOnly: false
   },
   {
+    key: "permission.attendance-period.lock",
+    category: "Chấm công",
+    label: "Chốt / mở chốt kỳ công",
+    adminOnly: false
+  },
+  {
     key: "requests.personal.create",
     category: "Cá nhân",
     label: "Tạo đơn từ cá nhân",

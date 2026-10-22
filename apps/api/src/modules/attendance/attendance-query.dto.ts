@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { AttendanceDayStatus } from "@prisma/client";
-import { IsEnum, IsOptional, IsString, Matches } from "class-validator";
+import { IsEnum, IsOptional, IsString, Matches, MaxLength, MinLength } from "class-validator";
 import { ListQueryDto } from "../../common/pagination/list-query";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -58,4 +58,20 @@ export class TimesheetQueryDto extends ListQueryDto {
   @IsOptional()
   @IsString()
   departmentId?: string;
+}
+
+export class LockPeriodDto {
+  @ApiPropertyOptional({ description: "Note kept with the lock" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+export class UnlockPeriodDto {
+  @ApiPropertyOptional({ description: "Why the month is reopened (required)" })
+  @IsString()
+  @MinLength(3, { message: "Nhập lý do mở chốt." })
+  @MaxLength(500)
+  reason!: string;
 }

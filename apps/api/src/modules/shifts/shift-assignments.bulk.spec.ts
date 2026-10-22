@@ -43,7 +43,8 @@ function setup(options: { existing?: Array<{ employeeId: string; date: string; s
     employeeWhere: jest.fn().mockReturnValue({})
   };
   const recalc = { scheduleChanged: jest.fn(), holidaysChanged: jest.fn(), rulesChanged: jest.fn() };
-  const service = new ShiftAssignmentsService(prisma as never, dataScope as never, { contextFields: () => ({}) } as never, recalc as never);
+  const periods = { assertOpen: jest.fn(), assertRangeOpen: jest.fn(), view: jest.fn().mockResolvedValue({ month: "2026-10", status: "open" }) };
+  const service = new ShiftAssignmentsService(prisma as never, dataScope as never, { contextFields: () => ({}) } as never, recalc as never, periods as never);
   return { service, prisma, recalc };
 }
 

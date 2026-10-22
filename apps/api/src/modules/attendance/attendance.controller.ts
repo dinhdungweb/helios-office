@@ -11,7 +11,8 @@ import { AttendanceSyncDto } from "./attendance-sync.dto";
 import { AttendanceSyncGuard } from "./attendance-sync.guard";
 import { AdjustAttendanceDto, RevokeAdjustmentDto } from "./attendance-adjustment.dto";
 import { ATTENDANCE_EDIT_PERMISSIONS, AttendanceAdjustmentsService } from "./attendance-adjustments.service";
-import { AttendanceListQueryDto, MyAttendanceQueryDto, TimesheetQueryDto } from "./attendance-query.dto";
+import { AttendanceListQueryDto, LockPeriodDto, MyAttendanceQueryDto, TimesheetQueryDto, UnlockPeriodDto } from "./attendance-query.dto";
+import { AttendancePeriodService } from "./attendance-period.service";
 import { AttendanceTimesheetService, TIMESHEET_PERMISSIONS } from "./attendance-timesheet.service";
 import { ATTENDANCE_VIEW_PERMISSIONS, AttendanceService } from "./attendance.service";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
@@ -22,6 +23,7 @@ import { AttendanceRecalcService } from "./attendance-recalc.service";
 const ATTENDANCE_MANAGE = "permission.attendance.manage";
 const RECALC_PERMISSIONS = [ATTENDANCE_MANAGE, "permission.attendance-timesheets.manage"];
 const MAX_RECALC_DAYS = 366;
+const PERIOD_LOCK_PERMISSION = "permission.attendance-period.lock";
 
 @ApiTags("attendance")
 @Controller("attendance")
@@ -31,6 +33,7 @@ export class AttendanceController {
     private readonly recalc: AttendanceRecalcService,
     private readonly adjustments: AttendanceAdjustmentsService,
     private readonly timesheets: AttendanceTimesheetService,
+    private readonly periods: AttendancePeriodService,
     private readonly dataScope: DataScopeService,
     private readonly prisma: PrismaService
   ) {}
@@ -59,6 +62,26 @@ export class AttendanceController {
   @ApiOkResponse({ description: "Monthly timesheet (AT-16): people in scope × days of the month, with month totals; paginated by person." })
   timesheet(@CurrentUser() user: AuthenticatedUser, @Query() query: TimesheetQueryDto) {
     return this.timesheets.monthly(user, query);
+  }
+
+  @Post("timesheets/:month/lock")
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(PERIOD_LOCK_PERMISSION)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Lock a month (AT-17): no more manual changes or schedule edits, recalculations skip it." })
+  lockPeriod(@CurrentUser() user: AuthenticatedUser, @Param("month") month: string, @Body() body: LockPeriodDto) {
+    return this.periods.lock(user, month, body?.note);
+  }
+
+  @Post("timesheets/:month/unlock")
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(PERIOD_LOCK_PERMISSION)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Reopen a locked month; a reason is required and the action is audited." })
+  unlockPeriod(@CurrentUser() user: AuthenticatedUser, @Param("month") month: string, @Body() body: UnlockPeriodDto) {
+    return this.periods.unlock(user, month, body.reason);
   }
 
   @Get("summary")

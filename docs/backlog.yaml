@@ -677,7 +677,7 @@ modules:
         api: ["GET /shift-assignments", "POST /shift-assignments", "DELETE /shift-assignments/:id", "POST /shift-assignments/clear", "PUT /departments/:id/default-shift"]
         ui: /user/attendance/shift-schedule
         status: done
-        note: Lịch ca theo tuần (người × ngày) áp phạm vi dữ liệu; ca theo thứ bậc lịch riêng → ca mặc định phòng ban → ca mặc định công ty, chỉ ngày làm việc (ngày làm bù tính là ngày làm). Xếp / về mặc định cho nhiều ô, ca mặc định phòng ban. Thử trình duyệt 2026-10-22 (thứ 7 làm bù hiện ca, xếp nghỉ / xếp ca / về mặc định, ca mặc định phòng ban, người không có quyền thấy thông báo rõ). Chặn xếp vào kỳ đã chốt làm cùng AT-17
+        note: Lịch ca theo tuần (người × ngày) áp phạm vi dữ liệu; ca theo thứ bậc lịch riêng → ca mặc định phòng ban → ca mặc định công ty, chỉ ngày làm việc (ngày làm bù tính là ngày làm). Xếp / về mặc định cho nhiều ô, ca mặc định phòng ban. Thử trình duyệt 2026-10-22 (thứ 7 làm bù hiện ca, xếp nghỉ / xếp ca / về mặc định, ca mặc định phòng ban, người không có quyền thấy thông báo rõ). Kỳ đã chốt từ chối xếp ca (AT-17)
         depends: [AT-05]
       - id: AT-08
         title: Xếp ca hàng loạt / theo lịch lặp
@@ -724,7 +724,7 @@ modules:
         api: ["GET /attendance/:id", "PATCH /attendance/:id", "DELETE /attendance/:id/adjustment"]
         ui: /user/attendance/timesheet
         status: done
-        note: Bấm ô ở Công → Bảng chấm công mở chi tiết ngày (log gốc, kết quả, lịch sử sửa có tên người sửa và lý do); sửa giờ vào/ra (kể cả ra hôm sau), số công, trạng thái, bắt buộc lý do; bỏ sửa tay. Sửa được giữ qua mọi lần tính lại. Thử trình duyệt 2026-10-22 (muộn 12 phút → sửa vào 08:00 → đúng giờ 1 công, ô có S; bỏ sửa tay → muộn lại). Chặn kỳ đã chốt làm cùng AT-17
+        note: Bấm ô ở Công → Bảng chấm công mở chi tiết ngày (log gốc, kết quả, lịch sử sửa có tên người sửa và lý do); sửa giờ vào/ra (kể cả ra hôm sau), số công, trạng thái, bắt buộc lý do; bỏ sửa tay. Sửa được giữ qua mọi lần tính lại. Thử trình duyệt 2026-10-22 (muộn 12 phút → sửa vào 08:00 → đúng giờ 1 công, ô có S; bỏ sửa tay → muộn lại). Kỳ đã chốt từ chối sửa (AT-17)
       - id: AT-16
         title: Bảng công tháng toàn công ty
         api: ["GET /attendance/timesheets"]
@@ -735,7 +735,9 @@ modules:
       - id: AT-17
         title: Chốt / mở chốt bảng công tháng
         api: ["POST /attendance/timesheets/:month/lock", "POST /attendance/timesheets/:month/unlock"]
-        status: todo
+        ui: /user/attendance/timesheet
+        status: done
+        note: Quyền permission.attendance-period.lock. Chốt (kèm ghi chú) đóng dấu PayrollCycle.lockedAttendanceAt của kỳ lương trùng tháng; mở chốt bắt buộc lý do; cả hai có audit. Kỳ đã chốt từ chối sửa công tay và xếp ca (lẻ, hàng loạt, về mặc định, xoá), tính lại bỏ qua và ghi số ngày bỏ qua. Thử trình duyệt 2026-10-22 (chốt tháng 10, ô không còn form sửa, xếp ca bị từ chối, tính lại bỏ qua 88 ngày, mở chốt)
         depends: [AT-16]
       - id: AT-18
         title: Export bảng công

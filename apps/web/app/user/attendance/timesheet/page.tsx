@@ -2,7 +2,7 @@ import { AttendanceModuleTabs } from "@/components/attendance/attendance-module-
 import { TimesheetBoard } from "@/components/attendance/timesheet-board";
 import { UserFrame } from "@/components/user/user-frame";
 import { resolveAttendanceMonth } from "@/lib/attendance-api";
-import { canEditAttendance, getAttendanceModuleTabs } from "@/lib/attendance-module";
+import { canEditAttendance, canLockAttendancePeriods, getAttendanceModuleTabs } from "@/lib/attendance-module";
 import { getTimesheetData } from "@/lib/timesheet-api";
 
 type TimesheetPageProps = {
@@ -15,10 +15,11 @@ export default async function TimesheetPage({ searchParams }: TimesheetPageProps
   const params = searchParams ? await searchParams : undefined;
   const month = resolveAttendanceMonth(params?.month);
   const page = Math.max(1, Number(params?.page) || 1);
-  const [data, tabs, canEdit] = await Promise.all([
+  const [data, tabs, canEdit, canLock] = await Promise.all([
     getTimesheetData({ month, departmentId: params?.department, q: params?.q, page }),
     getAttendanceModuleTabs("timesheet"),
-    canEditAttendance()
+    canEditAttendance(),
+    canLockAttendancePeriods()
   ]);
 
   return (
@@ -27,7 +28,7 @@ export default async function TimesheetPage({ searchParams }: TimesheetPageProps
         <header className="attendance-module-header">
           <AttendanceModuleTabs tabs={tabs} />
         </header>
-        <TimesheetBoard canEdit={canEdit} data={data} departmentId={params?.department ?? ""} key={`${month}-${params?.department ?? ""}-${params?.q ?? ""}`} q={params?.q ?? ""} />
+        <TimesheetBoard canEdit={canEdit} canLock={canLock} data={data} departmentId={params?.department ?? ""} key={`${month}-${params?.department ?? ""}-${params?.q ?? ""}`} q={params?.q ?? ""} />
       </main>
     </UserFrame>
   );

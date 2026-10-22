@@ -41,7 +41,7 @@ export class AttendanceCalculationService {
   // Recomputes the work dates touched by newly synced punches: each punch's calendar date and the
   // day before it (a night shift's checkout belongs to the previous work date).
   async recalculateForPunches(punches: Array<{ employeeId: string; punchTime: Date }>, source: ChangeSource = "punch_sync") {
-    if (punches.length === 0) return { days: 0, changed: 0, removed: 0 };
+    if (punches.length === 0) return { days: 0, changed: 0, removed: 0, skipped: 0 };
     const timeZone = await this.timezone();
     const dates = punches.map((punch) => localDate(punch.punchTime.getTime(), timeZone)).sort();
     return this.recalculate({
@@ -58,7 +58,7 @@ export class AttendanceCalculationService {
     // Days that have not come yet are left alone: with no punches they would read as absences.
     const today = localDate(Date.now(), timeZone);
     const options = { ...requested, to: requested.to < today ? requested.to : today };
-    if (options.from > options.to) return { days: 0, changed: 0, removed: 0 };
+    if (options.from > options.to) return { days: 0, changed: 0, removed: 0, skipped: 0 };
     const rangeStart = new Date(zonedInstant(options.from, 0, timeZone));
     const rangeEnd = new Date(zonedInstant(addDays(options.to, 1), 0, timeZone));
 
@@ -81,7 +81,13 @@ export class AttendanceCalculationService {
     const holidayRows = await this.prisma.holiday.findMany({ where: { date: { gte: dbDate(loadFrom), lte: dbDate(loadTo) } } });
     const holidays = new Map(holidayRows.map((holiday) => [isoDate(holiday.date), { type: holiday.type, paid: holiday.paid }]));
 
-    const totals = { days: 0, changed: 0, removed: 0 };
+    // Days of locked periods (AT-17) are never rewritten.
+    const months: string[] = [];
+    for (let month = options.from.slice(0, 7); month <= options.to.slice(0, 7); month = addDays(`${month}-01`, 31).slice(0, 7)) months.push(month);
+    const lockedRows = await this.prisma.attendancePeriod.findMany({ where: { month: { in: months }, status: "locked" }, select: { month: true } });
+    const locked = new Set(lockedRows.map((row) => row.month));
+
+    const totals = { days: 0, changed: 0, removed: 0, skipped: 0 };
     for (let index = 0; index < employees.length; index += BATCH_SIZE) {
       const batch = employees.slice(index, index + BATCH_SIZE);
       const ids = batch.map((employee) => employee.id);
@@ -136,6 +142,10 @@ export class AttendanceCalculationService {
 
         const stored = new Map(existing.filter((row) => row.employeeId === employee.id).map((row) => [isoDate(row.workDate), row]));
         for (const day of days) {
+          if (locked.has(day.workDate.slice(0, 7))) {
+            totals.skipped += 1;
+            continue;
+          }
           const current = stored.get(day.workDate);
           if (!day.result) {
             if (current) {

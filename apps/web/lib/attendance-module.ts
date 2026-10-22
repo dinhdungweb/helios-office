@@ -41,3 +41,9 @@ export async function canEditAttendance() {
   const account = (await getCurrentSessionUserOrSignOut())?.account;
   return account?.adminRole === "system_admin" || Boolean(account?.effectivePermissionKeys?.includes("permission.attendance.manage"));
 }
+
+// Whether the viewer may lock and reopen months (AT-17).
+export async function canLockAttendancePeriods() {
+  const account = (await getCurrentSessionUserOrSignOut())?.account;
+  return account?.adminRole === "system_admin" || Boolean(account?.effectivePermissionKeys?.includes("permission.attendance-period.lock"));
+}

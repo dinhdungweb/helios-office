@@ -927,6 +927,29 @@ model AttendanceDay {
   @@index([workDate])
 }
 
+enum AttendancePeriodStatus {
+  open
+  locked
+}
+
+// A month of attendance (AT-17). Once locked, nothing may change its days: no manual change, no
+// schedule edit, and recalculations skip it. A month without a row is open.
+model AttendancePeriod {
+  id           String                 @id @default(uuid())
+  // YYYY-MM
+  month        String                 @unique
+  status       AttendancePeriodStatus @default(open)
+  lockedAt     DateTime?
+  // Employee id, or the account id when the account has no employee profile.
+  lockedById   String?
+  note         String?
+  unlockedAt   DateTime?
+  unlockedById String?
+  unlockReason String?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+}
+
 enum AttendanceRecalcStatus {
   queued
   running

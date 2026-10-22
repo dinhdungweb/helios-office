@@ -40,7 +40,7 @@ const hc = {
   punchWindowAfterMinutes: null
 };
 
-function setup(options: { existing?: unknown[]; startDate?: string } = {}) {
+function setup(options: { existing?: unknown[]; startDate?: string; lockedMonths?: Array<{ month: string }> } = {}) {
   const prisma = {
     attendancePolicy: { findUnique: jest.fn().mockResolvedValue(policy) },
     employee: {
@@ -58,6 +58,7 @@ function setup(options: { existing?: unknown[]; startDate?: string } = {}) {
       ])
     },
     attendanceAdjustment: { findMany: jest.fn().mockResolvedValue([]) },
+    attendancePeriod: { findMany: jest.fn().mockResolvedValue(options.lockedMonths ?? []) },
     attendanceDay: {
       findMany: jest.fn().mockResolvedValue(options.existing ?? []),
       upsert: jest.fn((args) => ({ upsert: args })),
@@ -75,7 +76,7 @@ describe("AttendanceCalculationService (AT-11)", () => {
 
     const totals = await service.recalculate({ from: "2026-10-21", to: "2026-10-21", source: "punch_sync" });
 
-    expect(totals).toEqual({ days: 1, changed: 1, removed: 0 });
+    expect(totals).toEqual({ days: 1, changed: 1, removed: 0, skipped: 0 });
     const args = prisma.attendanceDay.upsert.mock.calls[0][0];
     expect(args.where).toEqual({ employeeId_workDate: { employeeId: "e1", workDate: day("2026-10-21") } });
     expect(args.create).toMatchObject({ lateMinutes: 12, workedMinutes: 468, status: "late", lastChangeSource: "punch_sync", punchCount: 2 });
@@ -93,7 +94,7 @@ describe("AttendanceCalculationService (AT-11)", () => {
     const { service, prisma } = setup({ existing: [stored] });
     const totals = await service.recalculate({ from: "2026-10-21", to: "2026-10-21", source: "recalculation" });
 
-    expect(totals).toEqual({ days: 1, changed: 0, removed: 0 });
+    expect(totals).toEqual({ days: 1, changed: 0, removed: 0, skipped: 0 });
     expect(prisma.attendanceDay.upsert).not.toHaveBeenCalled();
     expect(prisma.attendanceDay.update).not.toHaveBeenCalled();
   });
@@ -113,6 +114,15 @@ describe("AttendanceCalculationService (AT-11)", () => {
     expect(prisma.attendanceDay.update).toHaveBeenCalledWith({ where: { id: "d1" }, data: { policySnapshot: expect.objectContaining({ earlyGraceMinutes: 0 }) } });
   });
 
+  it("never rewrites a day of a locked month", async () => {
+    const { service, prisma } = setup({ lockedMonths: [{ month: "2026-10" }] });
+
+    const totals = await service.recalculate({ from: "2026-10-21", to: "2026-10-21", source: "recalculation" });
+
+    expect(totals).toEqual({ days: 0, changed: 0, removed: 0, skipped: 1 });
+    expect(prisma.attendanceDay.upsert).not.toHaveBeenCalled();
+  });
+
   it("removes days before the employee started", async () => {
     const { service, prisma } = setup({
       startDate: "2026-10-22",
@@ -127,7 +137,7 @@ describe("AttendanceCalculationService (AT-11)", () => {
 
   it("recalculates the punch dates and the day before them", async () => {
     const { service } = setup();
-    const recalculate = jest.spyOn(service, "recalculate").mockResolvedValue({ days: 0, changed: 0, removed: 0 });
+    const recalculate = jest.spyOn(service, "recalculate").mockResolvedValue({ days: 0, changed: 0, removed: 0, skipped: 0 });
 
     // 00:30 on the 22nd in Vietnam is still the 21st in UTC.
     await service.recalculateForPunches([

@@ -51,8 +51,9 @@ function setup(options: { day?: unknown; active?: unknown; revoked?: number } = 
     employeeWhere: jest.fn().mockReturnValue({ departmentId: { in: ["d1"] } })
   };
   const calculation = { timezone: jest.fn().mockResolvedValue("Asia/Ho_Chi_Minh"), recalculate: jest.fn().mockResolvedValue({ days: 1, changed: 1, removed: 0 }) };
-  const service = new AttendanceAdjustmentsService(prisma as never, dataScope as never, calculation as never, { contextFields: () => ({}) } as never);
-  return { service, prisma, calculation, dataScope };
+  const periods = { assertOpen: jest.fn(), assertRangeOpen: jest.fn(), view: jest.fn().mockResolvedValue({ month: "2026-10", status: "open" }) };
+  const service = new AttendanceAdjustmentsService(prisma as never, dataScope as never, calculation as never, { contextFields: () => ({}) } as never, periods as never);
+  return { service, prisma, calculation, dataScope, periods };
 }
 
 describe("AttendanceAdjustmentsService (AT-15)", () => {
@@ -98,6 +99,16 @@ describe("AttendanceAdjustmentsService (AT-15)", () => {
     await expect(setup().service.adjust(user, "day-1", { checkOut: "2026-10-20T07:00", reason: "Sửa giờ ra" })).rejects.toThrow("Giờ ra phải sau giờ vào");
     await expect(setup().service.adjust(user, "day-1", { reason: "Không đổi gì" })).rejects.toBeInstanceOf(BadRequestException);
     await expect(setup({ day: null }).service.adjust(user, "day-x", { workUnits: 1, reason: "Ngoài phạm vi" })).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("refuses changes in a locked month", async () => {
+    const { service, prisma, periods } = setup();
+    periods.assertOpen.mockRejectedValue(new Error("Kỳ công tháng 10/2026 đã chốt."));
+
+    await expect(service.adjust(user, "day-1", { workUnits: 1, reason: "Đủ công" })).rejects.toThrow("đã chốt");
+    await expect(service.revoke(user, "day-1", {})).rejects.toThrow("đã chốt");
+    expect(periods.assertOpen).toHaveBeenCalledWith(["2026-10-20"]);
+    expect(prisma.attendanceAdjustment.create).not.toHaveBeenCalled();
   });
 
   it("allows a check-out past midnight", async () => {

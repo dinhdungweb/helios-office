@@ -73,6 +73,8 @@ function initialForm(detail: AttendanceDayDetail): FormState {
 type Props = {
   dayId: string;
   canEdit: boolean;
+  // The day's month is locked (AT-17): it can be read but not changed.
+  locked: boolean;
   onClose: () => void;
   // Called after a change so the timesheet reloads.
   onChanged: () => void;
@@ -80,7 +82,7 @@ type Props = {
 
 // AT-15/AT-16: one day of the monthly timesheet: the result, the raw punches, the history of
 // manual changes and, for people allowed to, the form to change it.
-export function AttendanceDayDrawer({ dayId, canEdit, onClose, onChanged }: Props) {
+export function AttendanceDayDrawer({ dayId, canEdit, locked, onClose, onChanged }: Props) {
   const [detail, setDetail] = useState<AttendanceDayDetail | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -300,7 +302,8 @@ export function AttendanceDayDrawer({ dayId, canEdit, onClose, onChanged }: Prop
               <p className="timesheet-drawer-empty">Chưa sửa tay lần nào.</p>
             )}
 
-            {canEdit && form ? (
+            {canEdit && locked ? <p className="timesheet-drawer-locked">Kỳ công tháng này đã chốt nên không sửa được. Mở chốt kỳ công trước nếu cần sửa.</p> : null}
+            {canEdit && !locked && form ? (
               <form className="timesheet-drawer-form" onSubmit={save}>
                 <h3>Sửa công</h3>
                 <div className="timesheet-drawer-grid">

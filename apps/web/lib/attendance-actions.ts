@@ -94,3 +94,38 @@ export async function revokeAttendanceAdjustmentAction(id: string, reason: strin
   if (result.ok) revalidatePath("/user/attendance/timesheet");
   return result;
 }
+
+// AT-17: lock and reopen a month.
+async function post<T>(path: string, body: unknown): Promise<AttendanceActionResult<T>> {
+  const accessToken = await getSessionAccessToken();
+  if (!accessToken) return { ok: false, error: "Phiên đăng nhập đã hết hạn. Đăng nhập lại để tiếp tục." };
+  try {
+    const response = await fetch(`${getApiBaseUrl()}${path}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      cache: "no-store"
+    });
+    if (!response.ok) {
+      if (response.status === 403) return { ok: false, error: "Tài khoản của bạn không có quyền chốt kỳ công." };
+      const errorBody = (await response.json().catch(() => null)) as { message?: string | string[] } | null;
+      const message = Array.isArray(errorBody?.message) ? errorBody.message.join(". ") : errorBody?.message;
+      return { ok: false, error: response.status >= 500 || !message ? "Không thực hiện được. Vui lòng thử lại sau." : message };
+    }
+    return { ok: true, data: (await response.json()) as T };
+  } catch {
+    return { ok: false, error: "Không kết nối được máy chủ. Vui lòng thử lại sau." };
+  }
+}
+
+export async function lockPeriodAction(month: string, note: string) {
+  const result = await post<unknown>(`/attendance/timesheets/${encodeURIComponent(month)}/lock`, { note: note.trim() || undefined });
+  if (result.ok) revalidatePath("/user/attendance/timesheet");
+  return result;
+}
+
+export async function unlockPeriodAction(month: string, reason: string) {
+  const result = await post<unknown>(`/attendance/timesheets/${encodeURIComponent(month)}/unlock`, { reason: reason.trim() });
+  if (result.ok) revalidatePath("/user/attendance/timesheet");
+  return result;
+}

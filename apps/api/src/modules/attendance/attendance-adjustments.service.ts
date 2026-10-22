@@ -5,6 +5,7 @@ import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { AttendanceCalculationService } from "./attendance-calculation.service";
+import { AttendancePeriodService } from "./attendance-period.service";
 import type { AdjustAttendanceDto, RevokeAdjustmentDto } from "./attendance-adjustment.dto";
 import { zonedInstant } from "./engine/zoned-time";
 
@@ -24,7 +25,8 @@ export class AttendanceAdjustmentsService {
     private readonly prisma: PrismaService,
     private readonly dataScope: DataScopeService,
     private readonly calculation: AttendanceCalculationService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly periods: AttendancePeriodService
   ) {}
 
   // One day with its shift and every manual change ever made to it, newest first.
@@ -74,6 +76,7 @@ export class AttendanceAdjustmentsService {
 
   async adjust(user: AuthenticatedUser, id: string, dto: AdjustAttendanceDto) {
     const day = await this.findInScope(user, id, ATTENDANCE_EDIT_PERMISSIONS);
+    await this.periods.assertOpen([isoDate(day.workDate)]);
     const changesPunches = dto.checkIn !== undefined || dto.checkOut !== undefined;
     if (!changesPunches && dto.workUnits === undefined && dto.status === undefined) {
       throw new BadRequestException("Chưa có thay đổi nào để lưu.");
@@ -122,6 +125,7 @@ export class AttendanceAdjustmentsService {
   // "Bỏ sửa tay": the day goes back to what the engine computes from the punches.
   async revoke(user: AuthenticatedUser, id: string, dto: RevokeAdjustmentDto) {
     const day = await this.findInScope(user, id, ATTENDANCE_EDIT_PERMISSIONS);
+    await this.periods.assertOpen([isoDate(day.workDate)]);
     const actorId = user.account?.employeeId ?? undefined;
     const result = await this.prisma.attendanceAdjustment.updateMany({
       where: { employeeId: day.employeeId, workDate: day.workDate, revokedAt: null },

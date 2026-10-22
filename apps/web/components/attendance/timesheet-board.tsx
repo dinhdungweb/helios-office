@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useState, useTransition, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties } from "react";
 import type { Route } from "next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { StateBlock } from "@/components/ui/primitives";
+import { ModalDialog, StateBlock } from "@/components/ui/primitives";
 import { AttendanceDayDrawer, STATUS_LABELS } from "@/components/attendance/attendance-day-drawer";
-import type { TimesheetCell, TimesheetData } from "@/lib/timesheet-api";
+import { lockPeriodAction, unlockPeriodAction } from "@/lib/attendance-actions";
+import type { AttendancePeriod, TimesheetCell, TimesheetData, TimesheetRow } from "@/lib/timesheet-api";
 import { CaretLeft, CaretRight } from "@/lib/icons";
 
 const WEEKDAY_LABELS = ["", "T2", "T3", "T4", "T5", "T6", "T7", "CN"];
@@ -60,16 +61,91 @@ function cellTitle(cell: TimesheetCell, date: string) {
   return parts.join(" · ");
 }
 
-type Props = { data: TimesheetData; canEdit: boolean; departmentId: string; q: string };
+function vnDateTime(value: string) {
+  return new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric", hour12: false }).format(new Date(value));
+}
+
+// AT-17: confirm locking (with what is still open on this page) or reopening (reason required).
+function PeriodDialog({ mode, month, rows, onClose, onDone }: { mode: "lock" | "unlock"; month: string; rows: TimesheetRow[]; onClose: () => void; onDone: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const label = `${Number(month.slice(5, 7))}/${month.slice(0, 4)}`;
+  const absent = rows.reduce((total, row) => total + row.totals.absentDays, 0);
+  const missing = rows.reduce((total, row) => total + row.totals.missingPunchCount, 0);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    dialog?.showModal();
+    return () => {
+      if (dialog?.open) dialog.close();
+    };
+  }, []);
+
+  const submit = async () => {
+    setError(null);
+    setIsSaving(true);
+    const result = mode === "lock" ? await lockPeriodAction(month, text) : await unlockPeriodAction(month, text);
+    setIsSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    onDone();
+    onClose();
+  };
+
+  return (
+    <ModalDialog className="shift-dialog" ref={dialogRef} title={mode === "lock" ? `Chốt kỳ công tháng ${label}` : `Mở chốt kỳ công tháng ${label}`} onCloseRequest={onClose} onCancel={onClose}>
+      <div className="account-dialog-form">
+        {mode === "lock" ? (
+          <>
+            <p className="timesheet-period-text">
+              Sau khi chốt, công của tháng {label} không sửa tay, không xếp ca và không tính lại được nữa; dữ liệu này dùng để tính lương.
+            </p>
+            {absent > 0 || missing > 0 ? (
+              <p className="timesheet-period-warning">
+                Trên trang đang xem còn {absent} ngày vắng và {missing} lần quên chấm chưa xử lý.
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="timesheet-period-text">Mở chốt cho phép sửa công, xếp ca và tính lại trong tháng {label}. Hành động được ghi nhật ký.</p>
+        )}
+        <label className="account-dialog-field">
+          <span>{mode === "lock" ? "Ghi chú (không bắt buộc)" : "Lý do mở chốt (bắt buộc)"}</span>
+          <textarea maxLength={500} rows={2} value={text} onChange={(event) => setText(event.target.value)} />
+        </label>
+        {error ? <p className="account-dialog-error" role="alert">{error}</p> : null}
+        <div className="account-dialog-actions">
+          <button className="secondary-button" type="button" onClick={onClose}>
+            HỦY BỎ
+          </button>
+          <button className="primary-button" disabled={isSaving || (mode === "unlock" && text.trim().length < 3)} type="button" onClick={submit}>
+            {isSaving ? "ĐANG XỬ LÝ..." : mode === "lock" ? "CHỐT CÔNG" : "MỞ CHỐT"}
+          </button>
+        </div>
+      </div>
+    </ModalDialog>
+  );
+}
+
+function PeriodBadge({ period }: { period: AttendancePeriod }) {
+  return period.status === "locked" ? <span className="timesheet-period is-locked">Đã chốt</span> : <span className="timesheet-period">Đang mở</span>;
+}
+
+type Props = { data: TimesheetData; canEdit: boolean; canLock: boolean; departmentId: string; q: string };
 
 // AT-16: monthly timesheet for the people in the viewer's scope (Công → Bảng chấm công).
-export function TimesheetBoard({ data, canEdit, departmentId, q }: Props) {
+export function TimesheetBoard({ data, canEdit, canLock, departmentId, q }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [display, setDisplay] = useState<Display>("hours");
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [search, setSearch] = useState(q);
+  const [periodDialog, setPeriodDialog] = useState<"lock" | "unlock" | null>(null);
   const [isNavigating, startNavigation] = useTransition();
 
   const navigate = useCallback(
@@ -97,7 +173,7 @@ export function TimesheetBoard({ data, canEdit, departmentId, q }: Props) {
     <section className="timesheet" aria-labelledby="timesheet-title">
       <header className="timesheet-toolbar">
         <h1 id="timesheet-title">
-          Bảng chấm công tháng {monthNumber}/{year}
+          Bảng chấm công tháng {monthNumber}/{year} <PeriodBadge period={sheet.period} />
         </h1>
         <div className="timesheet-month" role="group" aria-label="Chọn tháng">
           <button aria-label="Tháng trước" disabled={isNavigating} type="button" onClick={() => navigate({ month: shiftMonth(sheet.month, -1) })}>
@@ -125,6 +201,17 @@ export function TimesheetBoard({ data, canEdit, departmentId, q }: Props) {
         >
           <input aria-label="Tìm nhân sự" placeholder="Tìm theo tên hoặc mã" value={search} onChange={(event) => setSearch(event.target.value)} />
         </form>
+        {canLock ? (
+          sheet.period.status === "locked" ? (
+            <button className="secondary-button" type="button" onClick={() => setPeriodDialog("unlock")}>
+              Mở chốt
+            </button>
+          ) : (
+            <button className="primary-button" type="button" onClick={() => setPeriodDialog("lock")}>
+              Chốt công
+            </button>
+          )
+        ) : null}
         <div className="timesheet-display" role="group" aria-label="Hiển thị ô ngày">
           <button aria-pressed={display === "hours"} className={display === "hours" ? "is-active" : undefined} type="button" onClick={() => setDisplay("hours")}>
             Giờ
@@ -134,6 +221,14 @@ export function TimesheetBoard({ data, canEdit, departmentId, q }: Props) {
           </button>
         </div>
       </header>
+
+      {sheet.period.status === "locked" ? (
+        <p className="timesheet-period-banner" role="status">
+          Kỳ công đã chốt{sheet.period.lockedAt ? ` lúc ${vnDateTime(sheet.period.lockedAt)}` : ""}
+          {sheet.period.lockedBy ? ` bởi ${sheet.period.lockedBy}` : ""}
+          {sheet.period.note ? ` · ${sheet.period.note}` : ""}. Không sửa công, xếp ca hay tính lại được trong tháng này.
+        </p>
+      ) : null}
 
       <div className={isNavigating ? "timesheet-table-shell is-loading" : "timesheet-table-shell"} tabIndex={0} aria-label="Bảng chấm công có thể cuộn ngang">
         <table className="timesheet-table">
@@ -317,7 +412,8 @@ export function TimesheetBoard({ data, canEdit, departmentId, q }: Props) {
         </div>
       </footer>
 
-      {openDay ? <AttendanceDayDrawer canEdit={canEdit} dayId={openDay} onChanged={refresh} onClose={closeDrawer} /> : null}
+      {openDay ? <AttendanceDayDrawer canEdit={canEdit} dayId={openDay} locked={sheet.period.status === "locked"} onChanged={refresh} onClose={closeDrawer} /> : null}
+      {periodDialog ? <PeriodDialog mode={periodDialog} month={sheet.month} rows={sheet.items} onClose={() => setPeriodDialog(null)} onDone={refresh} /> : null}
     </section>
   );
 }

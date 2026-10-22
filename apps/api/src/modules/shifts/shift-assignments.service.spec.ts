@@ -43,8 +43,9 @@ function setup(options: { visibleEmployees?: number; shiftStatus?: string | null
     departmentInScope: jest.fn((_scope, id: string) => id === "d-sales")
   };
   const recalc = { scheduleChanged: jest.fn(), holidaysChanged: jest.fn(), rulesChanged: jest.fn() };
-  const service = new ShiftAssignmentsService(prisma as never, dataScope as never, { contextFields: () => ({}) } as never, recalc as never);
-  return { service, prisma, dataScope, recalc };
+  const periods = { assertOpen: jest.fn(), assertRangeOpen: jest.fn(), view: jest.fn().mockResolvedValue({ month: "2026-10", status: "open" }) };
+  const service = new ShiftAssignmentsService(prisma as never, dataScope as never, { contextFields: () => ({}) } as never, recalc as never, periods as never);
+  return { service, prisma, dataScope, recalc, periods };
 }
 
 describe("ShiftAssignmentsService (AT-07)", () => {
@@ -84,6 +85,15 @@ describe("ShiftAssignmentsService (AT-07)", () => {
     expect(audit).toMatchObject({ action: "shift_assignment.assign", actorId: "emp-hr", afterValue: { shiftId: "hc", employeeIds: ["e1", "e2"] } });
     expect(audit.beforeValue).toBeUndefined();
     expect(recalc.scheduleChanged).toHaveBeenCalledWith(["e1", "e2"], ["2026-10-24", "2026-10-25"], "emp-hr");
+  });
+
+  it("refuses to change the schedule of a locked month", async () => {
+    const { service, prisma, periods } = setup();
+    periods.assertOpen.mockRejectedValue(new Error("Kỳ công tháng 10/2026 đã chốt."));
+
+    await expect(service.assign(user, { employeeIds: ["e1"], dates: ["2026-10-24"], shiftId: "hc" })).rejects.toThrow("đã chốt");
+    await expect(service.clear(user, { employeeIds: ["e1"], dates: ["2026-10-24"] })).rejects.toThrow("đã chốt");
+    expect(prisma.shiftAssignment.upsert).not.toHaveBeenCalled();
   });
 
   it("refuses people outside the caller's scope, as if they did not exist", async () => {

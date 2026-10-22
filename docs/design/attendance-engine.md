@@ -263,7 +263,7 @@ Dùng lại các khoá đang có, và áp phạm vi dữ liệu (CORE-15) cho m�
 | Xem công, bảng công | `permission.attendance.view`, `permission.attendance-timesheets.view` (có phạm vi) |
 | Sửa công tay, tính lại | `permission.attendance.manage` (có phạm vi) |
 | Danh mục ca, xếp ca, ngày lễ, chính sách | `permission.attendance-timesheets.manage` |
-| Chốt / mở chốt kỳ công | khoá mới `attendance.period.lock` |
+| Chốt / mở chốt kỳ công | khoá mới `permission.attendance-period.lock` (nhóm Chấm công) |
 | Máy chấm công, điểm chấm công | `attendance.device.manage` |
 | Công và lịch ca của tôi | Chỉ cần đăng nhập |
 

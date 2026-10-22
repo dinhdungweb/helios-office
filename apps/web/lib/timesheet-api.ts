@@ -46,11 +46,23 @@ export type TimesheetRow = {
   totals: TimesheetTotals;
 };
 
+export type AttendancePeriod = {
+  month: string;
+  status: "open" | "locked";
+  lockedAt: string | null;
+  lockedBy: string | null;
+  note: string | null;
+  unlockedAt: string | null;
+  unlockedBy: string | null;
+  unlockReason: string | null;
+};
+
 export type Timesheet = {
   month: string;
   from: string;
   to: string;
   today: string;
+  period: AttendancePeriod;
   dates: Array<{ date: string; weekday: number; holiday: { name: string; type: string } | null }>;
   items: TimesheetRow[];
   total: number;

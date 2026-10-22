@@ -177,7 +177,7 @@ export type RecalcJob = {
   employees: number | null;
   reason: "manual" | "schedule" | "holiday" | "policy" | "shift" | "department_default";
   status: RecalcJobStatus;
-  result: { days: number; changed: number; removed: number } | null;
+  result: { days: number; changed: number; removed: number; skipped?: number } | null;
   error: string | null;
   createdAt: string;
   startedAt: string | null;

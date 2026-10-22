@@ -4,6 +4,7 @@ import { AuditService } from "../../common/audit/audit.service";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthenticatedUser } from "../auth/auth.types";
+import { AttendancePeriodService } from "../attendance/attendance-period.service";
 import { AttendanceRecalcService } from "../attendance/attendance-recalc.service";
 import { localDate } from "../attendance/engine/zoned-time";
 import { parseCalendarDate } from "./holidays.service";
@@ -35,7 +36,8 @@ export class ShiftAssignmentsService {
     private readonly prisma: PrismaService,
     private readonly dataScope: DataScopeService,
     private readonly audit: AuditService,
-    private readonly recalc: AttendanceRecalcService
+    private readonly recalc: AttendanceRecalcService,
+    private readonly periods: AttendancePeriodService
   ) {}
 
   async schedule(user: AuthenticatedUser, query: ScheduleQueryDto) {
@@ -107,6 +109,7 @@ export class ShiftAssignmentsService {
 
   async assign(user: AuthenticatedUser, dto: AssignShiftsDto) {
     this.limitCells(dto.employeeIds.length, dto.dates.length);
+    await this.periods.assertOpen(dto.dates);
     await this.assertInScope(user, dto.employeeIds);
 
     if (dto.shiftId) {
@@ -142,6 +145,7 @@ export class ShiftAssignmentsService {
   // Back to the department/company default on those dates.
   async clear(user: AuthenticatedUser, dto: ClearAssignmentsDto) {
     this.limitCells(dto.employeeIds.length, dto.dates.length);
+    await this.periods.assertOpen(dto.dates);
     await this.assertInScope(user, dto.employeeIds);
 
     const result = await this.prisma.shiftAssignment.deleteMany({
@@ -232,6 +236,7 @@ export class ShiftAssignmentsService {
     if (dto.to < dto.from) throw new BadRequestException("Ngày kết thúc phải sau ngày bắt đầu.");
     if (datesBetween(dto.from, dto.to).length > MAX_BULK_DAYS) throw new BadRequestException(`Xếp tối đa ${MAX_BULK_DAYS} ngày một lần.`);
     if (!dto.employeeIds?.length && !dto.departmentIds?.length) throw new BadRequestException("Chọn ít nhất một nhân sự hoặc phòng ban.");
+    await this.periods.assertRangeOpen(dto.from, dto.to);
     if (dto.employeeIds?.length) await this.assertInScope(user, dto.employeeIds);
 
     const rule = await this.bulkRule(dto);
@@ -341,6 +346,7 @@ export class ShiftAssignmentsService {
   async remove(user: AuthenticatedUser, id: string) {
     const assignment = await this.prisma.shiftAssignment.findUnique({ where: { id } });
     if (!assignment) throw new NotFoundException(`Shift assignment ${id} was not found`);
+    await this.periods.assertOpen([dateKey(assignment.date)]);
     await this.assertInScope(user, [assignment.employeeId]);
 
     await this.prisma.shiftAssignment.delete({ where: { id } });

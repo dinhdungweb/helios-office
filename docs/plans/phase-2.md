@@ -53,7 +53,7 @@ Chia 7 cụm, làm theo thứ tự. Đóng cụm nào chạy `npm run typecheck 
 |---|---|---|---|---|
 | 11 | AT-15 | `PATCH /attendance/:id` sửa tay (bắt buộc lý do), lịch sử sửa, "Bỏ sửa tay"; tính lại giữ phần đã sửa | Unit: tính lại sau khi sửa tay. E2E: kỳ chốt từ chối | ✅ 6 unit (gộp sửa, giờ theo múi công ty, ra hôm sau, bỏ sửa tay, lịch sử). Thật: sửa / bỏ sửa từ bảng chấm công. Kỳ chốt từ chối làm ở task 13 |
 | 12 | AT-16 | `GET /attendance/timesheets?month&departmentId` (dòng người × cột ngày + tổng), phạm vi dữ liệu; trang bảng công tháng (ký hiệu, tô màu, bấm vào ô để xem chi tiết và sửa) | E2E: trưởng phòng chỉ thấy phòng mình. Trình duyệt | ✅ 2 unit (ô, tổng, công chuẩn trừ lễ, người vào giữa tháng, phạm vi dữ liệu). Trang Công → Bảng chấm công; thử với admin và khanglm (không có quyền thì không thấy tab) |
-| 13 | AT-17 | `AttendancePeriod`; chốt / mở chốt (khoá `attendance.period.lock`, mở bắt buộc lý do, có audit); ghi `PayrollCycle.lockedAttendanceAt` | E2E: sau khi chốt, sửa/tính lại/xếp ca đều bị từ chối | |
+| 13 | AT-17 | `AttendancePeriod`; chốt / mở chốt (khoá `attendance.period.lock`, mở bắt buộc lý do, có audit); ghi `PayrollCycle.lockedAttendanceAt` | E2E: sau khi chốt, sửa/tính lại/xếp ca đều bị từ chối | ✅ 9 unit (chốt / mở chốt, đóng dấu kỳ lương, thông báo kỳ đã chốt, tính lại bỏ qua, sửa công và xếp ca bị chặn). Thật: chốt tháng 10 → không sửa, không xếp ca, tính lại bỏ qua 88 ngày; mở chốt bắt buộc lý do |
 | 14 | AT-24 | `GET /attendance/me/timesheet`, `POST .../confirm` (xác nhận hoặc phản hồi); HR thấy ai chưa xác nhận / có phản hồi | Trình duyệt hai vai | |
 | 15 | AT-18 | Export bảng công qua khung Export của CORE-19 (bảng tháng + sheet chi tiết ngày) | Mở file .xlsx, tổng khớp màn hình | |
 

@@ -130,12 +130,13 @@ export class AttendanceRecalcService {
     await this.prisma.attendanceRecalcJob.update({ where: { id: jobId }, data: { status: AttendanceRecalcStatus.running, startedAt: new Date(), error: null } });
     try {
       const employeeIds = Array.isArray(job.employeeIds) ? (job.employeeIds as string[]) : undefined;
-      const totals = { days: 0, changed: 0, removed: 0 };
+      const totals = { days: 0, changed: 0, removed: 0, skipped: 0 };
       for (const chunk of monthChunks(isoDate(job.from), isoDate(job.to))) {
         const result = await this.calculation.recalculate({ ...chunk, employeeIds, source: "recalculation" });
         totals.days += result.days;
         totals.changed += result.changed;
         totals.removed += result.removed;
+        totals.skipped += result.skipped;
       }
       await this.prisma.attendanceRecalcJob.update({
         where: { id: jobId },
@@ -169,7 +170,7 @@ export class AttendanceRecalcService {
       employees: Array.isArray(job.employeeIds) ? job.employeeIds.length : null,
       reason: job.reason,
       status: job.status,
-      result: job.result as { days: number; changed: number; removed: number } | null,
+      result: job.result as { days: number; changed: number; removed: number; skipped?: number } | null,
       error: job.error,
       createdAt: job.createdAt,
       startedAt: job.startedAt,
