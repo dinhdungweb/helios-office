@@ -1,6 +1,6 @@
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
-import type { AttendancePolicy, HolidayData, HolidayRecord, ShiftRecord, ShiftSettingsData } from "@/lib/shift-format";
+import type { AttendancePolicy, HolidayData, HolidayRecord, ScheduleData, ScheduleGrid, ShiftRecord, ShiftSettingsData } from "@/lib/shift-format";
 
 // Server-side loading of the shift catalogue and attendance policy (AT-05, AT-06). Client
 // components import types and HH:MM helpers from shift-format.ts instead.
@@ -33,5 +33,13 @@ export async function getHolidayData(year: number): Promise<HolidayData> {
     return { source: "api", year, holidays: await requestJson<HolidayRecord[]>(`/holidays?year=${year}`) };
   } catch (error) {
     return { source: "unavailable", year, error: error instanceof Error ? error.message : "Không tải được lịch nghỉ lễ." };
+  }
+}
+
+export async function getScheduleData(from: string, to: string): Promise<ScheduleData> {
+  try {
+    return { source: "api", grid: await requestJson<ScheduleGrid>(`/shift-assignments?from=${from}&to=${to}`) };
+  } catch (error) {
+    return { source: "unavailable", from, to, error: error instanceof Error ? error.message : "Không tải được lịch ca." };
   }
 }

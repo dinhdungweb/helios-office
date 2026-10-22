@@ -234,7 +234,14 @@ export function ShiftSettingsBoard({ data }: { data: ShiftSettingsData }) {
                     ) : (
                       <button disabled={isPending} type="button" onClick={() => run(() => restoreShiftAction(shift.id))}>Khôi phục</button>
                     )}
-                    <button disabled={isPending || isDefault} type="button" onClick={() => remove(shift)}>Xoá</button>
+                    <button
+                      disabled={isPending || isDefault || shift.usage.assignments > 0}
+                      title={shift.usage.assignments > 0 ? "Ca đã được xếp cho nhân sự, hãy lưu trữ" : undefined}
+                      type="button"
+                      onClick={() => remove(shift)}
+                    >
+                      Xoá
+                    </button>
                   </td>
                 </tr>
               );

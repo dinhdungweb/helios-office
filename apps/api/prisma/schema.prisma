@@ -353,6 +353,7 @@ model Employee {
   documents                 EmployeeDocument[]
   attendanceRecords         AttendanceRecord[]
   attendanceRawLogs         AttendanceRawLog[]
+  shiftAssignments          ShiftAssignment[]
   leaveRequests             LeaveRequest[]
   payrollItems              PayrollItem[]
   assetAssignments          AssetAssignment[]
@@ -468,6 +469,25 @@ model Shift {
   policiesDefault          AttendancePolicy[] @relation("PolicyDefaultShift")
   createdAt                DateTime           @default(now())
   updatedAt                DateTime           @updatedAt
+  shiftAssignments         ShiftAssignment[]
+}
+
+// A person's shift on one date (AT-07), overriding the department and company defaults. A row
+// without shiftId means "day off" that date. Dates are calendar dates in the company time zone.
+model ShiftAssignment {
+  id          String   @id @default(uuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date        DateTime @db.Date
+  shiftId     String?
+  shift       Shift?   @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([date])
 }
 
 enum HolidayType {

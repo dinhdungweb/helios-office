@@ -24905,3 +24905,180 @@ small {
   font-size: 18px;
   text-decoration: none;
 }
+
+/* Shift schedule grid (AT-07) */
+.shift-schedule {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  min-width: 0;
+}
+
+.shift-schedule-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+}
+
+.shift-schedule-header h1 {
+  margin: 0;
+  font-size: var(--font-size-xl);
+}
+
+.shift-schedule-week {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shift-schedule-week a,
+.shift-schedule-default select,
+.shift-schedule-filter select {
+  color: var(--color-primary);
+}
+
+.shift-schedule-filter,
+.shift-schedule-default {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+}
+
+.shift-schedule-filter select,
+.shift-schedule-default select,
+.shift-schedule-actions select {
+  min-height: 36px;
+  padding: 0 8px;
+  color: var(--color-text-primary);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xs);
+  font: inherit;
+}
+
+.shift-schedule-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.shift-schedule-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shift-schedule-table-shell {
+  overflow-x: auto;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.shift-schedule-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+}
+
+.shift-schedule-table th,
+.shift-schedule-table td {
+  padding: 6px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-align: center;
+}
+
+.shift-schedule-table thead th {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-regular);
+}
+
+.shift-schedule-table thead th.is-holiday {
+  background: #fff1f0;
+}
+
+.shift-schedule-table thead th small {
+  display: block;
+  color: #b42318;
+  font-size: 11px;
+}
+
+.shift-schedule-table tbody th {
+  min-width: 200px;
+  text-align: left;
+}
+
+.shift-schedule-table button {
+  padding: 4px;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-xs);
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.shift-schedule-table tbody th button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+}
+
+.shift-schedule-table tbody th small {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.shift-schedule-table td.is-selected {
+  background: var(--color-primary-soft);
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+
+.schedule-shift {
+  display: inline-flex;
+  min-width: 40px;
+  justify-content: center;
+  padding: 3px 8px;
+  color: var(--shift-color, #64748b);
+  background: color-mix(in srgb, var(--shift-color, #64748b) 14%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--shift-color, #64748b) 50%, transparent);
+  border-radius: 6px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-strong);
+}
+
+.schedule-shift.is-assigned {
+  color: #ffffff;
+  background: var(--shift-color, #64748b);
+  border-style: solid;
+  border-color: var(--shift-color, #64748b);
+}
+
+.schedule-off {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.schedule-off.is-assigned {
+  font-weight: var(--font-weight-strong);
+}
+
+.shift-schedule-actions {
+  position: sticky;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}

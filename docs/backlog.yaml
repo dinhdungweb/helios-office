@@ -672,8 +672,10 @@ modules:
         depends: [AT-05]
       - id: AT-07
         title: Xếp ca cho nhân sự / phòng ban
-        api: ["GET /shift-assignments", "POST /shift-assignments", "DELETE /shift-assignments/:id"]
-        status: todo
+        api: ["GET /shift-assignments", "POST /shift-assignments", "DELETE /shift-assignments/:id", "POST /shift-assignments/clear", "PUT /departments/:id/default-shift"]
+        ui: /hcns/shift-schedule
+        status: doing
+        note: Lịch ca theo tuần (người × ngày) áp phạm vi dữ liệu; ca theo thứ bậc lịch riêng → ca mặc định phòng ban → ca mặc định công ty, chỉ ngày làm việc (ngày làm bù tính là ngày làm). Xếp / về mặc định cho nhiều ô, ca mặc định phòng ban. Chờ thử trình duyệt; chặn xếp vào kỳ đã chốt làm cùng AT-17
         depends: [AT-05]
       - id: AT-08
         title: Xếp ca hàng loạt / theo lịch lặp

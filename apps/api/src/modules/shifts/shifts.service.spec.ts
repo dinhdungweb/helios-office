@@ -23,7 +23,7 @@ const storedShift = (overrides: Record<string, unknown> = {}) => ({
   description: null,
   status: "active",
   archivedAt: null,
-  _count: { departmentsDefault: 0, policiesDefault: 0 },
+  _count: { departmentsDefault: 0, policiesDefault: 0, shiftAssignments: 0 },
   ...overrides
 });
 
@@ -75,11 +75,14 @@ describe("ShiftsService (AT-05, AT-06)", () => {
   });
 
   it("keeps a company or department default from being archived or deleted", async () => {
-    const used = setup(storedShift({ _count: { departmentsDefault: 1, policiesDefault: 0 } }));
+    const used = setup(storedShift({ _count: { departmentsDefault: 1, policiesDefault: 0, shiftAssignments: 0 } }));
 
     await expect(used.service.archive("shift-1")).rejects.toBeInstanceOf(ConflictException);
     await expect(used.service.remove("shift-1")).rejects.toBeInstanceOf(ConflictException);
     expect(used.prisma.shift.delete).not.toHaveBeenCalled();
+
+    const scheduled = setup(storedShift({ _count: { departmentsDefault: 0, policiesDefault: 0, shiftAssignments: 3 } }));
+    await expect(scheduled.service.remove("shift-1")).rejects.toBeInstanceOf(ConflictException);
 
     const unused = setup();
     await expect(unused.service.remove("shift-1")).resolves.toEqual({ id: "shift-1", deleted: true });

@@ -8,7 +8,7 @@ import type { CreateShiftDto, UpdateAttendancePolicyDto, UpdateShiftDto } from "
 const POLICY_ID = "default";
 
 const SHIFT_USAGE = {
-  _count: { select: { departmentsDefault: true, policiesDefault: true } }
+  _count: { select: { departmentsDefault: true, policiesDefault: true, shiftAssignments: true } }
 } satisfies Prisma.ShiftInclude;
 
 type ShiftWithUsage = Prisma.ShiftGetPayload<{ include: typeof SHIFT_USAGE }>;
@@ -19,7 +19,7 @@ function toView(shift: ShiftWithUsage) {
     ...rest,
     workUnits: Number(workUnits),
     requiredMinutes: requiredMinutesFor(rest),
-    usage: { departmentDefaults: _count.departmentsDefault, companyDefault: _count.policiesDefault > 0 }
+    usage: { departmentDefaults: _count.departmentsDefault, companyDefault: _count.policiesDefault > 0, assignments: _count.shiftAssignments }
   };
 }
 
@@ -102,13 +102,16 @@ export class ShiftsService {
     return toView(shift);
   }
 
-  // Only a shift nothing points at can go; anything used is archived instead. Schedules and results
-  // that reference shifts arrive in later tasks and extend this check.
+  // Only a shift nothing points at can go; anything used is archived instead, so past schedules
+  // keep their meaning.
   async remove(id: string, actorId?: string) {
     const shift = await this.findShift(id);
 
     if (shift._count.policiesDefault > 0 || shift._count.departmentsDefault > 0) {
       throw new ConflictException("Ca đang được dùng làm ca mặc định, hãy lưu trữ thay vì xoá.");
+    }
+    if (shift._count.shiftAssignments > 0) {
+      throw new ConflictException("Ca đã được xếp cho nhân sự, hãy lưu trữ thay vì xoá.");
     }
 
     await this.prisma.shift.delete({ where: { id } });

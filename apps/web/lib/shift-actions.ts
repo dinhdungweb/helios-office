@@ -7,7 +7,7 @@ import { timeToMinute, type AttendancePolicy } from "@/lib/shift-format";
 
 export type ShiftActionResult = { ok: true } | { ok: false; error: string };
 
-async function send(path: string, method: "POST" | "PATCH" | "DELETE", body?: unknown): Promise<ShiftActionResult> {
+async function send(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body?: unknown): Promise<ShiftActionResult> {
   const accessToken = await getSessionAccessToken();
   if (!accessToken) return { ok: false, error: "Phiên đăng nhập đã hết hạn. Đăng nhập lại để tiếp tục." };
 
@@ -135,5 +135,24 @@ export async function deleteHolidayAction(holidayId: string) {
 export async function addFixedHolidaysAction(year: number) {
   const result = await send("/holidays/fixed", "POST", { year });
   if (result.ok) revalidatePath("/admin/settings/holidays");
+  return result;
+}
+
+// AT-07 schedule edits from the HCNS schedule grid.
+export async function assignShiftsAction(employeeIds: string[], dates: string[], shiftId: string | null) {
+  const result = await send("/shift-assignments", "POST", { employeeIds, dates, shiftId });
+  if (result.ok) revalidatePath("/hcns/shift-schedule");
+  return result;
+}
+
+export async function clearAssignmentsAction(employeeIds: string[], dates: string[]) {
+  const result = await send("/shift-assignments/clear", "POST", { employeeIds, dates });
+  if (result.ok) revalidatePath("/hcns/shift-schedule");
+  return result;
+}
+
+export async function setDepartmentDefaultShiftAction(departmentId: string, shiftId: string | null) {
+  const result = await send(`/departments/${encodeURIComponent(departmentId)}/default-shift`, "PUT", { shiftId });
+  if (result.ok) revalidatePath("/hcns/shift-schedule");
   return result;
 }

@@ -25,7 +25,7 @@ export type ShiftRecord = {
   punchWindowAfterMinutes: number | null;
   description: string | null;
   status: "active" | "archived";
-  usage: { departmentDefaults: number; companyDefault: boolean };
+  usage: { departmentDefaults: number; companyDefault: boolean; assignments: number };
 };
 
 export type AttendancePolicy = {
@@ -81,3 +81,46 @@ export type HolidayRecord = {
 };
 
 export type HolidayData = { source: "api"; year: number; holidays: HolidayRecord[] } | { source: "unavailable"; year: number; error: string };
+
+// AT-07 schedule grid, as GET /shift-assignments returns it.
+export type ScheduleSource = "assignment" | "department" | "company" | "none";
+
+export type ScheduleCell = {
+  date: string;
+  shiftId: string | null;
+  source: ScheduleSource;
+  assignmentId: string | null;
+  note: string | null;
+};
+
+export type ScheduleShift = {
+  id: string;
+  code: string;
+  name: string;
+  color: string | null;
+  startMinute: number;
+  endMinute: number;
+  status: "active" | "archived";
+};
+
+export type ScheduleGrid = {
+  from: string;
+  to: string;
+  shifts: ScheduleShift[];
+  holidays: Array<{ date: string; name: string; type: HolidayType }>;
+  employees: Array<{ id: string; code: string; fullName: string; department: { id: string; name: string }; days: ScheduleCell[] }>;
+};
+
+export type ScheduleData = { source: "api"; grid: ScheduleGrid } | { source: "unavailable"; from: string; to: string; error: string };
+
+// Monday of the week holding `date` (YYYY-MM-DD), and date arithmetic on calendar dates.
+export function addCalendarDays(date: string, days: number) {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day) + days * 86_400_000).toISOString().slice(0, 10);
+}
+
+export function mondayOf(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  return addCalendarDays(date, weekday === 0 ? -6 : 1 - weekday);
+}
