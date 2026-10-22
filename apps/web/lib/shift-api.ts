@@ -40,6 +40,14 @@ export async function getScheduleData(from: string, to: string): Promise<Schedul
   try {
     return { source: "api", grid: await requestJson<ScheduleGrid>(`/shift-assignments?from=${from}&to=${to}`) };
   } catch (error) {
-    return { source: "unavailable", from, to, error: error instanceof Error ? error.message : "Không tải được lịch ca." };
+    const forbidden = error instanceof Error && error.message.endsWith("returned 403");
+    return {
+      source: "unavailable",
+      from,
+      to,
+      error: forbidden
+        ? "Tài khoản của bạn chưa có quyền xem lịch ca. Liên hệ HR hoặc quản trị viên nếu bạn cần xếp ca cho phòng ban."
+        : "Không tải được lịch ca. Thử tải lại trang hoặc liên hệ quản trị viên."
+    };
   }
 }

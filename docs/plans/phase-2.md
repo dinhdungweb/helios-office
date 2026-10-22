@@ -28,13 +28,13 @@ Chia 7 cụm, làm theo thứ tự. Đóng cụm nào chạy `npm run typecheck 
 |---|---|---|---|---|
 | 1 | AT-05, AT-06 | Migration `Shift`, `AttendancePolicy` (kèm múi giờ công ty), `Department.defaultShiftId`; seed ca `HC` và chính sách mặc định. CRUD `/shifts` (ca đã dùng chỉ lưu trữ được, không xoá được). Trang danh mục ca trong cài đặt chấm công | Unit: validate giờ, ca qua đêm, nghỉ nằm trong ca. E2E quyền. Trình duyệt: tạo ca đêm, ca linh hoạt | ✅ 18 unit. Thật: ca đêm/linh hoạt, ca sai bị từ chối kèm lý do, ca mặc định không lưu trữ/xoá được, lưu trữ/khôi phục/xoá |
 | 2 | AT-06 | `GET/PATCH /attendance-policy` + trang Chính sách chấm công (các lựa chọn ở thiết kế mục 4); ca ghi đè chính sách | Unit: gộp chính sách với phần ghi đè của ca | ✅ Trang Chính sách chấm công (6 nhóm, có ví dụ cho HR); lưu và tải lại giữ nguyên |
-| 3 | AT-10 | CRUD `/holidays` (lễ, làm bù, công ty nghỉ; có/không hưởng công); seed các ngày lễ dương lịch cố định; trang lịch ngày lễ theo năm | E2E. Trình duyệt: thêm Tết theo lịch Chính phủ | |
+| 3 | AT-10 | CRUD `/holidays` (lễ, làm bù, công ty nghỉ; có/không hưởng công); seed các ngày lễ dương lịch cố định; trang lịch ngày lễ theo năm | E2E. Trình duyệt: thêm Tết theo lịch Chính phủ | ✅ 6 unit. Thật: thêm Tết, trùng ngày bị từ chối, ngày làm bù, sửa, thêm lễ cố định 2028 |
 
 ### 2b. Xếp ca
 
 | # | Item | Việc | Kiểm tra | Trạng thái |
 |---|---|---|---|---|
-| 4 | AT-07 | `ShiftAssignment` (duy nhất `employeeId + date`), API xếp/xoá; `ShiftResolver`: lịch riêng → ca phòng ban → ca công ty → nghỉ; trang lịch ca theo tuần (người × ngày), lọc theo phòng ban, áp phạm vi dữ liệu | Unit theo bảng cho resolver. Từ chối xếp vào kỳ đã chốt | |
+| 4 | AT-07 | `ShiftAssignment` (duy nhất `employeeId + date`), API xếp/xoá; `ShiftResolver`: lịch riêng → ca phòng ban → ca công ty → nghỉ; trang lịch ca theo tuần (người × ngày), lọc theo phòng ban, áp phạm vi dữ liệu | Unit theo bảng cho resolver. Từ chối xếp vào kỳ đã chốt | ✅ 10 unit resolver + 7 unit service. Trang Lịch ca trong HCNS; thật: làm bù thứ 7 hiện ca, xếp / về mặc định, ca mặc định phòng ban. Chặn kỳ đã chốt làm ở task 13 |
 | 5 | AT-08 | `POST /shift-assignments/bulk`: chọn người/phòng ban × khoảng ngày × ca hoặc mẫu lặp (`ShiftPattern`); xem trước số dòng tạo/ghi đè trước khi lưu | Unit: sinh lịch lặp 2 tuần trong 3 tháng. Trình duyệt | |
 | 6 | AT-09 | `GET /shift-assignments/me` + lịch ca của tôi (tháng) trên `/user/attendance` | Trình duyệt với `khanglm` | |
 

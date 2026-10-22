@@ -674,8 +674,8 @@ modules:
         title: Xếp ca cho nhân sự / phòng ban
         api: ["GET /shift-assignments", "POST /shift-assignments", "DELETE /shift-assignments/:id", "POST /shift-assignments/clear", "PUT /departments/:id/default-shift"]
         ui: /hcns/shift-schedule
-        status: doing
-        note: Lịch ca theo tuần (người × ngày) áp phạm vi dữ liệu; ca theo thứ bậc lịch riêng → ca mặc định phòng ban → ca mặc định công ty, chỉ ngày làm việc (ngày làm bù tính là ngày làm). Xếp / về mặc định cho nhiều ô, ca mặc định phòng ban. Chờ thử trình duyệt; chặn xếp vào kỳ đã chốt làm cùng AT-17
+        status: done
+        note: Lịch ca theo tuần (người × ngày) áp phạm vi dữ liệu; ca theo thứ bậc lịch riêng → ca mặc định phòng ban → ca mặc định công ty, chỉ ngày làm việc (ngày làm bù tính là ngày làm). Xếp / về mặc định cho nhiều ô, ca mặc định phòng ban. Thử trình duyệt 2026-10-22 (thứ 7 làm bù hiện ca, xếp nghỉ / xếp ca / về mặc định, ca mặc định phòng ban, người không có quyền thấy thông báo rõ). Chặn xếp vào kỳ đã chốt làm cùng AT-17
         depends: [AT-05]
       - id: AT-08
         title: Xếp ca hàng loạt / theo lịch lặp
@@ -690,8 +690,8 @@ modules:
         title: Ngày lễ, ngày làm bù
         api: ["GET /holidays", "POST /holidays", "PATCH /holidays/:id", "DELETE /holidays/:id", "POST /holidays/fixed"]
         ui: /admin/settings/holidays
-        status: doing
-        note: Nghỉ lễ / ngày làm bù / công ty nghỉ, có hoặc không hưởng công, mỗi ngày một dòng. Seed ngày lễ dương lịch cố định 2026-2027, nút thêm cho năm khác; lễ âm lịch HR nhập theo lịch Chính phủ. Chờ thử trình duyệt
+        status: done
+        note: Nghỉ lễ / ngày làm bù / công ty nghỉ, có hoặc không hưởng công, mỗi ngày một dòng. Seed ngày lễ dương lịch cố định 2026-2027, nút thêm cho năm khác; lễ âm lịch HR nhập theo lịch Chính phủ. Thử trình duyệt 2026-10-22 (thêm, trùng ngày bị từ chối, làm bù, sửa, thêm lễ cố định 2028)
       - id: AT-11
         title: Engine tính công (muộn, sớm, thiếu công, công thực tế theo ca)
         status: doing
