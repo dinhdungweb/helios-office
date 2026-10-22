@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
-import { timeToMinute, type AttendancePolicy } from "@/lib/shift-api";
+import { timeToMinute, type AttendancePolicy } from "@/lib/shift-format";
 
 export type ShiftActionResult = { ok: true } | { ok: false; error: string };
 

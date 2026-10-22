@@ -26,8 +26,8 @@ Chia 7 cụm, làm theo thứ tự. Đóng cụm nào chạy `npm run typecheck 
 
 | # | Item | Việc | Kiểm tra | Trạng thái |
 |---|---|---|---|---|
-| 1 | AT-05, AT-06 | Migration `Shift`, `AttendancePolicy` (kèm múi giờ công ty), `Department.defaultShiftId`; seed ca `HC` và chính sách mặc định. CRUD `/shifts` (ca đã dùng chỉ lưu trữ được, không xoá được). Trang danh mục ca trong cài đặt chấm công | Unit: validate giờ, ca qua đêm, nghỉ nằm trong ca. E2E quyền. Trình duyệt: tạo ca đêm, ca linh hoạt | |
-| 2 | AT-06 | `GET/PATCH /attendance-policy` + trang Chính sách chấm công (các lựa chọn ở thiết kế mục 4); ca ghi đè chính sách | Unit: gộp chính sách với phần ghi đè của ca | |
+| 1 | AT-05, AT-06 | Migration `Shift`, `AttendancePolicy` (kèm múi giờ công ty), `Department.defaultShiftId`; seed ca `HC` và chính sách mặc định. CRUD `/shifts` (ca đã dùng chỉ lưu trữ được, không xoá được). Trang danh mục ca trong cài đặt chấm công | Unit: validate giờ, ca qua đêm, nghỉ nằm trong ca. E2E quyền. Trình duyệt: tạo ca đêm, ca linh hoạt | ✅ 18 unit. Thật: ca đêm/linh hoạt, ca sai bị từ chối kèm lý do, ca mặc định không lưu trữ/xoá được, lưu trữ/khôi phục/xoá |
+| 2 | AT-06 | `GET/PATCH /attendance-policy` + trang Chính sách chấm công (các lựa chọn ở thiết kế mục 4); ca ghi đè chính sách | Unit: gộp chính sách với phần ghi đè của ca | ✅ Trang Chính sách chấm công (6 nhóm, có ví dụ cho HR); lưu và tải lại giữ nguyên |
 | 3 | AT-10 | CRUD `/holidays` (lễ, làm bù, công ty nghỉ; có/không hưởng công); seed các ngày lễ dương lịch cố định; trang lịch ngày lễ theo năm | E2E. Trình duyệt: thêm Tết theo lịch Chính phủ | |
 
 ### 2b. Xếp ca

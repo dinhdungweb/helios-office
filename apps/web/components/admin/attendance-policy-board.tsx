@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormSwitch } from "@/components/ui/form-controls";
 import { StateBlock } from "@/components/ui/primitives";
 import { updateAttendancePolicyAction } from "@/lib/shift-actions";
-import type { AttendancePolicy, ShiftSettingsData } from "@/lib/shift-api";
+import type { AttendancePolicy, ShiftSettingsData } from "@/lib/shift-format";
 
 const WEEKDAYS = [
   { value: 1, label: "T2" },

@@ -7792,7 +7792,14 @@
 
 .attendance-pair-inputs {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
+}
+
+.attendance-pair-inputs .system-settings-number-input {
+  width: 76px;
+  padding: 0 10px;
 }
 
 @media (max-width: 640px) {

@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { useRouter } from "next/navigation";
 import { ModalDialog, StateBlock } from "@/components/ui/primitives";
 import { archiveShiftAction, deleteShiftAction, restoreShiftAction, saveShiftAction, type ShiftActionResult } from "@/lib/shift-actions";
-import { minuteToTime, type AttendancePolicy, type ShiftRecord, type ShiftSettingsData } from "@/lib/shift-api";
+import { minuteToTime, type AttendancePolicy, type ShiftRecord, type ShiftSettingsData } from "@/lib/shift-format";
 import { Plus } from "@/lib/icons";
 
 const LATE_MODE_LABELS = { full: "Tính toàn bộ phút", excess: "Chỉ tính phần vượt ngưỡng" } as const;
