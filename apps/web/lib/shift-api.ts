@@ -4,6 +4,8 @@ import type {
   AttendancePolicy,
   HolidayData,
   HolidayRecord,
+  RecalcData,
+  RecalcJob,
   ScheduleData,
   ScheduleGrid,
   ShiftPatternData,
@@ -67,5 +69,18 @@ export async function getShiftPatterns(): Promise<ShiftPatternData> {
     return { source: "api", patterns: await requestJson<ShiftPatternRecord[]>("/shift-patterns") };
   } catch (error) {
     return { source: "unavailable", error: error instanceof Error ? error.message : "Không tải được mẫu xếp ca." };
+  }
+}
+
+export async function getRecalcData(): Promise<RecalcData> {
+  try {
+    const [jobs, departments] = await Promise.all([
+      requestJson<RecalcJob[]>("/attendance/recalculations?limit=30"),
+      requestJson<Array<{ id: string; name: string; status?: string }>>("/departments")
+    ]);
+    return { source: "api", jobs, departments: departments.map(({ id, name }) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "vi")) };
+  } catch (error) {
+    const forbidden = error instanceof Error && error.message.endsWith("returned 403");
+    return { source: "unavailable", error: forbidden ? "Tài khoản của bạn không có quyền tính lại công." : "Không tải được dữ liệu tính lại công." };
   }
 }

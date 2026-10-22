@@ -8,8 +8,10 @@ import { ImportExportModule } from "../common/import-export/import-export.module
 import { PrismaModule } from "../common/prisma/prisma.module";
 import { QueueModule } from "../common/queue/queue.module";
 import { AdminSettingsModule } from "../modules/admin-settings/admin-settings.module";
+import { AttendanceCalculationModule } from "../modules/attendance/attendance-calculation.module";
 import { EmployeeTransferModule } from "../modules/employees/employee-transfer.module";
 import { NotificationDeliveryService } from "../modules/notifications/notification-delivery.service";
+import { AttendanceRecalcProcessor } from "./attendance-recalc.processor";
 import { EmailProcessor } from "./email.processor";
 import { ImportExportProcessor } from "./import-export.processor";
 import { NotificationsProcessor } from "./notifications.processor";
@@ -34,9 +36,10 @@ import { FileCleanupService } from "./file-cleanup.service";
     // Imports/exports: the jobs, their handlers and the object storage they read and write.
     FilesModule,
     ImportExportModule,
-    EmployeeTransferModule
+    EmployeeTransferModule,
+    AttendanceCalculationModule
   ],
-  providers: [WorkerRuntime, RealtimeEmitter, NotificationDeliveryService, NotificationsProcessor, EmailProcessor, ImportExportProcessor, FileCleanupService],
+  providers: [WorkerRuntime, RealtimeEmitter, NotificationDeliveryService, NotificationsProcessor, EmailProcessor, ImportExportProcessor, AttendanceRecalcProcessor, FileCleanupService],
   exports: [WorkerRuntime]
 })
 export class WorkerModule {}

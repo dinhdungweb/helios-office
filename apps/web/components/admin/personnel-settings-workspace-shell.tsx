@@ -27,6 +27,7 @@ export type PersonnelSettingsItem =
   | "shift"
   | "attendance-policy"
   | "holiday"
+  | "attendance-recalc"
   | "approval";
 
 type PersonnelSettingsWorkspaceShellProps = {
@@ -46,6 +47,7 @@ const generalItems = [
   { key: "shift", href: "/admin/settings/shifts", label: "Cài đặt ca" },
   { key: "attendance-policy", href: "/admin/settings/attendance-policy", label: "Chính sách chấm công" },
   { key: "holiday", href: "/admin/settings/holidays", label: "Ngày lễ" },
+  { key: "attendance-recalc", href: "/admin/settings/attendance-recalc", label: "Tính lại công" },
   { key: "approval", href: "/admin/settings/approval-workflows", label: "Quy trình duyệt" }
 ] as const;
 

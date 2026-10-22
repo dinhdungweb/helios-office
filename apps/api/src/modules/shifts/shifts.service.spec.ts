@@ -42,8 +42,9 @@ function setup(shift = storedShift()) {
     },
     auditLog: { create: jest.fn() }
   };
-  const service = new ShiftsService(prisma as never, { contextFields: () => ({}) } as never);
-  return { service, prisma };
+  const recalc = { scheduleChanged: jest.fn(), holidaysChanged: jest.fn(), rulesChanged: jest.fn() };
+  const service = new ShiftsService(prisma as never, { contextFields: () => ({}) } as never, recalc as never);
+  return { service, prisma, recalc };
 }
 
 describe("ShiftsService (AT-05, AT-06)", () => {
@@ -103,5 +104,19 @@ describe("ShiftsService (AT-05, AT-06)", () => {
     await service.updatePolicy({ workWeekdays: [6, 1, 3], lateGraceMinutes: 10 });
     expect(prisma.attendancePolicy.update.mock.calls[0][0].data).toEqual({ workWeekdays: [1, 3, 6], lateGraceMinutes: 10 });
     expect(prisma.auditLog.create.mock.calls[0][0].data.action).toBe("attendance_policy.update");
+  });
+
+  it("recalculates after a policy change, and after editing a shift only when it is in use", async () => {
+    const unused = setup();
+    await unused.service.update("shift-1", { name: "Không ai dùng" });
+    expect(unused.recalc.rulesChanged).not.toHaveBeenCalled();
+
+    const used = setup();
+    used.prisma.shift.findUnique.mockResolvedValue(storedShift({ _count: { departmentsDefault: 0, policiesDefault: 0, shiftAssignments: 4 } }));
+    await used.service.update("shift-1", { name: "Đang dùng" });
+    expect(used.recalc.rulesChanged).toHaveBeenCalledWith("shift", undefined);
+
+    await used.service.updatePolicy({ lateGraceMinutes: 3 }, "emp-hr");
+    expect(used.recalc.rulesChanged).toHaveBeenLastCalledWith("policy", "emp-hr");
   });
 });

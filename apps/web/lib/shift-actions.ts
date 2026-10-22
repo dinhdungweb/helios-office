@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
-import { timeToMinute, type AttendancePolicy, type BulkAssignInput, type BulkAssignSummary } from "@/lib/shift-format";
+import { timeToMinute, type AttendancePolicy, type BulkAssignInput, type BulkAssignSummary, type RecalcJob } from "@/lib/shift-format";
 
 export type ShiftActionResult = { ok: true } | { ok: false; error: string };
 export type ShiftDataResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -175,5 +175,12 @@ export async function deleteShiftPatternAction(patternId: string) {
 export async function bulkAssignAction(input: BulkAssignInput, preview: boolean) {
   const result = await request<BulkAssignSummary>("/shift-assignments/bulk", "POST", { ...input, preview });
   if (result.ok && !preview) revalidatePath("/hcns/shift-schedule");
+  return result;
+}
+
+// AT-12: HR asks for a recalculation; small ones finish before this returns.
+export async function recalculateAttendanceAction(input: { from: string; to: string; departmentIds: string[] }) {
+  const result = await request<RecalcJob>("/attendance/recalculate", "POST", input);
+  if (result.ok) revalidatePath("/admin/settings/attendance-recalc");
   return result;
 }

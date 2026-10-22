@@ -95,7 +95,7 @@ export function AttendancePolicyBoard({ data }: { data: ShiftSettingsData }) {
     event.preventDefault();
     startSaving(async () => {
       const result = await updateAttendancePolicyAction(policy);
-      setFeedback(result.ok ? { message: "Đã lưu chính sách chấm công.", error: false } : { message: result.error, error: true });
+      setFeedback(result.ok ? { message: "Đã lưu. Công từ đầu tháng trước đến hôm nay đang được tính lại theo chính sách mới (theo dõi ở mục Tính lại công).", error: false } : { message: result.error, error: true });
       if (result.ok) router.refresh();
     });
   };

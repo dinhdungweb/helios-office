@@ -165,3 +165,25 @@ export function monthRange(date: string) {
   const nextMonth = `${addCalendarDays(from, 31).slice(0, 7)}-01`;
   return { from, to: addCalendarDays(nextMonth, -1) };
 }
+
+// AT-12 recalculation jobs, as GET /attendance/recalculations returns them.
+export type RecalcJobStatus = "queued" | "running" | "done" | "failed";
+
+export type RecalcJob = {
+  id: string;
+  from: string;
+  to: string;
+  // null = everyone employed in the range.
+  employees: number | null;
+  reason: "manual" | "schedule" | "holiday" | "policy" | "shift" | "department_default";
+  status: RecalcJobStatus;
+  result: { days: number; changed: number; removed: number } | null;
+  error: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+};
+
+export type RecalcData =
+  | { source: "api"; jobs: RecalcJob[]; departments: Array<{ id: string; name: string }> }
+  | { source: "unavailable"; error: string };

@@ -178,6 +178,8 @@ Trường hợp 2 cho 0,99 công dù không bị tính muộn. Nếu HR muốn t
 
 Ngày thuộc kỳ đã chốt luôn bị bỏ qua và được ghi vào kết quả của job. Tính lại idempotent: chạy hai lần ra cùng kết quả.
 
+Đã làm (AT-12, 2026-10-22): mỗi yêu cầu là một dòng `AttendanceRecalcJob` (khoảng ngày, người, lý do, trạng thái, kết quả), xem ở Cài đặt → Tính lại công. Yêu cầu nhỏ (≤ 400 người × ngày) chạy ngay trong request, lớn hơn thì vào hàng đợi `attendance-recalc` (worker chạy từng job một); Redis không có thì chạy nền trong API. Không tính ngày chưa tới. Đổi chính sách / sửa ca đang dùng / ca mặc định phòng ban tính lại từ đầu tháng trước đến hôm nay, cho tới khi có chốt kỳ (AT-17) thì đổi thành "từ kỳ chưa chốt". Một ngày chỉ được ghi lại (và đổi nguồn thay đổi) khi số liệu đổi; nếu chỉ khác bản chính sách lưu kèm thì cập nhật bản đó, không tính là thay đổi.
+
 ### 6.6 Chỗ chừa cho Phase 3
 
 `adjustments` có thêm loại `leave` (nghỉ có/không lương, số công), `business_trip`, `explanation` (giải trình quên chấm → coi như có log), `overtime` (giờ OT được duyệt), `shift_swap` (đổi ca → đổi ca của ngày). Phase 3 ghi các adjustment này khi đơn được duyệt rồi gọi tính lại. Engine Phase 2 đã nhận loại `manual`; các loại khác thêm vào sau mà không phải đổi cấu trúc.

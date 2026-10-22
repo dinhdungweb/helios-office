@@ -703,8 +703,10 @@ modules:
         depends: [AT-05, AT-07, AT-10]
       - id: AT-12
         title: Tính lại công cho khoảng ngày
-        api: ["POST /attendance/recalculate"]
-        status: todo
+        api: ["POST /attendance/recalculate", "GET /attendance/recalculations", "GET /attendance/recalculations/:id"]
+        ui: /admin/settings/attendance-recalc
+        status: done
+        note: Job ghi lại từng lần tính lại; nhỏ chạy ngay, lớn vào hàng đợi attendance-recalc; tự tính lại khi đổi lịch ca, ngày lễ, chính sách, ca đang dùng, ca mặc định phòng ban; không tính ngày chưa tới. Thử trình duyệt 2026-10-22 (ngưỡng muộn 15 phút làm ngày vào 08:10 hết muộn, trả về 0 thì muộn 10 phút lại). Bỏ qua kỳ đã chốt làm cùng AT-17
         depends: [AT-11]
       - id: AT-13
         title: Check-in / check-out trên web và app

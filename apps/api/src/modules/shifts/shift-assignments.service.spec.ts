@@ -42,8 +42,9 @@ function setup(options: { visibleEmployees?: number; shiftStatus?: string | null
     employeeWhere: jest.fn().mockReturnValue({ departmentId: { in: ["d-sales"] } }),
     departmentInScope: jest.fn((_scope, id: string) => id === "d-sales")
   };
-  const service = new ShiftAssignmentsService(prisma as never, dataScope as never, { contextFields: () => ({}) } as never);
-  return { service, prisma, dataScope };
+  const recalc = { scheduleChanged: jest.fn(), holidaysChanged: jest.fn(), rulesChanged: jest.fn() };
+  const service = new ShiftAssignmentsService(prisma as never, dataScope as never, { contextFields: () => ({}) } as never, recalc as never);
+  return { service, prisma, dataScope, recalc };
 }
 
 describe("ShiftAssignmentsService (AT-07)", () => {
@@ -69,8 +70,8 @@ describe("ShiftAssignmentsService (AT-07)", () => {
     await expect(service.schedule(user, { from: "2026-01-01", to: "2026-04-01" })).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it("assigns every person × date and audits what was assigned", async () => {
-    const { service, prisma } = setup();
+  it("assigns every person × date, audits it and recalculates those days", async () => {
+    const { service, prisma, recalc } = setup();
 
     await expect(service.assign(user, { employeeIds: ["e1", "e2"], dates: ["2026-10-24", "2026-10-25"], shiftId: "hc" })).resolves.toEqual({ assigned: 4 });
 
@@ -82,6 +83,7 @@ describe("ShiftAssignmentsService (AT-07)", () => {
     const audit = prisma.auditLog.create.mock.calls[0][0].data;
     expect(audit).toMatchObject({ action: "shift_assignment.assign", actorId: "emp-hr", afterValue: { shiftId: "hc", employeeIds: ["e1", "e2"] } });
     expect(audit.beforeValue).toBeUndefined();
+    expect(recalc.scheduleChanged).toHaveBeenCalledWith(["e1", "e2"], ["2026-10-24", "2026-10-25"], "emp-hr");
   });
 
   it("refuses people outside the caller's scope, as if they did not exist", async () => {

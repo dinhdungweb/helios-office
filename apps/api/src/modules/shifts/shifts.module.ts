@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AttendanceCalculationModule } from "../attendance/attendance-calculation.module";
 import { AuthModule } from "../auth/auth.module";
 import { AttendancePolicyController } from "./attendance-policy.controller";
 import { DepartmentShiftController } from "./department-shift.controller";
@@ -13,7 +14,7 @@ import { ShiftsController } from "./shifts.controller";
 import { ShiftsService } from "./shifts.service";
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, AttendanceCalculationModule],
   controllers: [MyShiftsController, ShiftsController, AttendancePolicyController, HolidaysController, ShiftAssignmentsController, ShiftPatternsController, DepartmentShiftController],
   providers: [ShiftsService, HolidaysService, ShiftAssignmentsService, ShiftPatternsService],
   exports: [ShiftsService, HolidaysService, ShiftAssignmentsService]

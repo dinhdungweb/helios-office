@@ -42,8 +42,9 @@ function setup(options: { existing?: Array<{ employeeId: string; date: string; s
     resolve: jest.fn().mockResolvedValue({ level: "company" }),
     employeeWhere: jest.fn().mockReturnValue({})
   };
-  const service = new ShiftAssignmentsService(prisma as never, dataScope as never, { contextFields: () => ({}) } as never);
-  return { service, prisma };
+  const recalc = { scheduleChanged: jest.fn(), holidaysChanged: jest.fn(), rulesChanged: jest.fn() };
+  const service = new ShiftAssignmentsService(prisma as never, dataScope as never, { contextFields: () => ({}) } as never, recalc as never);
+  return { service, prisma, recalc };
 }
 
 const base = { departmentIds: ["d-sales"], from: "2026-11-02", to: "2026-11-08" };
@@ -60,7 +61,7 @@ describe("ShiftAssignmentsService.bulk (AT-08)", () => {
   });
 
   it("replaces changed cells and creates new ones, leaving unchanged ones", async () => {
-    const { service, prisma } = setup({ existing: [{ employeeId: "e1", date: "2026-11-02", shiftId: "night" }, { employeeId: "e1", date: "2026-11-03", shiftId: "hc" }] });
+    const { service, prisma, recalc } = setup({ existing: [{ employeeId: "e1", date: "2026-11-02", shiftId: "night" }, { employeeId: "e1", date: "2026-11-03", shiftId: "hc" }] });
 
     await expect(service.bulk(user, { ...base, mode: "shift", shiftId: "hc", weekdays: [1, 2, 3, 4, 5] })).resolves.toMatchObject({ written: 7, saved: true });
 
@@ -69,6 +70,10 @@ describe("ShiftAssignmentsService.bulk (AT-08)", () => {
     expect(rows).toHaveLength(7);
     expect(rows).toContainEqual({ employeeId: "e1", date: day("2026-11-02"), shiftId: "hc", note: null, createdById: "emp-hr" });
     expect(prisma.auditLog.create.mock.calls[0][0].data).toMatchObject({ action: "shift_assignment.bulk", afterValue: { overwriteExisting: true, written: 7 } });
+    const [people, dates] = recalc.scheduleChanged.mock.calls[0];
+    expect(people.sort()).toEqual(["e1", "e2"]);
+    // 3/11 was already HC: not written, not recalculated.
+    expect([...dates].sort()).toEqual(["2026-11-02", "2026-11-04", "2026-11-05", "2026-11-06"]);
   });
 
   it("keeps existing assignments when overwrite is off", async () => {

@@ -952,6 +952,36 @@ model AttendanceDay {
   @@index([workDate])
 }
 
+enum AttendanceRecalcStatus {
+  queued
+  running
+  done
+  failed
+}
+
+// One request to recompute AttendanceDay (AT-12): by HR, or automatically after a schedule,
+// holiday, policy or shift change. Small ones run inside the request, larger ones on the
+// attendance-recalc queue.
+model AttendanceRecalcJob {
+  id            String                 @id @default(uuid())
+  from          DateTime               @db.Date
+  to            DateTime               @db.Date
+  // null = everyone employed in the range.
+  employeeIds   Json?
+  // manual, schedule, holiday, policy, shift, department_default
+  reason        String
+  status        AttendanceRecalcStatus @default(queued)
+  // { days, changed, removed }
+  result        Json?
+  error         String?
+  requestedById String?
+  createdAt     DateTime               @default(now())
+  startedAt     DateTime?
+  finishedAt    DateTime?
+
+  @@index([createdAt])
+}
+
 enum AttendanceAdjustmentType {
   manual
 }

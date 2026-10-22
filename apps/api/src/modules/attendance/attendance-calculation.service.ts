@@ -52,9 +52,13 @@ export class AttendanceCalculationService {
     });
   }
 
-  async recalculate(options: RecalculateOptions) {
+  async recalculate(requested: RecalculateOptions) {
     const policy = await this.getPolicy();
     const timeZone = policy.timezone;
+    // Days that have not come yet are left alone: with no punches they would read as absences.
+    const today = localDate(Date.now(), timeZone);
+    const options = { ...requested, to: requested.to < today ? requested.to : today };
+    if (options.from > options.to) return { days: 0, changed: 0, removed: 0 };
     const rangeStart = new Date(zonedInstant(options.from, 0, timeZone));
     const rangeEnd = new Date(zonedInstant(addDays(options.to, 1), 0, timeZone));
 
@@ -143,7 +147,14 @@ export class AttendanceCalculationService {
 
           totals.days += 1;
           const data = toRow(day);
-          if (current && sameFigures(current, data)) continue;
+          if (current && sameFigures(current, data)) {
+            // Same figures under different rules (e.g. a grace period nobody reached): keep the
+            // snapshot current without counting a change or touching the change source.
+            if (!sameSnapshot(current, data)) {
+              writes.push(this.prisma.attendanceDay.update({ where: { id: current.id }, data: { policySnapshot: data.policySnapshot } }));
+            }
+            continue;
+          }
           totals.changed += 1;
           writes.push(
             this.prisma.attendanceDay.upsert({
@@ -221,7 +232,7 @@ function stableJson(value: unknown): string {
   return JSON.stringify(value ?? null);
 }
 
-// Whether a recalculation changed anything; unchanged days keep their last change source.
+// Whether a recalculation changed the day's figures; unchanged days keep their last change source.
 export function sameFigures(stored: StoredFigures, next: ReturnType<typeof toRow>) {
   return (
     stored.shiftId === next.shiftId &&
@@ -239,7 +250,10 @@ export function sameFigures(stored: StoredFigures, next: ReturnType<typeof toRow
     stored.status === next.status &&
     stored.flags.join(",") === next.flags.join(",") &&
     stored.holidayType === next.holidayType &&
-    stored.punchCount === next.punchCount &&
-    stableJson(stored.policySnapshot) === stableJson(next.policySnapshot)
+    stored.punchCount === next.punchCount
   );
+}
+
+export function sameSnapshot(stored: Pick<StoredFigures, "policySnapshot">, next: Pick<ReturnType<typeof toRow>, "policySnapshot">) {
+  return stableJson(stored.policySnapshot) === stableJson(next.policySnapshot);
 }

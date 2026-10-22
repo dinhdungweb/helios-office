@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { PrismaService } from "../src/common/prisma/prisma.service";
-import { EMAIL_QUEUE, EXPORTS_QUEUE, IMPORTS_QUEUE, NOTIFICATIONS_QUEUE } from "../src/common/queue/queue.constants";
+import { ATTENDANCE_RECALC_QUEUE, EMAIL_QUEUE, EXPORTS_QUEUE, IMPORTS_QUEUE, NOTIFICATIONS_QUEUE } from "../src/common/queue/queue.constants";
 import { RealtimeEmitter } from "../src/worker/realtime-emitter.service";
 import { WorkerRuntime } from "../src/worker/worker-runtime.service";
 import { WorkerModule } from "../src/worker/worker.module";
@@ -21,7 +21,7 @@ describe("WorkerModule (e2e)", () => {
 
     const app = moduleRef.createNestApplication({ logger: false });
     await app.init();
-    expect(registered.sort()).toEqual([EMAIL_QUEUE, EXPORTS_QUEUE, IMPORTS_QUEUE, NOTIFICATIONS_QUEUE].sort());
+    expect(registered.sort()).toEqual([ATTENDANCE_RECALC_QUEUE, EMAIL_QUEUE, EXPORTS_QUEUE, IMPORTS_QUEUE, NOTIFICATIONS_QUEUE].sort());
     await app.close();
   });
 });

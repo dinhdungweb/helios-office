@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { HolidayType, Prisma, type Holiday } from "@prisma/client";
 import { AuditService } from "../../common/audit/audit.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { AttendanceRecalcService } from "../attendance/attendance-recalc.service";
 import type { CreateHolidayDto, UpdateHolidayDto } from "./holidays.dto";
 
 // Solar public holidays fixed by the Labour Code 2019, Article 112. Lunar ones (Tết Nguyên đán, Giỗ
@@ -32,7 +33,8 @@ function toView(holiday: Holiday) {
 export class HolidaysService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly recalc: AttendanceRecalcService
   ) {}
 
   async findByYear(year = new Date().getFullYear()) {
@@ -44,32 +46,31 @@ export class HolidaysService {
   }
 
   async create(dto: CreateHolidayDto, actorId?: string) {
-    try {
-      const holiday = await this.prisma.holiday.create({ data: this.data(dto) });
-      await this.writeAudit("holiday.create", holiday.id, null, holiday, actorId);
-      return toView(holiday);
-    } catch (error) {
+    const holiday = await this.prisma.holiday.create({ data: this.data(dto) }).catch((error: unknown) => {
       throw this.uniqueDate(error);
-    }
+    });
+    await this.writeAudit("holiday.create", holiday.id, null, holiday, actorId);
+    await this.recalc.holidaysChanged([dto.date], actorId);
+    return toView(holiday);
   }
 
   async update(id: string, dto: UpdateHolidayDto, actorId?: string) {
     const before = await this.find(id);
     const merged = { date: before.date.toISOString().slice(0, 10), name: before.name, type: before.type, paid: before.paid, note: before.note, ...dto };
 
-    try {
-      const holiday = await this.prisma.holiday.update({ where: { id }, data: this.data(merged) });
-      await this.writeAudit("holiday.update", id, before, holiday, actorId);
-      return toView(holiday);
-    } catch (error) {
+    const holiday = await this.prisma.holiday.update({ where: { id }, data: this.data(merged) }).catch((error: unknown) => {
       throw this.uniqueDate(error);
-    }
+    });
+    await this.writeAudit("holiday.update", id, before, holiday, actorId);
+    await this.recalc.holidaysChanged([...new Set([before.date.toISOString().slice(0, 10), merged.date])], actorId);
+    return toView(holiday);
   }
 
   async remove(id: string, actorId?: string) {
     const holiday = await this.find(id);
     await this.prisma.holiday.delete({ where: { id } });
     await this.writeAudit("holiday.delete", id, holiday, null, actorId);
+    await this.recalc.holidaysChanged([holiday.date.toISOString().slice(0, 10)], actorId);
     return { id, deleted: true };
   }
 
@@ -85,6 +86,9 @@ export class HolidaysService {
       skipDuplicates: true
     });
     await this.writeAudit("holiday.add_fixed", String(year), null, { year, added: result.count }, actorId);
+    if (result.count > 0) {
+      await this.recalc.holidaysChanged(FIXED_SOLAR_HOLIDAYS.map((holiday) => `${year}-${String(holiday.month).padStart(2, "0")}-${String(holiday.day).padStart(2, "0")}`), actorId);
+    }
     return { year, added: result.count };
   }
 

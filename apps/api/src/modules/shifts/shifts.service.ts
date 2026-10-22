@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { JobCatalogStatus, Prisma, type Shift } from "@prisma/client";
 import { AuditService } from "../../common/audit/audit.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { AttendanceRecalcService } from "../attendance/attendance-recalc.service";
 import { requiredMinutesFor, validateShiftTimes } from "./shift-rules";
 import type { CreateShiftDto, UpdateAttendancePolicyDto, UpdateShiftDto } from "./shifts.dto";
 
@@ -29,7 +30,8 @@ function toView(shift: ShiftWithUsage) {
 export class ShiftsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly recalc: AttendanceRecalcService
   ) {}
 
   async findAll(includeArchived = false) {
@@ -66,6 +68,7 @@ export class ShiftsService {
     try {
       const shift = await this.prisma.shift.update({ where: { id }, data, include: SHIFT_USAGE });
       await this.writeAudit("shift.update", "Shift", id, before, shift, actorId);
+      await this.recalcIfUsed(before, actorId);
       return toView(shift);
     } catch (error) {
       throw this.uniqueCode(error);
@@ -86,6 +89,7 @@ export class ShiftsService {
       include: SHIFT_USAGE
     });
     await this.writeAudit("shift.archive", "Shift", id, before, shift, actorId);
+    await this.recalcIfUsed(before, actorId);
     return toView(shift);
   }
 
@@ -99,6 +103,7 @@ export class ShiftsService {
       include: SHIFT_USAGE
     });
     await this.writeAudit("shift.restore", "Shift", id, before, shift, actorId);
+    await this.recalcIfUsed(before, actorId);
     return toView(shift);
   }
 
@@ -153,8 +158,15 @@ export class ShiftsService {
       include: { defaultShift: { select: { id: true, code: true, name: true, status: true } } }
     });
     await this.writeAudit("attendance_policy.update", "AttendancePolicy", POLICY_ID, before, policy, actorId);
+    await this.recalc.rulesChanged("policy", actorId);
 
     return policy;
+  }
+
+  // A shift nobody works or defaults to cannot move any result.
+  private async recalcIfUsed(shift: ShiftWithUsage, actorId?: string) {
+    const used = shift._count.shiftAssignments > 0 || shift._count.departmentsDefault > 0 || shift._count.policiesDefault > 0;
+    if (used) await this.recalc.rulesChanged("shift", actorId);
   }
 
   private shiftData(dto: CreateShiftDto) {

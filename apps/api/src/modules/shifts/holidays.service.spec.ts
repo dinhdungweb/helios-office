@@ -26,7 +26,8 @@ function setup() {
     },
     auditLog: { create: jest.fn() }
   };
-  return { service: new HolidaysService(prisma as never, { contextFields: () => ({}) } as never), prisma };
+  const recalc = { scheduleChanged: jest.fn(), holidaysChanged: jest.fn(), rulesChanged: jest.fn() };
+  return { service: new HolidaysService(prisma as never, { contextFields: () => ({}) } as never, recalc as never), prisma, recalc };
 }
 
 describe("HolidaysService (AT-10)", () => {
@@ -69,8 +70,8 @@ describe("HolidaysService (AT-10)", () => {
     expect(prisma.holiday.update.mock.calls[0][0].data).toMatchObject({ name: "Mùng 1 Tết", date: new Date("2026-02-17T00:00:00.000Z"), paid: true });
   });
 
-  it("adds the four fixed solar holidays of a year without touching existing dates", async () => {
-    const { service, prisma } = setup();
+  it("adds the four fixed solar holidays of a year without touching existing dates, then recalculates them", async () => {
+    const { service, prisma, recalc } = setup();
 
     await expect(service.addFixedHolidays(2028)).resolves.toEqual({ year: 2028, added: 3 });
 
@@ -82,5 +83,6 @@ describe("HolidaysService (AT-10)", () => {
       "2028-05-01",
       "2028-09-02"
     ]);
+    expect(recalc.holidaysChanged).toHaveBeenCalledWith(["2028-01-01", "2028-04-30", "2028-05-01", "2028-09-02"], undefined);
   });
 });

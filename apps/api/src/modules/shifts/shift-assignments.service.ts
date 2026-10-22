@@ -4,6 +4,7 @@ import { AuditService } from "../../common/audit/audit.service";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthenticatedUser } from "../auth/auth.types";
+import { AttendanceRecalcService } from "../attendance/attendance-recalc.service";
 import { localDate } from "../attendance/engine/zoned-time";
 import { parseCalendarDate } from "./holidays.service";
 import { planBulkCells, previewBulk, type BulkCell, type BulkRule } from "./shift-bulk";
@@ -33,7 +34,8 @@ export class ShiftAssignmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dataScope: DataScopeService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly recalc: AttendanceRecalcService
   ) {}
 
   async schedule(user: AuthenticatedUser, query: ScheduleQueryDto) {
@@ -132,6 +134,7 @@ export class ShiftAssignmentsService {
       dates: dto.dates,
       shiftId: dto.shiftId
     }, actorId);
+    await this.recalc.scheduleChanged(dto.employeeIds, dto.dates, actorId);
 
     return { assigned: dto.employeeIds.length * dto.dates.length };
   }
@@ -145,6 +148,7 @@ export class ShiftAssignmentsService {
       where: { employeeId: { in: dto.employeeIds }, date: { in: dto.dates.map(parseCalendarDate) } }
     });
     await this.writeAudit("shift_assignment.clear", "ShiftAssignment", "bulk", null, { employeeIds: dto.employeeIds, dates: dto.dates }, user.account?.employeeId ?? undefined);
+    await this.recalc.scheduleChanged(dto.employeeIds, dto.dates, user.account?.employeeId ?? undefined);
     return { cleared: result.count };
   }
 
@@ -307,6 +311,8 @@ export class ShiftAssignmentsService {
       overwriteExisting: overwrite,
       ...summary
     }, actorId);
+    const written = [...created, ...replaced];
+    await this.recalc.scheduleChanged([...new Set(written.map((cell) => cell.employeeId))], [...new Set(written.map((cell) => cell.date))], actorId);
 
     return { ...summary, saved: true };
   }
@@ -339,6 +345,7 @@ export class ShiftAssignmentsService {
 
     await this.prisma.shiftAssignment.delete({ where: { id } });
     await this.writeAudit("shift_assignment.delete", "ShiftAssignment", id, { ...assignment, date: dateKey(assignment.date) }, null, user.account?.employeeId ?? undefined);
+    await this.recalc.scheduleChanged([assignment.employeeId], [dateKey(assignment.date)], user.account?.employeeId ?? undefined);
     return { id, deleted: true };
   }
 
@@ -360,6 +367,10 @@ export class ShiftAssignmentsService {
       select: { id: true, name: true, defaultShiftId: true }
     });
     await this.writeAudit("department.default_shift", "Department", departmentId, department, updated, user.account?.employeeId ?? undefined);
+    if (department.defaultShiftId !== shiftId) {
+      const people = await this.prisma.employee.findMany({ where: { departmentId }, select: { id: true } });
+      await this.recalc.rulesChanged("department_default", user.account?.employeeId ?? undefined, people.map((person) => person.id));
+    }
     return updated;
   }
 
