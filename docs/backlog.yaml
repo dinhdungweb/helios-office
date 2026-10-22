@@ -692,7 +692,8 @@ modules:
         note: Nghỉ lễ / ngày làm bù / công ty nghỉ, có hoặc không hưởng công, mỗi ngày một dòng. Seed ngày lễ dương lịch cố định 2026-2027, nút thêm cho năm khác; lễ âm lịch HR nhập theo lịch Chính phủ. Chờ thử trình duyệt
       - id: AT-11
         title: Engine tính công (muộn, sớm, thiếu công, công thực tế theo ca)
-        status: todo
+        status: doing
+        note: Engine thuần calculateDay + assignPunches + giờ theo múi giờ công ty (modules/attendance/engine), 26 test. Còn lưu kết quả (AttendanceDay) và nối đồng bộ máy chấm công (task 8 của plan)
         depends: [AT-05, AT-07, AT-10]
       - id: AT-12
         title: Tính lại công cho khoảng ngày
