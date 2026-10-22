@@ -3,11 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
-import { timeToMinute, type AttendancePolicy } from "@/lib/shift-format";
+import { timeToMinute, type AttendancePolicy, type BulkAssignInput, type BulkAssignSummary } from "@/lib/shift-format";
 
 export type ShiftActionResult = { ok: true } | { ok: false; error: string };
+export type ShiftDataResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
 async function send(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body?: unknown): Promise<ShiftActionResult> {
+  const result = await request(path, method, body);
+  return result.ok ? { ok: true } : result;
+}
+
+async function request<T = unknown>(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body?: unknown): Promise<ShiftDataResult<T>> {
   const accessToken = await getSessionAccessToken();
   if (!accessToken) return { ok: false, error: "Phiên đăng nhập đã hết hạn. Đăng nhập lại để tiếp tục." };
 
@@ -28,7 +34,7 @@ async function send(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", b
 
     revalidatePath("/admin/settings/shifts");
     revalidatePath("/admin/settings/attendance-policy");
-    return { ok: true };
+    return { ok: true, data: (await response.json().catch(() => null)) as T };
   } catch {
     return { ok: false, error: "Không kết nối được máy chủ. Vui lòng thử lại sau." };
   }
@@ -154,5 +160,20 @@ export async function clearAssignmentsAction(employeeIds: string[], dates: strin
 export async function setDepartmentDefaultShiftAction(departmentId: string, shiftId: string | null) {
   const result = await send(`/departments/${encodeURIComponent(departmentId)}/default-shift`, "PUT", { shiftId });
   if (result.ok) revalidatePath("/hcns/shift-schedule");
+  return result;
+}
+
+// AT-08: patterns (one form for create and edit; an empty patternId means create) and bulk scheduling.
+export async function saveShiftPatternAction(patternId: string, payload: { name: string; days: Array<string | null>; description: string | null }) {
+  return patternId ? send(`/shift-patterns/${encodeURIComponent(patternId)}`, "PATCH", payload) : send("/shift-patterns", "POST", payload);
+}
+
+export async function deleteShiftPatternAction(patternId: string) {
+  return send(`/shift-patterns/${encodeURIComponent(patternId)}`, "DELETE");
+}
+
+export async function bulkAssignAction(input: BulkAssignInput, preview: boolean) {
+  const result = await request<BulkAssignSummary>("/shift-assignments/bulk", "POST", { ...input, preview });
+  if (result.ok && !preview) revalidatePath("/hcns/shift-schedule");
   return result;
 }

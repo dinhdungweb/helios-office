@@ -679,8 +679,10 @@ modules:
         depends: [AT-05]
       - id: AT-08
         title: Xếp ca hàng loạt / theo lịch lặp
-        api: ["POST /shift-assignments/bulk"]
-        status: todo
+        api: ["POST /shift-assignments/bulk", "GET /shift-patterns", "POST /shift-patterns", "PATCH /shift-patterns/:id", "DELETE /shift-patterns/:id"]
+        ui: /hcns/shift-schedule
+        status: done
+        note: Một ca vào các thứ đã chọn hoặc mẫu lặp N ngày (tạo ở Cài đặt ca) cho người / cả phòng ban trong phạm vi, tối đa 366 ngày; bắt buộc xem trước số ô mới / ghi đè / không đổi; tuỳ chọn giữ ô đã xếp riêng. Lịch ca xem theo tháng như Phân ca 1Office. Thử trình duyệt 2026-10-22 (mẫu 14 ngày, xem trước, lưu, lưới tháng đúng mẫu, dọn)
         depends: [AT-07]
       - id: AT-09
         title: Lịch ca của tôi

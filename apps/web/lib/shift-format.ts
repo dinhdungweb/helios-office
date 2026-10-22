@@ -124,3 +124,44 @@ export function mondayOf(date: string) {
   const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
   return addCalendarDays(date, weekday === 0 ? -6 : 1 - weekday);
 }
+
+// AT-08 repeating patterns and bulk scheduling.
+export type ShiftPatternRecord = {
+  id: string;
+  name: string;
+  // Shift id per day of the cycle; null = day off.
+  days: Array<string | null>;
+  description: string | null;
+  status: "active" | "archived";
+};
+
+export type ShiftPatternData = { source: "api"; patterns: ShiftPatternRecord[] } | { source: "unavailable"; error: string };
+
+export type BulkAssignInput = {
+  employeeIds: string[];
+  departmentIds: string[];
+  from: string;
+  to: string;
+  mode: "shift" | "pattern";
+  shiftId?: string | null;
+  weekdays?: number[];
+  patternId?: string;
+  overwrite: boolean;
+};
+
+export type BulkAssignSummary = {
+  cells: number;
+  create: number;
+  overwrite: number;
+  unchanged: number;
+  employees: number;
+  written: number;
+  saved: boolean;
+};
+
+// First and last day of the month holding `date`.
+export function monthRange(date: string) {
+  const from = `${date.slice(0, 7)}-01`;
+  const nextMonth = `${addCalendarDays(from, 31).slice(0, 7)}-01`;
+  return { from, to: addCalendarDays(nextMonth, -1) };
+}

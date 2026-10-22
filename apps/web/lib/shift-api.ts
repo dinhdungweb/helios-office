@@ -1,6 +1,16 @@
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
-import type { AttendancePolicy, HolidayData, HolidayRecord, ScheduleData, ScheduleGrid, ShiftRecord, ShiftSettingsData } from "@/lib/shift-format";
+import type {
+  AttendancePolicy,
+  HolidayData,
+  HolidayRecord,
+  ScheduleData,
+  ScheduleGrid,
+  ShiftPatternData,
+  ShiftPatternRecord,
+  ShiftRecord,
+  ShiftSettingsData
+} from "@/lib/shift-format";
 
 // Server-side loading of the shift catalogue and attendance policy (AT-05, AT-06). Client
 // components import types and HH:MM helpers from shift-format.ts instead.
@@ -49,5 +59,13 @@ export async function getScheduleData(from: string, to: string): Promise<Schedul
         ? "Tài khoản của bạn chưa có quyền xem lịch ca. Liên hệ HR hoặc quản trị viên nếu bạn cần xếp ca cho phòng ban."
         : "Không tải được lịch ca. Thử tải lại trang hoặc liên hệ quản trị viên."
     };
+  }
+}
+
+export async function getShiftPatterns(): Promise<ShiftPatternData> {
+  try {
+    return { source: "api", patterns: await requestJson<ShiftPatternRecord[]>("/shift-patterns") };
+  } catch (error) {
+    return { source: "unavailable", error: error instanceof Error ? error.message : "Không tải được mẫu xếp ca." };
   }
 }

@@ -5,7 +5,7 @@ import type { AuthenticatedUser } from "../auth/auth.types";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { PermissionGuard } from "../auth/permission.guard";
 import { RequireAnyPermission, RequirePermissions } from "../auth/permissions.decorator";
-import { AssignShiftsDto, ClearAssignmentsDto, ScheduleQueryDto } from "./shift-assignments.dto";
+import { AssignShiftsDto, BulkAssignDto, ClearAssignmentsDto, ScheduleQueryDto } from "./shift-assignments.dto";
 import { ShiftAssignmentsService } from "./shift-assignments.service";
 import { ATTENDANCE_READ_PERMISSIONS, ATTENDANCE_SETUP_PERMISSION } from "./shifts.controller";
 
@@ -37,6 +37,14 @@ export class ShiftAssignmentsController {
   @ApiOkResponse({ description: "Remove assignments so those dates fall back to the department/company default." })
   clear(@CurrentUser() user: AuthenticatedUser, @Body() body: ClearAssignmentsDto) {
     return this.assignments.clear(user, body);
+  }
+
+  @Post("bulk")
+  @HttpCode(200)
+  @RequirePermissions(ATTENDANCE_SETUP_PERMISSION)
+  @ApiOkResponse({ description: "Bulk scheduling (AT-08): one shift on chosen weekdays or a repeating pattern over a date range; preview counts cells first." })
+  bulk(@CurrentUser() user: AuthenticatedUser, @Body() body: BulkAssignDto) {
+    return this.assignments.bulk(user, body);
   }
 
   @Delete(":id")

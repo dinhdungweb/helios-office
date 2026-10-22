@@ -3,8 +3,9 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { StateBlock } from "@/components/ui/primitives";
+import { ShiftBulkDialog } from "@/components/hcns/shift-bulk-dialog";
 import { assignShiftsAction, clearAssignmentsAction, setDepartmentDefaultShiftAction, type ShiftActionResult } from "@/lib/shift-actions";
-import { addCalendarDays, minuteToTime, type ScheduleCell, type ScheduleData, type ScheduleShift } from "@/lib/shift-format";
+import { addCalendarDays, minuteToTime, type ScheduleCell, type ScheduleData, type ScheduleShift, type ShiftPatternData } from "@/lib/shift-format";
 
 const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 const SOURCE_LABELS: Record<ScheduleCell["source"], string> = {
@@ -21,9 +22,10 @@ function dayLabel(date: string) {
   return { weekday: WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()], short: `${day}/${month}` };
 }
 
-function ShiftBadge({ cell, shift }: { cell: ScheduleCell; shift: ScheduleShift | undefined }) {
+function ShiftBadge({ cell, shift, compact }: { cell: ScheduleCell; shift: ScheduleShift | undefined; compact: boolean }) {
   if (!cell.shiftId || !shift) {
-    return <span className={cell.source === "assignment" ? "schedule-off is-assigned" : "schedule-off"}>Nghỉ</span>;
+    // The month view writes a day without a shift as "N", like 1Office.
+    return <span className={cell.source === "assignment" ? "schedule-off is-assigned" : "schedule-off"} title={SOURCE_LABELS[cell.source]}>{compact ? "N" : "Nghỉ"}</span>;
   }
   return (
     <span
@@ -36,12 +38,15 @@ function ShiftBadge({ cell, shift }: { cell: ScheduleCell; shift: ScheduleShift 
   );
 }
 
-// AT-07: weekly shift schedule for the people in the viewer's scope. Assigned cells are solid;
-// cells that come from a department or company default are faded.
-export function ShiftScheduleBoard({ data, departmentId }: { data: ScheduleData; departmentId: string }) {
+type BoardProps = { data: ScheduleData; departmentId: string; patterns: ShiftPatternData; view: "week" | "month" };
+
+// AT-07: shift schedule by week or month for the people in the viewer's scope. Assigned cells are
+// solid; cells that come from a department or company default are faded. AT-08: bulk scheduling.
+export function ShiftScheduleBoard({ data, departmentId, patterns, view }: BoardProps) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [targetShift, setTargetShift] = useState("");
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -65,7 +70,11 @@ export function ShiftScheduleBoard({ data, departmentId }: { data: ScheduleData;
   const holidays = new Map(grid.holidays.map((holiday) => [holiday.date, holiday]));
   const employees = departmentId ? grid.employees.filter((employee) => employee.department.id === departmentId) : grid.employees;
   const dates = employees[0]?.days.map((cell) => cell.date) ?? [];
-  const weekHref = (from: string) => `?from=${from}${departmentId ? `&department=${departmentId}` : ""}`;
+  const href = (from: string, target: "week" | "month" = view) =>
+    `?from=${from}${target === "month" ? "&view=month" : ""}${departmentId ? `&department=${departmentId}` : ""}`;
+  const previous = view === "month" ? `${addCalendarDays(grid.from, -1).slice(0, 7)}-01` : addCalendarDays(grid.from, -7);
+  const next = view === "month" ? addCalendarDays(grid.to, 1) : addCalendarDays(grid.from, 7);
+  const compact = view === "month";
 
   const toggle = (keys: string[]) =>
     setSelected((current) => {
@@ -117,20 +126,30 @@ export function ShiftScheduleBoard({ data, departmentId }: { data: ScheduleData;
     <section className="shift-schedule" aria-labelledby="shift-schedule-title">
       <header className="shift-schedule-header">
         <h1 id="shift-schedule-title">Lịch ca</h1>
-        <nav className="shift-schedule-week" aria-label="Chọn tuần">
-          <a href={weekHref(addCalendarDays(grid.from, -7))}>‹ Tuần trước</a>
-          <strong>{dayLabel(grid.from).short} – {dayLabel(grid.to).short}/{grid.to.slice(0, 4)}</strong>
-          <a href={weekHref(addCalendarDays(grid.from, 7))}>Tuần sau ›</a>
+        <nav className="shift-schedule-view" aria-label="Kiểu xem">
+          <a aria-current={view === "week" ? "page" : undefined} href={href(grid.from, "week")}>Tuần</a>
+          <a aria-current={view === "month" ? "page" : undefined} href={href(grid.from, "month")}>Tháng</a>
+        </nav>
+        <nav className="shift-schedule-week" aria-label={view === "month" ? "Chọn tháng" : "Chọn tuần"}>
+          <a href={href(previous)}>‹ {view === "month" ? "Tháng trước" : "Tuần trước"}</a>
+          <strong>
+            {view === "month" ? `Tháng ${Number(grid.from.slice(5, 7))}/${grid.from.slice(0, 4)}` : `${dayLabel(grid.from).short} – ${dayLabel(grid.to).short}/${grid.to.slice(0, 4)}`}
+          </strong>
+          <a href={href(next)}>{view === "month" ? "Tháng sau" : "Tuần sau"} ›</a>
         </nav>
         <label className="shift-schedule-filter">
           <span>Phòng ban</span>
-          <select value={departmentId} onChange={(event) => router.push(`?from=${grid.from}${event.target.value ? `&department=${event.target.value}` : ""}`)}>
+          <select
+            value={departmentId}
+            onChange={(event) => router.push(`?from=${grid.from}${view === "month" ? "&view=month" : ""}${event.target.value ? `&department=${event.target.value}` : ""}`)}
+          >
             <option value="">Tất cả ({grid.employees.length} người)</option>
             {departments.map((department) => (
               <option key={department.id} value={department.id}>{department.name}</option>
             ))}
           </select>
         </label>
+        <button className="primary-button" type="button" onClick={() => setBulkOpen(true)}>Xếp ca hàng loạt</button>
       </header>
 
       {currentDepartment ? (
@@ -169,7 +188,7 @@ export function ShiftScheduleBoard({ data, departmentId }: { data: ScheduleData;
       </div>
 
       <div className="shift-schedule-table-shell" tabIndex={0} aria-label="Lịch ca có thể cuộn ngang">
-        <table className="shift-schedule-table">
+        <table className={compact ? "shift-schedule-table is-month" : "shift-schedule-table"}>
           <thead>
             <tr>
               <th scope="col">Nhân sự</th>
@@ -177,9 +196,17 @@ export function ShiftScheduleBoard({ data, departmentId }: { data: ScheduleData;
                 const label = dayLabel(date);
                 const holiday = holidays.get(date);
                 return (
-                  <th key={date} scope="col" className={holiday && holiday.type !== "compensatory_workday" ? "is-holiday" : undefined}>
+                  <th
+                    key={date}
+                    scope="col"
+                    className={
+                      [holiday && holiday.type !== "compensatory_workday" ? "is-holiday" : "", label.weekday === "T7" || label.weekday === "CN" ? "is-weekend" : ""]
+                        .filter(Boolean)
+                        .join(" ") || undefined
+                    }
+                  >
                     <button type="button" onClick={() => toggle(employees.map((employee) => cellKey(employee.id, date)))} title="Chọn cả cột">
-                      <strong>{label.weekday}</strong> {label.short}
+                      <strong>{label.weekday}</strong> {compact ? label.short.slice(0, 2) : label.short}
                     </button>
                     {holiday ? <small>{holiday.name}</small> : null}
                   </th>
@@ -201,7 +228,7 @@ export function ShiftScheduleBoard({ data, departmentId }: { data: ScheduleData;
                   return (
                     <td key={cell.date} className={selected.has(key) ? "is-selected" : undefined}>
                       <button aria-pressed={selected.has(key)} type="button" onClick={() => toggle([key])} aria-label={`${employee.fullName} ${cell.date}`}>
-                        <ShiftBadge cell={cell} shift={cell.shiftId ? shiftsById.get(cell.shiftId) : undefined} />
+                        <ShiftBadge cell={cell} compact={compact} shift={cell.shiftId ? shiftsById.get(cell.shiftId) : undefined} />
                       </button>
                     </td>
                   );
@@ -231,6 +258,19 @@ export function ShiftScheduleBoard({ data, departmentId }: { data: ScheduleData;
           <button className="secondary-button" disabled={isPending} type="button" onClick={() => applySelection(true)}>Về mặc định</button>
           <button className="secondary-button" disabled={isPending} type="button" onClick={() => setSelected(new Set())}>Bỏ chọn</button>
         </div>
+      ) : null}
+
+      {bulkOpen ? (
+        <ShiftBulkDialog
+          grid={grid}
+          patterns={patterns.source === "api" ? patterns.patterns : []}
+          preselectedEmployeeIds={[...new Set([...selected].map((key) => key.split("|")[0]))]}
+          onClose={() => setBulkOpen(false)}
+          onDone={(text) => {
+            setSelected(new Set());
+            setMessage({ text, error: false });
+          }}
+        />
       ) : null}
     </section>
   );

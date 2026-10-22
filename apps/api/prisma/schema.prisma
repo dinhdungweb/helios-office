@@ -475,6 +475,18 @@ model Shift {
   attendanceDays           AttendanceDay[]
 }
 
+// A repeating schedule for bulk scheduling (AT-08), e.g. two weeks of day and night shifts.
+// days[i] is the shift id on day i of the cycle, or null for a day off.
+model ShiftPattern {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  days        Json
+  description String?
+  status      JobCatalogStatus @default(active)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
 // A person's shift on one date (AT-07), overriding the department and company defaults. A row
 // without shiftId means "day off" that date. Dates are calendar dates in the company time zone.
 model ShiftAssignment {

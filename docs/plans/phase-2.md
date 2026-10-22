@@ -35,7 +35,7 @@ Chia 7 cụm, làm theo thứ tự. Đóng cụm nào chạy `npm run typecheck 
 | # | Item | Việc | Kiểm tra | Trạng thái |
 |---|---|---|---|---|
 | 4 | AT-07 | `ShiftAssignment` (duy nhất `employeeId + date`), API xếp/xoá; `ShiftResolver`: lịch riêng → ca phòng ban → ca công ty → nghỉ; trang lịch ca theo tuần (người × ngày), lọc theo phòng ban, áp phạm vi dữ liệu | Unit theo bảng cho resolver. Từ chối xếp vào kỳ đã chốt | ✅ 10 unit resolver + 7 unit service. Trang Lịch ca trong HCNS; thật: làm bù thứ 7 hiện ca, xếp / về mặc định, ca mặc định phòng ban. Chặn kỳ đã chốt làm ở task 13 |
-| 5 | AT-08 | `POST /shift-assignments/bulk`: chọn người/phòng ban × khoảng ngày × ca hoặc mẫu lặp (`ShiftPattern`); xem trước số dòng tạo/ghi đè trước khi lưu | Unit: sinh lịch lặp 2 tuần trong 3 tháng. Trình duyệt | |
+| 5 | AT-08 | `POST /shift-assignments/bulk`: chọn người/phòng ban × khoảng ngày × ca hoặc mẫu lặp (`ShiftPattern`); xem trước số dòng tạo/ghi đè trước khi lưu | Unit: sinh lịch lặp 2 tuần trong 3 tháng. Trình duyệt | ✅ `ShiftPattern` + `POST /shift-assignments/bulk` (xem trước / ghi đè hoặc giữ), 14 unit mới. Trình duyệt: mẫu 14 ngày → lưới tháng đúng mẫu |
 | 6 | AT-09 | `GET /shift-assignments/me` + lịch ca của tôi (tháng) trên `/user/attendance` | Trình duyệt với `khanglm` | |
 
 ### 2c. Engine tính công
@@ -81,7 +81,7 @@ Chia 7 cụm, làm theo thứ tự. Đóng cụm nào chạy `npm run typecheck 
 
 | # | Item | Việc | Kiểm tra | Trạng thái |
 |---|---|---|---|---|
-| 25 | AT-07 | Lịch ca xem theo tháng như Phân ca của 1Office (ô hiện mã ca, `N` khi không có ca), giữ xem theo tuần | Trình duyệt | |
+| 25 | AT-07 | Lịch ca xem theo tháng như Phân ca của 1Office (ô hiện mã ca, `N` khi không có ca), giữ xem theo tuần | Trình duyệt | ✅ Nút Tuần / Tháng, cột cuối tuần tô xám, `N` khi không có ca |
 | 26 | AT-25 | Công chuẩn theo nhóm phòng ban × vị trí: tự tính (ngày trong kỳ trừ chủ nhật) hoặc số cố định; cột Công chuẩn ở bảng công | Unit: chọn đúng nhóm, tháng 2 và tháng 31 ngày | |
 | 27 | AT-28 | Cài đặt kiểu 1Office: giới hạn sửa phân ca sau N ngày và tạo trước tối đa N ngày, muộn/sớm theo giây, tách giờ qua ngày, làm thêm qua ngày tính ngày trước, số ngày liên tiếp không cần chốt | Unit engine cho từng cài đặt | |
 | 28 | AT-29 | Tự động nhận ca: ngày chưa xếp ca thì chọn ca khớp log nhất trong các ca áp dụng cho phòng ban / vị trí | Unit: hai ca sáng/chiều, log 13:05 → ca chiều | |

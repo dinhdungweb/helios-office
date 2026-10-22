@@ -4,15 +4,25 @@ import { AuditService } from "../../common/audit/audit.service";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthenticatedUser } from "../auth/auth.types";
+import { localDate } from "../attendance/engine/zoned-time";
 import { parseCalendarDate } from "./holidays.service";
+import { planBulkCells, previewBulk, type BulkCell, type BulkRule } from "./shift-bulk";
+import { patternDays } from "./shift-patterns.service";
 import { datesBetween, resolveDayShift } from "./shift-resolver";
-import type { AssignShiftsDto, ClearAssignmentsDto, ScheduleQueryDto } from "./shift-assignments.dto";
+import { MAX_BULK_DAYS, type AssignShiftsDto, type BulkAssignDto, type ClearAssignmentsDto, type ScheduleQueryDto } from "./shift-assignments.dto";
 import { ATTENDANCE_READ_PERMISSIONS, ATTENDANCE_SETUP_PERMISSION } from "./shifts.controller";
 
 const MAX_RANGE_DAYS = 62;
 const MAX_CELLS = 5000;
+const MAX_BULK_CELLS = 20000;
 
 const dateKey = (date: Date) => date.toISOString().slice(0, 10);
+
+function chunk<T>(items: T[], size: number) {
+  const groups: T[][] = [];
+  for (let index = 0; index < items.length; index += size) groups.push(items.slice(index, index + size));
+  return groups;
+}
 
 // Shift scheduling (AT-07): the week/month grid and per-person, per-date assignments. Everyone you
 // schedule must be in your data scope for the attendance setup permission; people outside it are
@@ -135,6 +145,118 @@ export class ShiftAssignmentsService {
     });
     await this.writeAudit("shift_assignment.clear", "ShiftAssignment", "bulk", null, { employeeIds: dto.employeeIds, dates: dto.dates }, user.account?.employeeId ?? undefined);
     return { cleared: result.count };
+  }
+
+  // AT-08: one shift on chosen weekdays, or a repeating pattern, over a date range for people and
+  // whole departments in scope. `preview` only counts; `overwrite: false` keeps existing assignments.
+  async bulk(user: AuthenticatedUser, dto: BulkAssignDto) {
+    parseCalendarDate(dto.from);
+    parseCalendarDate(dto.to);
+    if (dto.to < dto.from) throw new BadRequestException("Ngày kết thúc phải sau ngày bắt đầu.");
+    if (datesBetween(dto.from, dto.to).length > MAX_BULK_DAYS) throw new BadRequestException(`Xếp tối đa ${MAX_BULK_DAYS} ngày một lần.`);
+    if (!dto.employeeIds?.length && !dto.departmentIds?.length) throw new BadRequestException("Chọn ít nhất một nhân sự hoặc phòng ban.");
+    if (dto.employeeIds?.length) await this.assertInScope(user, dto.employeeIds);
+
+    const rule = await this.bulkRule(dto);
+    const scope = await this.dataScope.resolve(user, [ATTENDANCE_SETUP_PERMISSION]);
+    const from = parseCalendarDate(dto.from);
+    const to = parseCalendarDate(dto.to);
+    const [policy, employees] = await Promise.all([
+      this.prisma.attendancePolicy.findUnique({ where: { id: "default" }, select: { timezone: true } }),
+      this.prisma.employee.findMany({
+        where: {
+          AND: [
+            this.dataScope.employeeWhere(scope),
+            { OR: [{ id: { in: dto.employeeIds ?? [] } }, { departmentId: { in: dto.departmentIds ?? [] } }] },
+            { status: { not: EmployeeStatus.resigned } },
+            { startDate: { lte: to } },
+            { OR: [{ endDate: null }, { endDate: { gte: from } }] }
+          ]
+        },
+        select: { id: true, startDate: true, endDate: true }
+      })
+    ]);
+    const timeZone = policy?.timezone ?? "Asia/Ho_Chi_Minh";
+
+    const cells = planBulkCells(
+      employees.map((employee) => ({
+        id: employee.id,
+        startDate: localDate(employee.startDate.getTime(), timeZone),
+        endDate: employee.endDate ? localDate(employee.endDate.getTime(), timeZone) : null
+      })),
+      dto.from,
+      dto.to,
+      rule
+    );
+    if (cells.length > MAX_BULK_CELLS) {
+      throw new BadRequestException(`Mỗi lần xếp tối đa ${MAX_BULK_CELLS} ô (người × ngày), lần này là ${cells.length}. Hãy chia nhỏ khoảng ngày hoặc nhóm người.`);
+    }
+
+    const existingRows = await this.prisma.shiftAssignment.findMany({
+      where: { employeeId: { in: employees.map((employee) => employee.id) }, date: { gte: from, lte: to } },
+      select: { employeeId: true, date: true, shiftId: true }
+    });
+    const existing = new Map(existingRows.map((row) => [`${row.employeeId}:${dateKey(row.date)}`, row.shiftId]));
+    const counts = previewBulk(cells, existing);
+    const overwrite = dto.overwrite ?? true;
+    const summary = { ...counts, employees: employees.length, written: counts.create + (overwrite ? counts.overwrite : 0) };
+    if (dto.preview) return { ...summary, saved: false };
+
+    const key = (cell: BulkCell) => `${cell.employeeId}:${cell.date}`;
+    const replaced = overwrite ? cells.filter((cell) => existing.has(key(cell)) && existing.get(key(cell)) !== cell.shiftId) : [];
+    const created = cells.filter((cell) => !existing.has(key(cell)));
+    const actorId = user.account?.employeeId ?? undefined;
+    const rows = [...created, ...replaced].map((cell) => ({
+      employeeId: cell.employeeId,
+      date: parseCalendarDate(cell.date),
+      shiftId: cell.shiftId,
+      note: dto.note ?? null,
+      createdById: actorId
+    }));
+
+    const byEmployee = new Map<string, Date[]>();
+    replaced.forEach((cell) => byEmployee.set(cell.employeeId, [...(byEmployee.get(cell.employeeId) ?? []), parseCalendarDate(cell.date)]));
+    const deletes = [...byEmployee.entries()].map(([employeeId, dates]) => ({ employeeId, date: { in: dates } }));
+
+    await this.prisma.$transaction([
+      ...chunk(deletes, 200).map((group) => this.prisma.shiftAssignment.deleteMany({ where: { OR: group } })),
+      ...chunk(rows, 5000).map((group) => this.prisma.shiftAssignment.createMany({ data: group, skipDuplicates: true }))
+    ]);
+    await this.writeAudit("shift_assignment.bulk", "ShiftAssignment", "bulk", null, {
+      from: dto.from,
+      to: dto.to,
+      mode: dto.mode,
+      shiftId: dto.shiftId,
+      patternId: dto.patternId,
+      weekdays: dto.weekdays,
+      employeeIds: dto.employeeIds,
+      departmentIds: dto.departmentIds,
+      overwriteExisting: overwrite,
+      ...summary
+    }, actorId);
+
+    return { ...summary, saved: true };
+  }
+
+  private async bulkRule(dto: BulkAssignDto): Promise<BulkRule> {
+    if (dto.mode === "shift") {
+      if (dto.shiftId === undefined) throw new BadRequestException("Chọn ca hoặc ngày nghỉ.");
+      if (dto.shiftId) await this.assertActiveShifts([dto.shiftId]);
+      return { kind: "shift", shiftId: dto.shiftId, weekdays: dto.weekdays ?? [] };
+    }
+
+    const pattern = await this.prisma.shiftPattern.findUnique({ where: { id: dto.patternId! } });
+    if (!pattern || pattern.status !== JobCatalogStatus.active) throw new NotFoundException("Không tìm thấy mẫu xếp ca.");
+    const days = patternDays(pattern);
+    await this.assertActiveShifts(days.filter((day): day is string => day !== null));
+    return { kind: "pattern", days, anchor: dto.from };
+  }
+
+  private async assertActiveShifts(ids: string[]) {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return;
+    const active = await this.prisma.shift.count({ where: { id: { in: unique }, status: JobCatalogStatus.active } });
+    if (active !== unique.length) throw new BadRequestException("Chỉ xếp được ca đang hoạt động.");
   }
 
   async remove(user: AuthenticatedUser, id: string) {

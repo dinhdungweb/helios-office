@@ -25082,3 +25082,124 @@ small {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
 }
+
+/* AT-08 / Phase 2 task 25: month view, repeating patterns, bulk scheduling */
+.shift-schedule-view {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.shift-schedule-view a {
+  padding: 4px 12px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.shift-schedule-view a[aria-current="page"] {
+  color: #ffffff;
+  background: var(--color-primary);
+}
+
+.shift-schedule-header .primary-button {
+  margin-left: auto;
+}
+
+.shift-schedule-table thead th.is-weekend {
+  background: var(--color-surface-muted);
+}
+
+.shift-schedule-table.is-month td,
+.shift-schedule-table.is-month thead th:not(:first-child) {
+  min-width: 0;
+  padding: 2px;
+  font-size: 12px;
+}
+
+.shift-schedule-table.is-month .schedule-shift {
+  min-width: 0;
+  padding: 2px 4px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.shift-pattern-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.shift-pattern-preview {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.shift-bulk-group {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.shift-bulk-group legend {
+  padding: 0 4px;
+  font-weight: var(--font-weight-strong);
+}
+
+.shift-bulk-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: var(--font-size-sm);
+}
+
+.shift-bulk-options label,
+.shift-bulk-overwrite,
+.shift-bulk-people label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shift-bulk-options small,
+.shift-bulk-people small {
+  color: var(--color-text-secondary);
+}
+
+.shift-bulk-group details > input {
+  width: 100%;
+  margin: 8px 0;
+}
+
+.shift-bulk-people {
+  display: grid;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: var(--font-size-sm);
+}
+
+.shift-bulk-preview {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+@media (max-width: 640px) {
+  .shift-pattern-days {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .shift-schedule-header .primary-button {
+    margin-left: 0;
+  }
+}
