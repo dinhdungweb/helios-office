@@ -722,12 +722,15 @@ modules:
       - id: AT-15
         title: HR sửa công thủ công (có lịch sử)
         api: ["GET /attendance/:id", "PATCH /attendance/:id", "DELETE /attendance/:id/adjustment"]
-        status: doing
-        note: API xong (bắt buộc lý do, gộp với lần sửa trước, tính lại ngay, giữ qua các lần tính lại, bỏ sửa tay, lịch sử kèm tên người sửa). Giao diện làm cùng bảng chấm công tháng AT-16; chặn kỳ đã chốt làm cùng AT-17
+        ui: /user/attendance/timesheet
+        status: done
+        note: Bấm ô ở Công → Bảng chấm công mở chi tiết ngày (log gốc, kết quả, lịch sử sửa có tên người sửa và lý do); sửa giờ vào/ra (kể cả ra hôm sau), số công, trạng thái, bắt buộc lý do; bỏ sửa tay. Sửa được giữ qua mọi lần tính lại. Thử trình duyệt 2026-10-22 (muộn 12 phút → sửa vào 08:00 → đúng giờ 1 công, ô có S; bỏ sửa tay → muộn lại). Chặn kỳ đã chốt làm cùng AT-17
       - id: AT-16
         title: Bảng công tháng toàn công ty
         api: ["GET /attendance/timesheets"]
-        status: todo
+        ui: /user/attendance/timesheet
+        status: done
+        note: Công → Bảng chấm công như 1Office — người × ngày theo phạm vi dữ liệu, ô hiện giờ hoặc công kèm V (vi phạm) / S (sửa tay), N / L / ✕, cuối tuần / lễ / hôm nay tô màu; cột tổng đi muộn, về sớm, quên chấm, vắng, công ca, công lễ, giờ đêm, giờ ngoài ca, công chuẩn, tổng giờ, tổng công; lọc phòng ban, tìm kiếm, phân trang. Thử trình duyệt 2026-10-22; người không có quyền không thấy tab
         depends: [AT-11]
       - id: AT-17
         title: Chốt / mở chốt bảng công tháng

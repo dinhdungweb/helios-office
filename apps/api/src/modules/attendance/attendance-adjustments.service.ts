@@ -37,11 +37,13 @@ export class AttendanceAdjustmentsService {
       }),
       this.punchesFor(day)
     ]);
-    const people = await this.prisma.employee.findMany({
-      where: { id: { in: [...new Set(adjustments.flatMap((item) => [item.createdById, item.revokedById]).filter((value): value is string => Boolean(value)))] } },
-      select: { id: true, fullName: true }
-    });
-    const names = new Map(people.map((person) => [person.id, person.fullName]));
+    // Who changed it: an employee, or an account without an employee profile (e.g. a system admin).
+    const actorIds = [...new Set(adjustments.flatMap((item) => [item.createdById, item.revokedById]).filter((value): value is string => Boolean(value)))];
+    const [people, accounts] = await Promise.all([
+      this.prisma.employee.findMany({ where: { id: { in: actorIds } }, select: { id: true, fullName: true } }),
+      this.prisma.userAccount.findMany({ where: { id: { in: actorIds } }, select: { id: true, displayName: true } })
+    ]);
+    const names = new Map([...accounts.map((account) => [account.id, account.displayName] as const), ...people.map((person) => [person.id, person.fullName] as const)]);
 
     const { policySnapshot, workUnits, paidLeaveUnits, workDate, ...rest } = day;
     return {
@@ -91,6 +93,7 @@ export class AttendanceAdjustmentsService {
     if (punchesSet && checkIn && checkOut && checkOut <= checkIn) throw new BadRequestException("Giờ ra phải sau giờ vào.");
 
     const actorId = user.account?.employeeId ?? undefined;
+    const changedBy = actorId ?? user.account?.id ?? null;
     const before = this.snapshot(day);
     const [adjustment] = await this.prisma.$transaction([
       this.prisma.attendanceAdjustment.create({
@@ -105,10 +108,10 @@ export class AttendanceAdjustmentsService {
           status: dto.status !== undefined ? dto.status : active?.status ?? null,
           reason: dto.reason.trim(),
           before,
-          createdById: actorId ?? null
+          createdById: changedBy
         }
       }),
-      ...(active ? [this.prisma.attendanceAdjustment.update({ where: { id: active.id }, data: { revokedAt: new Date(), revokedById: actorId ?? null } })] : [])
+      ...(active ? [this.prisma.attendanceAdjustment.update({ where: { id: active.id }, data: { revokedAt: new Date(), revokedById: changedBy } })] : [])
     ]);
 
     await this.calculation.recalculate({ from: isoDate(day.workDate), to: isoDate(day.workDate), employeeIds: [day.employeeId], source: "manual" });
@@ -122,7 +125,7 @@ export class AttendanceAdjustmentsService {
     const actorId = user.account?.employeeId ?? undefined;
     const result = await this.prisma.attendanceAdjustment.updateMany({
       where: { employeeId: day.employeeId, workDate: day.workDate, revokedAt: null },
-      data: { revokedAt: new Date(), revokedById: actorId ?? null }
+      data: { revokedAt: new Date(), revokedById: actorId ?? user.account?.id ?? null }
     });
     if (result.count === 0) throw new BadRequestException("Ngày này không có sửa tay để bỏ.");
 

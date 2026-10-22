@@ -42,6 +42,7 @@ function setup(options: { day?: unknown; active?: unknown; revoked?: number } = 
     },
     attendanceRawLog: { findMany: jest.fn().mockResolvedValue([]) },
     employee: { findMany: jest.fn().mockResolvedValue([]) },
+    userAccount: { findMany: jest.fn().mockResolvedValue([]) },
     auditLog: { create: jest.fn() },
     $transaction: jest.fn(async (operations: unknown[]) => operations)
   };

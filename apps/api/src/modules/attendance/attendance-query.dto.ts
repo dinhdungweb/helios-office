@@ -46,3 +46,16 @@ export class AttendanceListQueryDto extends ListQueryDto {
   @IsEnum(AttendanceDayStatus)
   status?: AttendanceDayStatus;
 }
+
+// GET /attendance/timesheets: ?month=YYYY-MM (default the current month), departmentId, q, page, limit.
+export class TimesheetQueryDto extends ListQueryDto {
+  @ApiPropertyOptional({ example: "2026-10" })
+  @IsOptional()
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, { message: "Tháng phải có dạng YYYY-MM." })
+  month?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  departmentId?: string;
+}

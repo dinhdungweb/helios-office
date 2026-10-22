@@ -1,0 +1,96 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { getApiBaseUrl } from "@/lib/api-base";
+import { getSessionAccessToken } from "@/lib/auth-session";
+import type { AttendanceDayStatus } from "@/lib/attendance-api";
+
+// AT-15: reading and changing one calculated day from the monthly timesheet.
+
+export type AttendanceDayDetail = {
+  id: string;
+  employeeId: string;
+  workDate: string;
+  status: AttendanceDayStatus;
+  checkIn: string | null;
+  checkOut: string | null;
+  scheduledStart: string | null;
+  scheduledEnd: string | null;
+  workedMinutes: number;
+  lateMinutes: number;
+  earlyMinutes: number;
+  outsideShiftMinutes: number;
+  nightMinutes: number;
+  workUnits: number;
+  paidLeaveUnits: number;
+  flags: string[];
+  punchCount: number;
+  lastChangeSource: string;
+  calculatedAt: string;
+  employee: { id: string; code: string; fullName: string; department: { id: string; name: string } };
+  shift: { id: string; code: string; name: string; color: string | null; startMinute: number; endMinute: number; breakStartMinute: number | null; breakEndMinute: number | null } | null;
+  punches: Array<{ punchTime: string; deviceId: string | null; verifyType: string | null }>;
+  adjustments: Array<{
+    id: string;
+    checkIn?: string | null;
+    checkOut?: string | null;
+    punchesSet: boolean;
+    workUnits: number | null;
+    status: AttendanceDayStatus | null;
+    reason: string;
+    createdAt: string;
+    createdBy: string | null;
+    revokedAt: string | null;
+    revokedBy: string | null;
+    active: boolean;
+  }>;
+};
+
+export type AttendanceActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
+
+export type AdjustAttendancePayload = {
+  checkIn?: string | null;
+  checkOut?: string | null;
+  workUnits?: number | null;
+  status?: AttendanceDayStatus | null;
+  reason: string;
+};
+
+async function call<T>(path: string, method: "GET" | "PATCH" | "DELETE", body?: unknown): Promise<AttendanceActionResult<T>> {
+  const accessToken = await getSessionAccessToken();
+  if (!accessToken) return { ok: false, error: "Phiên đăng nhập đã hết hạn. Đăng nhập lại để tiếp tục." };
+
+  try {
+    const response = await fetch(`${getApiBaseUrl()}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${accessToken}`, ...(body ? { "Content-Type": "application/json" } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store"
+    });
+    if (!response.ok) {
+      if (response.status === 403) return { ok: false, error: "Tài khoản của bạn không có quyền sửa công." };
+      const errorBody = (await response.json().catch(() => null)) as { message?: string | string[] } | null;
+      const message = Array.isArray(errorBody?.message) ? errorBody.message.join(". ") : errorBody?.message;
+      return { ok: false, error: response.status >= 500 || !message ? "Không thực hiện được. Vui lòng thử lại sau." : message };
+    }
+    return { ok: true, data: (await response.json()) as T };
+  } catch {
+    return { ok: false, error: "Không kết nối được máy chủ. Vui lòng thử lại sau." };
+  }
+}
+
+export async function loadAttendanceDayAction(id: string) {
+  return call<AttendanceDayDetail>(`/attendance/${encodeURIComponent(id)}`, "GET");
+}
+
+export async function adjustAttendanceDayAction(id: string, payload: AdjustAttendancePayload) {
+  const result = await call<AttendanceDayDetail>(`/attendance/${encodeURIComponent(id)}`, "PATCH", payload);
+  if (result.ok) revalidatePath("/user/attendance/timesheet");
+  return result;
+}
+
+export async function revokeAttendanceAdjustmentAction(id: string, reason: string) {
+  const result = await call<AttendanceDayDetail>(`/attendance/${encodeURIComponent(id)}/adjustment`, "DELETE", { reason });
+  if (result.ok) revalidatePath("/user/attendance/timesheet");
+  return result;
+}

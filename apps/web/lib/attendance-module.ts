@@ -4,7 +4,7 @@ import { getCurrentSessionUserOrSignOut } from "@/lib/auth-user";
 // HCNS permission group) also sees the shift schedule and the settings. Each tab shows only with
 // the permissions its API needs.
 
-export type AttendanceModuleTabKey = "personal" | "shift-schedule" | "settings";
+export type AttendanceModuleTabKey = "personal" | "timesheet" | "shift-schedule" | "settings";
 
 export type AttendanceModuleTab = { key: AttendanceModuleTabKey; label: string; href: string; active: boolean };
 
@@ -18,6 +18,7 @@ const ATTENDANCE_SETUP = ["permission.attendance-timesheets.manage"];
 
 const TABS: Array<{ key: AttendanceModuleTabKey; label: string; href: string; permissions: string[] | null }> = [
   { key: "personal", label: "Bảng công cá nhân", href: "/user/attendance", permissions: null },
+  { key: "timesheet", label: "Bảng chấm công", href: "/user/attendance/timesheet", permissions: ATTENDANCE_READ },
   { key: "shift-schedule", label: "Phân ca", href: "/user/attendance/shift-schedule", permissions: ATTENDANCE_READ },
   { key: "settings", label: "Cài đặt", href: "/admin/settings/shifts", permissions: ATTENDANCE_SETUP }
 ];
@@ -33,4 +34,10 @@ export async function getAttendanceModuleTabs(active: AttendanceModuleTabKey): P
     href,
     active: key === active
   }));
+}
+
+// Whether the viewer may change a day by hand (AT-15): the API needs permission.attendance.manage.
+export async function canEditAttendance() {
+  const account = (await getCurrentSessionUserOrSignOut())?.account;
+  return account?.adminRole === "system_admin" || Boolean(account?.effectivePermissionKeys?.includes("permission.attendance.manage"));
 }

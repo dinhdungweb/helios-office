@@ -977,6 +977,7 @@ model AttendanceAdjustment {
   status      AttendanceDayStatus?
   reason      String
   before      Json?
+  // Employee id of who made / revoked it, or the account id when the account has no employee profile.
   createdById String?
   createdAt   DateTime                 @default(now())
   revokedAt   DateTime?

@@ -11,7 +11,8 @@ import { AttendanceSyncDto } from "./attendance-sync.dto";
 import { AttendanceSyncGuard } from "./attendance-sync.guard";
 import { AdjustAttendanceDto, RevokeAdjustmentDto } from "./attendance-adjustment.dto";
 import { ATTENDANCE_EDIT_PERMISSIONS, AttendanceAdjustmentsService } from "./attendance-adjustments.service";
-import { AttendanceListQueryDto, MyAttendanceQueryDto } from "./attendance-query.dto";
+import { AttendanceListQueryDto, MyAttendanceQueryDto, TimesheetQueryDto } from "./attendance-query.dto";
+import { AttendanceTimesheetService, TIMESHEET_PERMISSIONS } from "./attendance-timesheet.service";
 import { ATTENDANCE_VIEW_PERMISSIONS, AttendanceService } from "./attendance.service";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
@@ -29,6 +30,7 @@ export class AttendanceController {
     private readonly attendanceService: AttendanceService,
     private readonly recalc: AttendanceRecalcService,
     private readonly adjustments: AttendanceAdjustmentsService,
+    private readonly timesheets: AttendanceTimesheetService,
     private readonly dataScope: DataScopeService,
     private readonly prisma: PrismaService
   ) {}
@@ -48,6 +50,15 @@ export class AttendanceController {
   @ApiOkResponse({ description: "My calculated attendance days (AT-03) for a range, the current month by default." })
   findMyDays(@CurrentUser() user: AuthenticatedUser, @Query() query: MyAttendanceQueryDto) {
     return this.attendanceService.findMyDays(user, query);
+  }
+
+  @Get("timesheets")
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(...TIMESHEET_PERMISSIONS)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Monthly timesheet (AT-16): people in scope × days of the month, with month totals; paginated by person." })
+  timesheet(@CurrentUser() user: AuthenticatedUser, @Query() query: TimesheetQueryDto) {
+    return this.timesheets.monthly(user, query);
   }
 
   @Get("summary")
