@@ -109,3 +109,31 @@ export async function updateAttendancePolicyAction(policy: Partial<AttendancePol
   delete payload.defaultShift;
   return send("/attendance-policy", "PATCH", payload);
 }
+
+// AT-10: one form for create and edit; an empty holidayId means create.
+export async function saveHolidayAction(_state: ShiftActionResult | null, formData: FormData): Promise<ShiftActionResult> {
+  const type = text(formData, "type") || "holiday";
+  const payload = {
+    date: text(formData, "date"),
+    name: text(formData, "name"),
+    type,
+    paid: formData.get("paid") === "on",
+    note: text(formData, "note") || null
+  };
+  const holidayId = text(formData, "holidayId");
+  const result = holidayId ? await send(`/holidays/${encodeURIComponent(holidayId)}`, "PATCH", payload) : await send("/holidays", "POST", payload);
+  if (result.ok) revalidatePath("/admin/settings/holidays");
+  return result;
+}
+
+export async function deleteHolidayAction(holidayId: string) {
+  const result = await send(`/holidays/${encodeURIComponent(holidayId)}`, "DELETE");
+  if (result.ok) revalidatePath("/admin/settings/holidays");
+  return result;
+}
+
+export async function addFixedHolidaysAction(year: number) {
+  const result = await send("/holidays/fixed", "POST", { year });
+  if (result.ok) revalidatePath("/admin/settings/holidays");
+  return result;
+}

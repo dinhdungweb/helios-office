@@ -68,3 +68,16 @@ export function timeToMinute(value: string) {
   const minute = Number(match[1]) * 60 + Number(match[2]);
   return Number(match[1]) < 24 && Number(match[2]) < 60 ? minute : null;
 }
+
+export type HolidayType = "holiday" | "compensatory_workday" | "company_off";
+
+export type HolidayRecord = {
+  id: string;
+  date: string;
+  name: string;
+  type: HolidayType;
+  paid: boolean;
+  note: string | null;
+};
+
+export type HolidayData = { source: "api"; year: number; holidays: HolidayRecord[] } | { source: "unavailable"; year: number; error: string };

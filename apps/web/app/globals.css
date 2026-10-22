@@ -24890,3 +24890,18 @@ small {
   border: 0;
   cursor: pointer;
 }
+
+/* Holidays (AT-10) */
+.holiday-year-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 8px;
+}
+
+.holiday-year-switch a {
+  padding: 0 8px;
+  color: var(--color-primary);
+  font-size: 18px;
+  text-decoration: none;
+}

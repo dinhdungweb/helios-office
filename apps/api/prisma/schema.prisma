@@ -470,6 +470,28 @@ model Shift {
   updatedAt                DateTime           @updatedAt
 }
 
+enum HolidayType {
+  // Public holiday: no work; paid as the day's shift when `paid` (and the policy pays holidays).
+  holiday
+  // Make-up working day: a normally free day (e.g. a Saturday) that is worked on.
+  compensatory_workday
+  // Day the company closes on its own decision.
+  company_off
+}
+
+// Holidays and make-up days (AT-10), one entry per date. Lunar holidays and the day next to
+// National Day change every year, so HR enters them from the government schedule.
+model Holiday {
+  id        String      @id @default(uuid())
+  date      DateTime    @unique @db.Date
+  name      String
+  type      HolidayType @default(holiday)
+  paid      Boolean     @default(true)
+  note      String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
 // Company-wide attendance rules (AT-06); one row with id "default". Every rule is a setting so HR
 // can match how they count by hand. See docs/design/attendance-engine.md §4.
 model AttendancePolicy {
