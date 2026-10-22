@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOkResponse, ApiTags, ApiUnauthorizedResponse } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { PermissionGuard } from "../auth/permission.guard";
@@ -9,6 +9,8 @@ import { SkipAudit } from "../../common/audit/skip-audit.decorator";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { AttendanceSyncDto } from "./attendance-sync.dto";
 import { AttendanceSyncGuard } from "./attendance-sync.guard";
+import { AdjustAttendanceDto, RevokeAdjustmentDto } from "./attendance-adjustment.dto";
+import { ATTENDANCE_EDIT_PERMISSIONS, AttendanceAdjustmentsService } from "./attendance-adjustments.service";
 import { AttendanceListQueryDto, MyAttendanceQueryDto } from "./attendance-query.dto";
 import { ATTENDANCE_VIEW_PERMISSIONS, AttendanceService } from "./attendance.service";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
@@ -26,6 +28,7 @@ export class AttendanceController {
   constructor(
     private readonly attendanceService: AttendanceService,
     private readonly recalc: AttendanceRecalcService,
+    private readonly adjustments: AttendanceAdjustmentsService,
     private readonly dataScope: DataScopeService,
     private readonly prisma: PrismaService
   ) {}
@@ -120,5 +123,33 @@ export class AttendanceController {
   @ApiUnauthorizedResponse({ description: "The attendance integration token is missing or invalid." })
   sync(@Body() body: AttendanceSyncDto) {
     return this.attendanceService.syncFromDevice(body);
+  }
+
+  // AT-15: declared last so /me, /summary and /recalculations are not taken as an id.
+  @Get(":id")
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(...ATTENDANCE_VIEW_PERMISSIONS, ...RECALC_PERMISSIONS)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "One calculated day with its raw punches and the history of manual changes." })
+  detail(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string) {
+    return this.adjustments.detail(user, id);
+  }
+
+  @Patch(":id")
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(...ATTENDANCE_EDIT_PERMISSIONS)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "HR changes a day by hand (AT-15); a reason is required and the change survives recalculation." })
+  adjust(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string, @Body() body: AdjustAttendanceDto) {
+    return this.adjustments.adjust(user, id, body);
+  }
+
+  @Delete(":id/adjustment")
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(...ATTENDANCE_EDIT_PERMISSIONS)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Undo manual changes: the day goes back to the calculated result." })
+  revokeAdjustment(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string, @Body() body: RevokeAdjustmentDto) {
+    return this.adjustments.revoke(user, id, body ?? {});
   }
 }

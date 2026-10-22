@@ -721,8 +721,9 @@ modules:
         depends: [AT-13, CORE-11]
       - id: AT-15
         title: HR sửa công thủ công (có lịch sử)
-        api: ["PATCH /attendance/:id"]
-        status: todo
+        api: ["GET /attendance/:id", "PATCH /attendance/:id", "DELETE /attendance/:id/adjustment"]
+        status: doing
+        note: API xong (bắt buộc lý do, gộp với lần sửa trước, tính lại ngay, giữ qua các lần tính lại, bỏ sửa tay, lịch sử kèm tên người sửa). Giao diện làm cùng bảng chấm công tháng AT-16; chặn kỳ đã chốt làm cùng AT-17
       - id: AT-16
         title: Bảng công tháng toàn công ty
         api: ["GET /attendance/timesheets"]
