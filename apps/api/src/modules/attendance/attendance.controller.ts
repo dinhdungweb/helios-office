@@ -9,7 +9,8 @@ import { SkipAudit } from "../../common/audit/skip-audit.decorator";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { AttendanceSyncDto } from "./attendance-sync.dto";
 import { AttendanceSyncGuard } from "./attendance-sync.guard";
-import { AttendanceService } from "./attendance.service";
+import { AttendanceListQueryDto, MyAttendanceQueryDto } from "./attendance-query.dto";
+import { ATTENDANCE_VIEW_PERMISSIONS, AttendanceService } from "./attendance.service";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { RecalculateAttendanceDto } from "./attendance-recalc.dto";
@@ -31,28 +32,28 @@ export class AttendanceController {
 
   @Get()
   @UseGuards(JwtAuthGuard, PermissionGuard)
-  @RequireAnyPermission("permission.attendance.view", "permission.attendance.manage")
+  @RequireAnyPermission(...ATTENDANCE_VIEW_PERMISSIONS)
   @ApiBearerAuth()
-  @ApiOkResponse({ description: "Attendance records from machine imports and PWA check-ins." })
-  findRecords() {
-    return this.attendanceService.findRecords();
+  @ApiOkResponse({ description: "Calculated attendance days (AT-02) for people in scope, paginated; filter by range, department, person, status." })
+  findDays(@CurrentUser() user: AuthenticatedUser, @Query() query: AttendanceListQueryDto) {
+    return this.attendanceService.findDays(user, query);
   }
 
   @Get("me")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOkResponse({ description: "Attendance records for the employee linked to the current account." })
-  findMyRecords(@CurrentUser() user: AuthenticatedUser) {
-    return this.attendanceService.findEmployeeRecords(user.account?.employeeId);
+  @ApiOkResponse({ description: "My calculated attendance days (AT-03) for a range, the current month by default." })
+  findMyDays(@CurrentUser() user: AuthenticatedUser, @Query() query: MyAttendanceQueryDto) {
+    return this.attendanceService.findMyDays(user, query);
   }
 
   @Get("summary")
   @UseGuards(JwtAuthGuard, PermissionGuard)
   @RequireAnyPermission("permission.attendance.view", "permission.attendance.manage", "hr.dashboard.attendance.view")
   @ApiBearerAuth()
-  @ApiOkResponse({ description: "Attendance quality and machine synchronization summary." })
-  getSummary() {
-    return this.attendanceService.getSummary();
+  @ApiOkResponse({ description: "This month's attendance figures for people in scope, and machine synchronization counts." })
+  getSummary(@CurrentUser() user: AuthenticatedUser) {
+    return this.attendanceService.getSummary(user);
   }
 
   @Post("recalculate")

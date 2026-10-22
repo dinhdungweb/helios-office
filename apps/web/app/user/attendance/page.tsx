@@ -8,7 +8,8 @@ type UserAttendancePageProps = {
 
 export default async function UserAttendancePage({ searchParams }: UserAttendancePageProps) {
   const params = searchParams ? await searchParams : undefined;
-  const [data, schedule] = await Promise.all([getMyAttendanceData(), getMyShiftSchedule(resolveAttendanceMonth(params?.month))]);
+  const attendanceMonth = resolveAttendanceMonth(params?.month);
+  const [data, schedule] = await Promise.all([getMyAttendanceData(attendanceMonth), getMyShiftSchedule(attendanceMonth)]);
 
   return (
     <UserFrame activeModule="attendance">

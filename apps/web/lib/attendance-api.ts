@@ -1,30 +1,63 @@
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
 
-export type AttendanceRecord = {
+// AT-03: one calculated attendance day (engine result), as GET /attendance/me returns it.
+export type AttendanceDayStatus =
+  | "on_time"
+  | "late"
+  | "early_leave"
+  | "late_and_early"
+  | "missing_checkin"
+  | "missing_checkout"
+  | "absent"
+  | "holiday"
+  | "day_off";
+
+export type AttendanceDayResult = {
   id: string;
-  employeeId: string;
   workDate: string;
+  shiftId: string | null;
+  scheduledStart: string | null;
+  scheduledEnd: string | null;
   checkIn: string | null;
   checkOut: string | null;
-  source: string;
-  status: "valid" | "late" | "early_leave" | "missing_checkout" | "needs_review";
+  workedMinutes: number;
+  lateMinutes: number;
+  earlyMinutes: number;
+  outsideShiftMinutes: number;
+  nightMinutes: number;
+  workUnits: number;
+  paidLeaveUnits: number;
+  status: AttendanceDayStatus;
+  flags: string[];
+  holidayType: "holiday" | "compensatory_workday" | "company_off" | null;
+  punchCount: number;
+  lastChangeSource: "punch_sync" | "recalculation" | "manual" | string;
+  calculatedAt: string;
 };
 
 export type AttendanceData = {
-  records: AttendanceRecord[];
+  days: AttendanceDayResult[];
   source: "api" | "unavailable";
   error?: string;
 };
 
-export async function getMyAttendanceData(): Promise<AttendanceData> {
+function monthBounds(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  return { from: `${month}-01`, to: `${month}-${String(lastDay).padStart(2, "0")}` };
+}
+
+// `month` is YYYY-MM.
+export async function getMyAttendanceData(month: string): Promise<AttendanceData> {
   const accessToken = await getSessionAccessToken();
   if (!accessToken) {
-    return { records: [], source: "unavailable", error: "Phiên đăng nhập không hợp lệ." };
+    return { days: [], source: "unavailable", error: "Phiên đăng nhập không hợp lệ." };
   }
 
+  const { from, to } = monthBounds(month);
   try {
-    const response = await fetch(`${getApiBaseUrl()}/attendance/me`, {
+    const response = await fetch(`${getApiBaseUrl()}/attendance/me?from=${from}&to=${to}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: "no-store"
     });
@@ -33,16 +66,9 @@ export async function getMyAttendanceData(): Promise<AttendanceData> {
       throw new Error(`Attendance API returned ${response.status}`);
     }
 
-    return {
-      records: await response.json() as AttendanceRecord[],
-      source: "api"
-    };
-  } catch (error) {
-    return {
-      records: [],
-      source: "unavailable",
-      error: error instanceof Error ? error.message : "Không thể tải dữ liệu chấm công."
-    };
+    return { days: (await response.json()) as AttendanceDayResult[], source: "api" };
+  } catch {
+    return { days: [], source: "unavailable", error: "Không tải được dữ liệu chấm công. Thử tải lại trang." };
   }
 }
 
@@ -79,10 +105,9 @@ export async function getMyShiftSchedule(month: string): Promise<MyScheduleData>
   const accessToken = await getSessionAccessToken();
   if (!accessToken) return { source: "unavailable", month, error: "Phiên đăng nhập không hợp lệ." };
 
-  const [year, monthNumber] = month.split("-").map(Number);
-  const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  const { from, to } = monthBounds(month);
   try {
-    const response = await fetch(`${getApiBaseUrl()}/shift-assignments/me?from=${month}-01&to=${month}-${String(lastDay).padStart(2, "0")}`, {
+    const response = await fetch(`${getApiBaseUrl()}/shift-assignments/me?from=${from}&to=${to}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: "no-store"
     });

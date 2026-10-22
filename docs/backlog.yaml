@@ -648,11 +648,13 @@ modules:
         title: Danh sách bản ghi công
         api: ["GET /attendance"]
         status: done
+        note: Đọc kết quả engine (AttendanceDay), phân trang chuẩn, lọc khoảng ngày / phòng ban / người / trạng thái / tìm kiếm, theo phạm vi dữ liệu. Bảng cũ AttendanceRecord đã bỏ (2026-10-22)
       - id: AT-03
         title: Công của tôi
         api: ["GET /attendance/me"]
         ui: /user/attendance
         status: done
+        note: Kết quả engine theo tháng — ô ngày hiện giờ làm kèm V khi muộn / sớm / thiếu chấm, chi tiết ngày có phút muộn / sớm, giờ trong ca, ngoài ca, đêm, số công, nguồn cập nhật; thống kê tháng từ số thật. Thử trình duyệt 2026-10-22 với khanglm
       - id: AT-04
         title: Tổng hợp công
         api: ["GET /attendance/summary"]

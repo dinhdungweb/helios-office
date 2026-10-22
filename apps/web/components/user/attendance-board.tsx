@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type MouseEvent } from "react";
 import type { Route } from "next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { AttendanceData, AttendanceRecord, MyScheduleData, MyScheduleDay, MyScheduleShift } from "@/lib/attendance-api";
+import type { AttendanceData, AttendanceDayResult, AttendanceDayStatus, MyScheduleData, MyScheduleDay, MyScheduleShift } from "@/lib/attendance-api";
 import {
   CalendarBlank,
   CalendarCheck,
@@ -31,7 +31,9 @@ type AttendanceDay = {
   caption?: string;
   captionTone?: "danger" | "muted";
   schedule?: MyScheduleDay;
-  record?: AttendanceRecord;
+  result?: AttendanceDayResult;
+  // Late, early or a missing punch: a small V next to the hours, like 1Office.
+  violation?: boolean;
   isToday?: boolean;
   isFuture?: boolean;
 };
@@ -90,33 +92,42 @@ function vietnamDate(value: Date) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(value);
 }
 
-function recordDateKey(record: AttendanceRecord) {
-  const date = new Date(record.workDate);
-  return Number.isNaN(date.getTime()) ? null : vietnamDate(date);
-}
-
 function isDayOffHoliday(schedule: MyScheduleDay | undefined) {
   return Boolean(schedule?.holiday && schedule.holiday.type !== "compensatory_workday");
 }
 
-// Hours between check-in and check-out, less the shift's break when the stay covers it.
-function recordedMinutes(record: AttendanceRecord, shift: MyScheduleShift | null) {
-  if (!record.checkIn || !record.checkOut) return 0;
-  let minutes = Math.max(0, new Date(record.checkOut).getTime() - new Date(record.checkIn).getTime()) / 60_000;
-  const checkIn = formatTime(record.checkIn);
-  const checkOut = formatTime(record.checkOut);
-  if (shift?.breakStartMinute != null && shift.breakEndMinute != null && checkIn && checkOut) {
-    const toMinute = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
-    if (toMinute(checkIn) <= shift.breakStartMinute && toMinute(checkOut) >= shift.breakEndMinute) {
-      minutes -= shift.breakEndMinute - shift.breakStartMinute;
-    }
-  }
-  return minutes;
+const VIOLATIONS = new Set<AttendanceDayStatus>(["late", "early_leave", "late_and_early", "missing_checkin", "missing_checkout"]);
+
+const STATUS_LABELS: Record<AttendanceDayStatus, string> = {
+  on_time: "Đúng giờ",
+  late: "Đi muộn",
+  early_leave: "Về sớm",
+  late_and_early: "Đi muộn, về sớm",
+  missing_checkin: "Thiếu giờ vào",
+  missing_checkout: "Thiếu giờ ra",
+  absent: "Vắng",
+  holiday: "Nghỉ lễ",
+  day_off: "Ngày nghỉ"
+};
+
+const CHANGE_SOURCE_LABELS: Record<string, string> = {
+  punch_sync: "đồng bộ máy chấm công",
+  recalculation: "tính lại",
+  manual: "HR sửa tay"
+};
+
+function violationCaption(result: AttendanceDayResult) {
+  const parts: string[] = [];
+  if (result.lateMinutes > 0) parts.push(`Muộn ${result.lateMinutes}'`);
+  if (result.earlyMinutes > 0) parts.push(`Sớm ${result.earlyMinutes}'`);
+  if (result.status === "missing_checkin") parts.push("Thiếu giờ vào");
+  if (result.status === "missing_checkout") parts.push("Thiếu giờ ra");
+  return parts.join(" · ");
 }
 
-function buildAttendanceDays(month: string, records: AttendanceRecord[], scheduleDays: MyScheduleDay[] | null): AttendanceDay[] {
+function buildAttendanceDays(month: string, results: AttendanceDayResult[], scheduleDays: MyScheduleDay[] | null): AttendanceDay[] {
   const [year, monthNumber] = month.split("-").map(Number);
-  const recordMap = new Map(records.map((record) => [recordDateKey(record), record]));
+  const resultMap = new Map(results.map((result) => [result.workDate, result]));
   const scheduleMap = new Map((scheduleDays ?? []).map((day) => [day.date, day]));
   const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
   const leadingEmptyCells = (new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay() + 6) % 7;
@@ -125,32 +136,51 @@ function buildAttendanceDays(month: string, records: AttendanceRecord[], schedul
 
   for (let day = 1; day <= lastDay; day += 1) {
     const date = `${year}-${pad(monthNumber)}-${pad(day)}`;
-    const record = recordMap.get(date);
+    const result = resultMap.get(date);
     const schedule = scheduleMap.get(date);
     const shift = schedule?.shift ?? null;
     const isFuture = date > today;
-    const checkIn = record ? formatTime(record.checkIn) : null;
-    const checkOut = record ? formatTime(record.checkOut) : null;
+    const checkIn = formatTime(result?.checkIn ?? null);
+    const checkOut = formatTime(result?.checkOut ?? null);
     const base: AttendanceDay = {
       date,
       label: day === 1 ? `${pad(day)}/${pad(monthNumber)}` : pad(day),
       fullDate: `${pad(day)}/${pad(monthNumber)}/${year}`,
       weekday: longWeekdays[new Date(Date.UTC(year, monthNumber - 1, day)).getUTCDay()],
       schedule,
-      record,
+      result,
       isToday: date === today,
       isFuture,
       caption: shift ? shiftHours(shift) : undefined,
-      captionTone: "muted"
+      captionTone: "muted",
+      time: checkIn || checkOut ? `${checkIn ?? "--:--"} - ${checkOut ?? "--:--"}` : undefined
     };
 
-    if (record) {
-      const minutes = recordedMinutes(record, shift);
+    if (result && result.status === "holiday") {
+      days.push({ ...base, score: "L", scoreTone: "info", caption: schedule?.holiday?.name ?? "Nghỉ lễ" });
+    } else if (result && result.status === "day_off") {
+      const worked = result.outsideShiftMinutes > 0;
+      days.push(
+        worked
+          ? { ...base, score: formatHours(result.outsideShiftMinutes), scoreTone: "success", caption: "Làm ngày nghỉ" }
+          : { ...base, score: "N", scoreTone: "muted", caption: "Không có ca" }
+      );
+    } else if (result && result.status === "absent") {
+      days.push(
+        base.isToday
+          ? { ...base, score: "0", scoreTone: "info" }
+          : { ...base, score: "x", scoreTone: "danger", caption: "Vắng", captionTone: "danger" }
+      );
+    } else if (result) {
+      const violation = VIOLATIONS.has(result.status);
+      const missing = result.status === "missing_checkin" || result.status === "missing_checkout";
       days.push({
         ...base,
-        score: minutes > 0 ? formatHours(minutes) : "0",
-        scoreTone: checkIn && checkOut ? "success" : "info",
-        time: checkIn ? `${checkIn} - ${checkOut ?? "--:--"}` : undefined
+        score: result.workedMinutes > 0 ? formatHours(result.workedMinutes) : "0",
+        scoreTone: missing ? "danger" : "success",
+        violation,
+        caption: violation ? violationCaption(result) : base.caption,
+        captionTone: violation ? "danger" : "muted"
       });
     } else if (schedule && !schedule.employed) {
       days.push({ ...base, score: "–", scoreTone: "muted", caption: "Ngoài thời gian làm việc" });
@@ -159,13 +189,14 @@ function buildAttendanceDays(month: string, records: AttendanceRecord[], schedul
     } else if (scheduleDays && !shift) {
       days.push({ ...base, score: "N", scoreTone: "muted", caption: "Không có ca" });
     } else if (!scheduleDays) {
-      // No schedule (e.g. an account without an employee profile): only recorded days are known.
+      // No schedule (e.g. an account without an employee profile).
       days.push({ ...base, score: "–", scoreTone: "muted" });
     } else if (isFuture) {
       days.push({ ...base, score: "0", scoreTone: "muted" });
     } else if (base.isToday) {
       days.push({ ...base, score: "0", scoreTone: "info" });
     } else {
+      // A past working day not calculated yet.
       days.push({ ...base, score: "x", scoreTone: "danger", caption: "Chưa có công", captionTone: "danger" });
     }
   }
@@ -257,6 +288,11 @@ function AttendanceDayCell({
       </span>
       <strong className={`attendance-day-score attendance-day-score--${day.scoreTone ?? "muted"}`}>
         {day.score === "x" ? <X size={18} weight="bold" aria-label="Không có dữ liệu chấm công" /> : day.score}
+        {day.violation ? (
+          <sup className="attendance-day-flag" title="Có vi phạm: đi muộn, về sớm hoặc thiếu giờ chấm">
+            V
+          </sup>
+        ) : null}
       </strong>
       <span className="attendance-day-lines">
         {day.time ? <span className="attendance-day-time">{day.time}</span> : null}
@@ -275,14 +311,15 @@ function AttendanceDetailDialog({
   onClose: () => void;
   position: AttendanceDetailPosition;
 }) {
-  const record = day.record;
+  const result = day.result ?? null;
   const schedule = day.schedule;
   const shift = schedule?.shift ?? null;
-  const checkIn = record ? formatTime(record.checkIn) : null;
-  const checkOut = record ? formatTime(record.checkOut) : null;
-  const hasLogs = Boolean(checkIn);
-  const minutes = record ? recordedMinutes(record, shift) : 0;
-  const workUnits = shift && minutes > 0 ? Math.min(1, minutes / shift.requiredMinutes) * shift.workUnits : 0;
+  const checkIn = formatTime(result?.checkIn ?? null);
+  const checkOut = formatTime(result?.checkOut ?? null);
+  const inNote = result?.lateMinutes ? `Muộn ${result.lateMinutes} phút` : checkIn ? "Đúng giờ" : null;
+  const outNote = result?.earlyMinutes ? `Sớm ${result.earlyMinutes} phút` : checkOut ? "Đúng giờ" : null;
+  const cardClass = (value: string | null, late: boolean) =>
+    !value ? "attendance-detail-card attendance-detail-card--missing" : late ? "attendance-detail-card attendance-detail-card--late" : "attendance-detail-card attendance-detail-card--success";
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -311,25 +348,27 @@ function AttendanceDetailDialog({
         </header>
 
         <div className="attendance-detail-summary">
-          <article className={hasLogs ? "attendance-detail-card attendance-detail-card--success" : "attendance-detail-card attendance-detail-card--missing"}>
+          <article className={cardClass(checkIn, Boolean(result?.lateMinutes))}>
             <span>Giờ vào</span>
             <strong>{checkIn ?? "--:--"}</strong>
-            {hasLogs ? <CheckCircle size={23} weight="duotone" aria-hidden="true" /> : null}
+            {inNote ? <small>{inNote}</small> : null}
+            {checkIn && !result?.lateMinutes ? <CheckCircle size={23} weight="duotone" aria-hidden="true" /> : null}
           </article>
 
-          <article className={checkOut ? "attendance-detail-card attendance-detail-card--success" : "attendance-detail-card attendance-detail-card--missing"}>
+          <article className={cardClass(checkOut, Boolean(result?.earlyMinutes))}>
             <span>Giờ ra</span>
             <strong>{checkOut ?? "--:--"}</strong>
-            {checkOut ? <CheckCircle size={23} weight="duotone" aria-hidden="true" /> : null}
+            {outNote ? <small>{outNote}</small> : null}
+            {checkOut && !result?.earlyMinutes ? <CheckCircle size={23} weight="duotone" aria-hidden="true" /> : null}
           </article>
 
           <article className="attendance-detail-card attendance-detail-card--workday">
             <span>
               <Clock size={17} weight="duotone" aria-hidden="true" />
-              {minutes > 0 ? `${formatHours(minutes)}h` : "-"}
+              {result && result.workedMinutes > 0 ? `${formatHours(result.workedMinutes)}h` : "-"}
             </span>
             <div aria-hidden="true" />
-            <strong>{workUnits > 0 ? Number(workUnits.toFixed(2)) : 0}</strong>
+            <strong>{result ? result.workUnits : 0}</strong>
           </article>
         </div>
 
@@ -341,32 +380,12 @@ function AttendanceDetailDialog({
               <div>
                 <strong>{shift.name}</strong>
                 <small>
-                  {SOURCE_LABELS[schedule!.source]}
+                  {shift.type === "flexible" ? `Linh hoạt trong ${shiftHours(shift)}` : shiftHours(shift)}
+                  {shift.endMinute <= shift.startMinute ? " (qua đêm)" : ""} · {formatHours(shift.requiredMinutes)} giờ · {shift.workUnits} công · {SOURCE_LABELS[schedule!.source]}
                   {schedule!.note ? ` · ${schedule!.note}` : ""}
                 </small>
               </div>
             </div>
-            <dl className="attendance-detail-table">
-              <div>
-                <dt>Giờ làm</dt>
-                <dd>
-                  {shift.type === "flexible" ? `Linh hoạt trong ${shiftHours(shift)}` : shiftHours(shift)}
-                  {shift.endMinute <= shift.startMinute ? " (qua đêm)" : ""}
-                </dd>
-              </div>
-              <div>
-                <dt>Nghỉ giữa ca</dt>
-                <dd>{shift.breakStartMinute != null && shift.breakEndMinute != null ? `${minuteToTime(shift.breakStartMinute)} - ${minuteToTime(shift.breakEndMinute)}` : "Không"}</dd>
-              </div>
-              <div>
-                <dt>Giờ công chuẩn</dt>
-                <dd>{formatHours(shift.requiredMinutes)} giờ</dd>
-              </div>
-              <div>
-                <dt>Số công của ca</dt>
-                <dd>{shift.workUnits}</dd>
-              </div>
-            </dl>
           </>
         ) : (
           <p className="attendance-detail-empty">
@@ -384,54 +403,105 @@ function AttendanceDetailDialog({
           </p>
         ) : null}
 
-        <p className="attendance-detail-shift">Chốt công trong ngày</p>
-        {hasLogs ? (
-          <div className="attendance-detail-logs">
-            <p>
-              <span>Vào {checkIn}</span>
-              <strong>{record!.source === "machine" ? "Máy chấm công" : "Ứng dụng"}</strong>
+        <p className="attendance-detail-shift">Kết quả tính công</p>
+        {result ? (
+          <>
+            <dl className="attendance-detail-table">
+              <div>
+                <dt>Trạng thái</dt>
+                <dd className={VIOLATIONS.has(result.status) || result.status === "absent" ? "is-danger" : undefined}>{STATUS_LABELS[result.status]}</dd>
+              </div>
+              {result.lateMinutes > 0 ? (
+                <div>
+                  <dt>Đi muộn</dt>
+                  <dd className="is-danger">{result.lateMinutes} phút</dd>
+                </div>
+              ) : null}
+              {result.earlyMinutes > 0 ? (
+                <div>
+                  <dt>Về sớm</dt>
+                  <dd className="is-danger">{result.earlyMinutes} phút</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt>Giờ làm trong ca</dt>
+                <dd>{formatHours(result.workedMinutes)} giờ</dd>
+              </div>
+              {result.outsideShiftMinutes > 0 ? (
+                <div>
+                  <dt>Giờ ngoài ca</dt>
+                  <dd>{formatHours(result.outsideShiftMinutes)} giờ</dd>
+                </div>
+              ) : null}
+              {result.nightMinutes > 0 ? (
+                <div>
+                  <dt>Giờ làm đêm</dt>
+                  <dd>{formatHours(result.nightMinutes)} giờ</dd>
+                </div>
+              ) : null}
+              <div>
+                <dt>Số công</dt>
+                <dd>{result.workUnits}</dd>
+              </div>
+              {result.paidLeaveUnits > 0 ? (
+                <div>
+                  <dt>Công lễ</dt>
+                  <dd>{result.paidLeaveUnits}</dd>
+                </div>
+              ) : null}
+            </dl>
+            <p className="attendance-detail-meta">
+              {result.punchCount} lần chấm · cập nhật {formatTime(result.calculatedAt)} {formatDayMonth(result.calculatedAt)} từ{" "}
+              {CHANGE_SOURCE_LABELS[result.lastChangeSource] ?? result.lastChangeSource}
+              {result.flags.includes("needs_explanation") ? " · cần giải trình" : ""}
+              {result.flags.includes("adjusted") ? " · đã sửa tay" : ""}
             </p>
-            {checkOut ? (
-              <p>
-                <span>Ra {checkOut}</span>
-                <strong>{record!.source === "machine" ? "Máy chấm công" : "Ứng dụng"}</strong>
-              </p>
-            ) : (
-              <p>
-                <span>Chưa có giờ ra</span>
-                <strong>--</strong>
-              </p>
-            )}
-          </div>
+          </>
         ) : (
-          <p className="attendance-detail-empty">{day.isFuture ? "Chưa tới ngày này." : "Không có log chấm công."}</p>
+          <p className="attendance-detail-empty">{day.isFuture ? "Chưa tới ngày này." : "Ngày này chưa được tính công."}</p>
         )}
       </section>
     </div>
   );
 }
 
+// "22/10" in Vietnam time.
+function formatDayMonth(value: string) {
+  const [, month, day] = vietnamDate(new Date(value)).split("-");
+  return `${day}/${month}`;
+}
+
 function AttendanceStatsPanel({ days, month, scheduleAvailable }: { days: AttendanceDay[]; month: string; scheduleAvailable: boolean }) {
   const [activeStatTab, setActiveStatTab] = useState<"active" | "inactive">("active");
   const [year, monthNumber] = month.split("-").map(Number);
   const monthDays = days.filter((day) => !day.isEmpty);
-  const monthRecords = monthDays.flatMap((day) => (day.record ? [day.record] : []));
-  const actualHours = monthDays.reduce((total, day) => total + (day.record ? recordedMinutes(day.record, day.schedule?.shift ?? null) / 60 : 0), 0);
+  const results = monthDays.flatMap((day) => (day.result ? [day.result] : []));
+  const sum = (pick: (result: AttendanceDayResult) => number) => results.reduce((total, result) => total + pick(result), 0);
+  const round = (value: number) => String(Number(value.toFixed(2)));
+  const workUnits = sum((result) => result.workUnits);
+  const workedHours = sum((result) => result.workedMinutes) / 60;
   // Standard: the shifts scheduled this month, minus days off for a holiday.
   const scheduled = monthDays.filter((day) => day.schedule?.employed && day.schedule.shift && !isDayOffHoliday(day.schedule));
   const standardUnits = scheduled.reduce((total, day) => total + day.schedule!.shift!.workUnits, 0);
   const standardHours = scheduled.reduce((total, day) => total + day.schedule!.shift!.requiredMinutes / 60, 0);
-  const missingCheckoutCount = monthRecords.filter((record) => !record.checkOut).length;
-  const standard = (value: number) => (scheduleAvailable ? String(Number(value.toFixed(2))) : "--");
+  const standard = (value: number) => (scheduleAvailable ? round(value) : "--");
   const generatedStats: AttendanceStat[] = [
-    { label: "Công làm việc", value: String(monthRecords.length) },
-    { label: "Giờ làm việc thực tính", value: actualHours.toFixed(2) },
+    { label: "Công làm việc", value: round(workUnits) },
+    { label: "Công lễ", value: round(sum((result) => result.paidLeaveUnits)) },
+    { label: "Giờ làm việc thực tính", value: workedHours.toFixed(2) },
     { label: "Số công chuẩn (theo lịch ca)", value: standard(standardUnits) },
     { label: "Số ngày có ca", value: scheduleAvailable ? String(scheduled.length) : "--" },
-    { label: "Số lần quên check in/out", value: String(missingCheckoutCount) },
-    { label: "Log từ máy chấm công", value: String(monthRecords.filter((record) => record.source === "machine").length) }
+    { label: "Số lần đi muộn", value: String(results.filter((result) => result.lateMinutes > 0).length) },
+    { label: "Số phút đi muộn", value: String(sum((result) => result.lateMinutes)) },
+    { label: "Số lần về sớm", value: String(results.filter((result) => result.earlyMinutes > 0).length) },
+    { label: "Số phút về sớm", value: String(sum((result) => result.earlyMinutes)) },
+    { label: "Số lần quên check in/out", value: String(results.filter((result) => result.status === "missing_checkin" || result.status === "missing_checkout").length) },
+    { label: "Số ngày vắng", value: String(results.filter((result) => result.status === "absent").length) },
+    { label: "Giờ làm việc thực tính ban đêm", value: (sum((result) => result.nightMinutes) / 60).toFixed(2) },
+    { label: "Giờ ngoài ca", value: (sum((result) => result.outsideShiftMinutes) / 60).toFixed(2) }
   ];
-  const visibleStats = activeStatTab === "active" ? generatedStats : inactiveAttendanceStats;
+  const generatedLabels = new Set(generatedStats.map((item) => item.label));
+  const visibleStats = activeStatTab === "active" ? generatedStats : inactiveAttendanceStats.filter((item) => !generatedLabels.has(item.label));
 
   return (
     <aside className="attendance-stats-panel" aria-labelledby="attendance-stats-title">
@@ -447,7 +517,7 @@ function AttendanceStatsPanel({ days, month, scheduleAvailable }: { days: Attend
           <div>
             <p>Công thực tế</p>
             <strong>
-              {monthRecords.length}/{standard(standardUnits)}
+              {round(workUnits)}/{standard(standardUnits)}
             </strong>
           </div>
         </article>
@@ -458,7 +528,7 @@ function AttendanceStatsPanel({ days, month, scheduleAvailable }: { days: Attend
           <div>
             <p>Giờ làm thực tế</p>
             <strong>
-              {actualHours.toFixed(1)}/{standard(standardHours)}
+              {workedHours.toFixed(1)}/{standard(standardHours)}
             </strong>
           </div>
         </article>
@@ -518,7 +588,7 @@ export function AttendanceBoard({ data, schedule }: { data: AttendanceData; sche
   const [monthPickerYear, setMonthPickerYear] = useState(year);
   const [isNavigating, startNavigation] = useTransition();
   const scheduleDays = schedule.source === "api" ? schedule.days : null;
-  const attendanceDays = useMemo(() => buildAttendanceDays(month, data.records, scheduleDays), [data.records, month, scheduleDays]);
+  const attendanceDays = useMemo(() => buildAttendanceDays(month, data.days, scheduleDays), [data.days, month, scheduleDays]);
   const detailDay = attendanceDays.find((day) => day.date === selectedDate) ?? null;
 
   function goToMonth(target: string) {
@@ -536,7 +606,7 @@ export function AttendanceBoard({ data, schedule }: { data: AttendanceData; sche
       const cellRect = event.currentTarget.getBoundingClientRect();
       const edge = 16;
       const dialogWidth = 524;
-      const dialogHeight = day.schedule?.shift ? 560 : 400;
+      const dialogHeight = day.result ? 660 : day.schedule?.shift ? 480 : 380;
       const hasRightSpace = cellRect.right + dialogWidth <= window.innerWidth - edge;
       const rawLeft = hasRightSpace ? cellRect.right - panelRect.left : cellRect.left - panelRect.left - dialogWidth;
       const minLeft = edge - panelRect.left;
@@ -641,7 +711,7 @@ export function AttendanceBoard({ data, schedule }: { data: AttendanceData; sche
             ))}
           </div>
           <div className="attendance-calendar-legend" aria-label="Chú thích">
-            <span><strong className="attendance-day-score--danger">✕</strong> Có ca nhưng không có dữ liệu chấm</span>
+            <span><strong className="attendance-day-score--danger">✕</strong> Vắng: có ca nhưng không có dữ liệu chấm</span>
             <span><strong>N</strong> Không có ca</span>
             <span><strong className="attendance-day-score--info">L</strong> Nghỉ lễ</span>
             <span><strong className="attendance-day-score--info">0</strong> Hôm nay, chưa chấm</span>

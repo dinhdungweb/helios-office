@@ -247,7 +247,7 @@ Tất cả đổi được trên giao diện sau khi chạy. Thứ tự theo m�
 | `ShiftPattern` | Mẫu xếp ca lặp, để sinh lại |
 | `Department.defaultShiftId` | Ca mặc định của phòng ban |
 | `Holiday` | Ngày lễ, ngày làm bù, ngày công ty nghỉ; có/không hưởng công |
-| `AttendanceDay` | Kết quả engine, duy nhất theo `employeeId + workDate`. Thay `AttendanceRecord` (bảng cũ giữ tới khi GET `/attendance`, `/attendance/me` chuyển xong, rồi bỏ) |
+| `AttendanceDay` | Kết quả engine, duy nhất theo `employeeId + workDate`. Đã thay `AttendanceRecord` (bảng cũ bỏ ngày 2026-10-22; trước đó: giữ tới khi GET `/attendance`, `/attendance/me` chuyển xong, rồi bỏ) |
 | `AttendanceAdjustment` | Sửa tay (và Phase 3: đơn được duyệt), có trước/sau |
 | `AttendancePeriod` | Kỳ công tháng: mở / chốt |
 | `AttendanceConfirmation` | Nhân viên xác nhận / phản hồi công theo tháng |

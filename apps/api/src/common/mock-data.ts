@@ -2010,25 +2010,6 @@ export const leaveRequests = [
   }
 ];
 
-export const attendanceRecords = [
-  {
-    id: "att-001",
-    employeeId: "emp-001",
-    workDate: "2026-07-09",
-    checkIn: "08:27",
-    checkOut: "18:04",
-    status: "valid"
-  },
-  {
-    id: "att-002",
-    employeeId: "emp-003",
-    workDate: "2026-07-09",
-    checkIn: "08:58",
-    checkOut: null,
-    status: "missing_checkout"
-  }
-];
-
 export const payrollCycles = [
   {
     id: "pay-2026-06",

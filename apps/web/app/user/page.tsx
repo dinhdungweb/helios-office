@@ -260,7 +260,8 @@ function UserHome() {
 }
 
 async function UserAttendance({ month }: { month?: string }) {
-  const [data, schedule] = await Promise.all([getMyAttendanceData(), getMyShiftSchedule(resolveAttendanceMonth(month))]);
+  const attendanceMonth = resolveAttendanceMonth(month);
+  const [data, schedule] = await Promise.all([getMyAttendanceData(attendanceMonth), getMyShiftSchedule(attendanceMonth)]);
 
   return (
     <UserFrame activeModule="attendance">

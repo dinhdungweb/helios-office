@@ -28,14 +28,6 @@ enum PostScope {
   private
 }
 
-enum AttendanceStatus {
-  valid
-  late
-  early_leave
-  missing_checkout
-  needs_review
-}
-
 enum PayrollStatus {
   draft
   reviewing
@@ -351,7 +343,6 @@ model Employee {
   directReports             Employee[]                   @relation("EmployeeManager")
   contracts                 Contract[]
   documents                 EmployeeDocument[]
-  attendanceRecords         AttendanceRecord[]
   attendanceRawLogs         AttendanceRawLog[]
   attendanceDays            AttendanceDay[]
   attendanceAdjustments     AttendanceAdjustment[]
@@ -888,21 +879,6 @@ model ApprovalRequest {
   updatedAt   DateTime       @updatedAt
 }
 
-model AttendanceRecord {
-  id         String           @id @default(uuid())
-  employeeId String
-  workDate   DateTime
-  checkIn    DateTime?
-  checkOut   DateTime?
-  source     String
-  status     AttendanceStatus @default(valid)
-  employee   Employee         @relation(fields: [employeeId], references: [id])
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
-
-  @@unique([employeeId, workDate, source])
-}
-
 enum AttendanceDayStatus {
   on_time
   late
@@ -916,8 +892,7 @@ enum AttendanceDayStatus {
 }
 
 // Engine result for one person on one work date (AT-11), recomputed from AttendanceRawLog, the
-// shift schedule, holidays, policy and HR's adjustments. Replaces AttendanceRecord once reads move
-// over (task 10). See docs/design/attendance-engine.md §6.
+// shift schedule, holidays, policy and HR's adjustments. See docs/design/attendance-engine.md §6.
 model AttendanceDay {
   id                  String              @id @default(uuid())
   employeeId          String

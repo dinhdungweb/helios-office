@@ -4,7 +4,6 @@ import {
   AccountAdminRole,
   AccountLifecycleStatus,
   ApprovalStatus,
-  AttendanceStatus,
   DeviceAuthStatus,
   EmployeeStatus,
   PayrollStatus,
@@ -13,7 +12,6 @@ import {
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
   accountPermissionCatalog,
-  attendanceRecords,
   contracts,
   departments,
   employees,
@@ -194,10 +192,6 @@ function toWorkDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
 }
 
-function toDateTime(dateValue: string, timeValue: string | null | undefined) {
-  return timeValue ? new Date(`${dateValue}T${timeValue}:00.000Z`) : null;
-}
-
 function toDeviceDateTime(value: string | null | undefined) {
   if (!value) {
     return null;
@@ -278,25 +272,6 @@ function payrollTemplateForDepartment(departmentName: string) {
   return "office-standard";
 }
 
-function normalizeAttendanceStatus(value: string) {
-  if (value === "late") {
-    return AttendanceStatus.late;
-  }
-
-  if (value === "early_leave") {
-    return AttendanceStatus.early_leave;
-  }
-
-  if (value === "missing_checkout") {
-    return AttendanceStatus.missing_checkout;
-  }
-
-  if (value === "needs_review") {
-    return AttendanceStatus.needs_review;
-  }
-
-  return AttendanceStatus.valid;
-}
 
 function normalizePayrollStatus(value: string) {
   if (value === "reviewing") {
@@ -693,31 +668,6 @@ async function seedLeaveRequests() {
   }
 }
 
-async function seedAttendance() {
-  for (const record of attendanceRecords) {
-    await prisma.attendanceRecord.upsert({
-      where: { id: record.id },
-      update: {
-        employeeId: record.employeeId,
-        workDate: toWorkDate(record.workDate),
-        checkIn: toDateTime(record.workDate, record.checkIn),
-        checkOut: toDateTime(record.workDate, record.checkOut),
-        source: "machine",
-        status: normalizeAttendanceStatus(record.status)
-      },
-      create: {
-        id: record.id,
-        employeeId: record.employeeId,
-        workDate: toWorkDate(record.workDate),
-        checkIn: toDateTime(record.workDate, record.checkIn),
-        checkOut: toDateTime(record.workDate, record.checkOut),
-        source: "machine",
-        status: normalizeAttendanceStatus(record.status)
-      }
-    });
-  }
-}
-
 async function seedPayroll() {
   for (const cycle of payrollCycles) {
     const { periodStart, periodEnd } = payrollPeriodFromId(cycle.id);
@@ -845,7 +795,6 @@ async function main() {
   await finishDepartmentTreeReset();
   await seedContracts();
   await seedLeaveRequests();
-  await seedAttendance();
   await seedPayroll();
   await seedDeviceAuth();
 }
