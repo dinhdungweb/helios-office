@@ -756,6 +756,38 @@ modules:
         api: ["GET /attendance/me/timesheet", "POST /attendance/me/timesheet/:month/confirm"]
         status: todo
         depends: [AT-16]
+      - id: AT-25
+        title: Công chuẩn theo phòng ban / vị trí
+        status: todo
+        note: "Như 1Office (docs/design/1office-attendance-reference.md mục 4.1) — mỗi nhóm phòng ban × vị trí chọn tự tính (số ngày trong kỳ trừ chủ nhật) hoặc số cố định; dạng công thức làm ở AT-27"
+        depends: [AT-16]
+      - id: AT-26
+        title: Mẫu bảng chấm công (đối tượng, chu kỳ công, người xem, tách dòng)
+        phase: 5
+        status: todo
+        note: Nhiều bảng chấm công cho các nhóm khác nhau, chu kỳ công không bắt buộc từ ngày 1, tách dòng theo vị trí / mức lương
+        depends: [AT-16]
+      - id: AT-27
+        title: Công thức chấm công tuỳ biến (cấp ca / ngày / tháng, từ khoá của engine)
+        phase: 5
+        status: todo
+        note: Dùng chung bộ máy công thức với lương (PY-05, PY-06). Phase 2 chỉ tính sẵn các đại lượng gốc làm từ khoá
+        depends: [AT-11, PY-05]
+      - id: AT-28
+        title: Cài đặt chấm công kiểu 1Office (giới hạn sửa/tạo phân ca, muộn theo giây, tách giờ qua ngày, ngày liên tiếp không cần chốt)
+        status: todo
+        note: Danh sách ở docs/design/1office-attendance-reference.md mục 3
+        depends: [AT-06]
+      - id: AT-29
+        title: Tự động nhận ca theo log trong các ca áp dụng cho phòng ban / vị trí
+        status: todo
+        depends: [AT-05, AT-11]
+      - id: AT-30
+        title: Ca nhiều khoảng làm việc, ca làm thêm cố định, cài đặt giữa ca
+        phase: 9
+        status: todo
+        note: 1Office có, công ty hiện chưa dùng
+        depends: [AT-05]
 
   # ---------------------------------------------------------------------------
   - code: LV

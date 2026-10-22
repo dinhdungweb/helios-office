@@ -49,8 +49,8 @@ Một bản ghi `AttendancePolicy` chung cho công ty. Ca có các trường cù
 |---|---|---|
 | Ngày làm việc trong tuần | Chọn các thứ | Thứ 2 → thứ 6 |
 | Ca mặc định khi chưa xếp ca | Một ca trong danh mục | Ca hành chính 08:00–17:00 |
-| Cho phép đi muộn (phút) | 0–120 | 5 |
-| Cho phép về sớm (phút) | 0–120 | 5 |
+| Cho phép đi muộn (phút) | 0–120 | 0 (như 1Office: ghi nguyên phút muộn) |
+| Cho phép về sớm (phút) | 0–120 | 0 |
 | Muộn/sớm vượt ngưỡng thì tính | Toàn bộ số phút / chỉ phần vượt ngưỡng | Toàn bộ số phút |
 | Làm tròn giờ vào/ra | Không / 5 / 15 / 30 phút | Không làm tròn |
 | Nhiều lần chấm trong ngày | Lần đầu + lần cuối / ghép từng cặp vào–ra | Lần đầu + lần cuối |
@@ -145,11 +145,11 @@ Engine **không đọc DB**. Service lấy dữ liệu, gọi engine, rồi ghi 
 
 ### 6.3 Trạng thái
 
-`on_time`, `late`, `early_leave`, `late_and_early`, `missing_checkin`, `missing_checkout`, `absent`, `holiday`, `day_off`, `leave` (Phase 3), `adjusted` (HR đã sửa). Bảng công tháng hiện ký hiệu ngắn, ví dụ `X` đủ công, `M` muộn, `V` vắng, `L` lễ, `?` thiếu log.
+`on_time`, `late`, `early_leave`, `late_and_early`, `missing_checkin`, `missing_checkout`, `absent`, `holiday`, `day_off`, `leave` (Phase 3), `adjusted` (HR đã sửa). Trạng thái dùng để lọc và giải thích; ô bảng công tháng hiện theo cách của 1Office (mục 8).
 
 ### 6.4 Ví dụ (cũng là test bắt buộc)
 
-Ca HC 08:00–17:00, nghỉ 12:00–13:00 (480 phút, 1 công), ngưỡng muộn/sớm 5 phút, tính toàn bộ phút, theo giờ thực tế.
+Ca HC 08:00–17:00, nghỉ 12:00–13:00 (480 phút, 1 công), ngưỡng muộn/sớm 5 phút (giá trị của bộ test, mặc định thật là 0), tính toàn bộ phút, theo giờ thực tế.
 
 | # | Log | Muộn | Sớm | Phút làm | Công | Trạng thái |
 |---|---|---|---|---|---|---|
@@ -191,7 +191,7 @@ Ngày thuộc kỳ đã chốt luôn bị bỏ qua và được ghi vào kết q
 
 ## 8. Bảng công tháng và chốt công (AT-16, AT-17, AT-24)
 
-- **Bảng công tháng:** mỗi dòng một người, mỗi cột một ngày (ký hiệu mục 6.3), cuối dòng là tổng (công thực tế, công lễ, phút muộn, số lần muộn, ngày vắng, ngày thiếu log). Lọc theo phòng ban, có phân trang (CORE-10), và theo **phạm vi dữ liệu** (CORE-15): trưởng phòng chỉ thấy phòng mình.
+- **Bảng công tháng:** mỗi dòng một người, mỗi cột một ngày (đầu cột ghi thứ và ngày, cuối tuần tô xám). Ô ngày theo 1Office: hiện **số giờ làm** (bao gồm làm thêm) hoặc **số công**, HR chọn trong chính sách; chữ nhỏ phía trên là mã nghỉ (Phase 3), `V` khi có vi phạm (muộn, sớm, thiếu log), `+` khi có giờ ngoài ca/làm thêm; `N` khi không có ca; ngày lễ ghi `L`. Bấm ô xem giờ vào/ra, phút muộn/sớm, log gốc và lịch sử thay đổi của ô. Cột tổng theo nhóm của 1Office: Đi muộn (số phút), Về sớm (số phút), Quên chốt (số lần), Nghỉ không lý do (số ngày), Công chính (công ca, công lễ, giờ làm đêm, giờ ngày lễ, giờ ngày nghỉ), Giờ ngoài ca, Công chuẩn (AT-25), Công tổng (tổng giờ, số công). Cột tiền phạt / công phạt, nghỉ theo loại, phép đầu kỳ–cuối kỳ thêm khi có đơn từ (Phase 3) và công thức (AT-27). Lọc theo phòng ban, có phân trang (CORE-10), và theo **phạm vi dữ liệu** (CORE-15): trưởng phòng chỉ thấy phòng mình.
 - **Chốt kỳ:** `AttendancePeriod(month, status, lockedAt, lockedBy)`. Chốt xong thì cấm tính lại, cấm sửa tay, cấm xếp ca trong tháng. Ghi `PayrollCycle.lockedAttendanceAt` nếu có kỳ lương trùng tháng. Mở chốt cần quyền riêng, bắt buộc lý do và có audit.
 - **Nhân viên xác nhận công** (`AT-24`): sau khi HR mở cho xác nhận, nhân viên xem bảng công của mình rồi bấm "Xác nhận" hoặc "Phản hồi" kèm nội dung. HR thấy ai chưa xác nhận và ai có phản hồi. Mặc định không bắt buộc xác nhận mới được chốt; HR bật bắt buộc trong chính sách nếu cần.
 - **Export** (`AT-18`): dùng khung Export Excel của CORE-19, gồm bảng tháng và chi tiết từng ngày.
@@ -209,6 +209,15 @@ Ngày thuộc kỳ đã chốt luôn bị bỏ qua và được ghi vào kết q
 - Chống bấm hai lần: lần check-in cách lần trước dưới 1 phút thì bỏ qua.
 - **Nhân viên tự đăng ký thiết bị** (`DV-05`): gửi yêu cầu từ trình duyệt hoặc app, HR duyệt trong màn hình đã có (DV-01 → 04).
 
+## 9a. Đối chiếu với 1Office
+
+Hành vi 1Office đang dùng ghi ở [1office-attendance-reference.md](1office-attendance-reference.md). Chủ dự án chốt ngày 2026-10-22:
+
+- **Công thức tuỳ biến** (cột mới, phạt tiền, công chuẩn dạng công thức) làm ở Phase 5 cùng bộ công thức lương (`AT-27`). Phase 2 engine tính sẵn các đại lượng gốc, đặt tên để sau này dùng làm từ khoá: phút muộn/sớm, giờ làm, công ca, công lễ, giờ đêm, giờ ngoài ca, quên chốt.
+- **Ô bảng công** hiện như 1Office (mục 8).
+- **Ngưỡng muộn/sớm** mặc định 0 như 1Office.
+- Thêm vào Phase 2: công chuẩn theo phòng ban / vị trí (`AT-25`), cài đặt chung kiểu 1Office (`AT-28`), tự động nhận ca (`AT-29`), lịch ca xem theo tháng. Mẫu bảng chấm công nhiều đối tượng (`AT-26`) làm ở Phase 5; ca nhiều khoảng (`AT-30`) để Phase 9.
+
 ## 10. Mặc định cần HR xem lại
 
 Tất cả đổi được trên giao diện sau khi chạy. Thứ tự theo mức ảnh hưởng tới bảng công:
@@ -216,7 +225,7 @@ Tất cả đổi được trên giao diện sau khi chạy. Thứ tự theo m�
 | # | Câu hỏi | Mặc định đang chọn |
 |---|---|---|
 | 1 | Đi muộn trong ngưỡng có trừ công không? (ví dụ 6.4 #2) | Có trừ theo phút làm thực tế (0,99 công) |
-| 2 | Ngưỡng cho phép đi muộn / về sớm | 5 phút / 5 phút |
+| 2 | Ngưỡng cho phép đi muộn / về sớm | 0 / 0 (như 1Office; miễn hay phạt sẽ do công thức ở AT-27) |
 | 3 | Vượt ngưỡng thì tính toàn bộ phút hay phần vượt? | Toàn bộ |
 | 4 | Quên chấm ra xử lý thế nào? | 0 công, chờ giải trình (Phase 3) hoặc HR sửa |
 | 5 | Ngày làm việc trong tuần | Thứ 2 → thứ 6 |

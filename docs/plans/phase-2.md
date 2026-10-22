@@ -16,7 +16,7 @@ Từ log chấm công, ca, ngày lễ và chính sách công ty ra được bả
 
 ## Phạm vi
 
-22 item `todo`: AT-05 → AT-21, AT-23, AT-24, DV-05 → DV-07. Đã xong từ trước: AT-01 → AT-04, DV-01 → DV-04 (AT-02/03 sẽ được chuyển sang đọc kết quả của engine ở task 10). AT-22 (đơn được duyệt thì cập nhật công) thuộc Phase 3.
+22 item `todo` ban đầu: AT-05 → AT-21, AT-23, AT-24, DV-05 → DV-07; thêm AT-25, AT-28, AT-29 sau khi đối chiếu 1Office. Đã xong từ trước: AT-01 → AT-04, DV-01 → DV-04 (AT-02/03 sẽ được chuyển sang đọc kết quả của engine ở task 10). AT-22 (đơn được duyệt thì cập nhật công) thuộc Phase 3.
 
 ## Task
 
@@ -74,6 +74,17 @@ Chia 7 cụm, làm theo thứ tự. Đóng cụm nào chạy `npm run typecheck 
 | 21 | DV-05 | `POST /device-auth/my-requests`, `GET /device-auth/my-devices`: nhân viên tự đăng ký thiết bị; HR duyệt ở màn hình đã có | Trình duyệt hai vai | |
 | 22 | AT-13, DV-06 | `POST /attendance/check-in`, `check-out`: kiểm tra thiết bị đã duyệt + điểm hợp lệ theo `DeviceAuthPolicy`, ghi `AttendanceRawLog(source = web/app)`, tính lại ngày; nút chấm công trên `/user/attendance` | E2E: từng lý do từ chối. Trình duyệt với vị trí giả lập | |
 | 23 | AT-14 | Ảnh khi check-in (file service, mục đích `attendance_photo`) + toạ độ; HR xem ảnh từ ô bảng công | Trình duyệt | |
+
+### 2h. Bổ sung theo 1Office
+
+Đọc 1Office ngày 2026-10-22 (chỉ xem): [1office-attendance-reference.md](../design/1office-attendance-reference.md). Quyết định ở thiết kế mục 9a. Ngưỡng muộn/sớm đã đổi mặc định về 0 (migration `20261022040000_zero_late_grace`).
+
+| # | Item | Việc | Kiểm tra | Trạng thái |
+|---|---|---|---|---|
+| 25 | AT-07 | Lịch ca xem theo tháng như Phân ca của 1Office (ô hiện mã ca, `N` khi không có ca), giữ xem theo tuần | Trình duyệt | |
+| 26 | AT-25 | Công chuẩn theo nhóm phòng ban × vị trí: tự tính (ngày trong kỳ trừ chủ nhật) hoặc số cố định; cột Công chuẩn ở bảng công | Unit: chọn đúng nhóm, tháng 2 và tháng 31 ngày | |
+| 27 | AT-28 | Cài đặt kiểu 1Office: giới hạn sửa phân ca sau N ngày và tạo trước tối đa N ngày, muộn/sớm theo giây, tách giờ qua ngày, làm thêm qua ngày tính ngày trước, số ngày liên tiếp không cần chốt | Unit engine cho từng cài đặt | |
+| 28 | AT-29 | Tự động nhận ca: ngày chưa xếp ca thì chọn ca khớp log nhất trong các ca áp dụng cho phòng ban / vị trí | Unit: hai ca sáng/chiều, log 13:05 → ca chiều | |
 
 ### 2g. Đối chiếu và đóng phase
 

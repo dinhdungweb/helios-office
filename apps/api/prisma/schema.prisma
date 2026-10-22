@@ -521,8 +521,8 @@ model AttendancePolicy {
   workWeekdays                 Int[]                @default([1, 2, 3, 4, 5])
   defaultShiftId               String?
   defaultShift                 Shift?               @relation("PolicyDefaultShift", fields: [defaultShiftId], references: [id], onDelete: SetNull)
-  lateGraceMinutes             Int                  @default(5)
-  earlyGraceMinutes            Int                  @default(5)
+  lateGraceMinutes             Int                  @default(0)
+  earlyGraceMinutes            Int                  @default(0)
   lateCountMode                LateCountMode        @default(full)
   roundingMinutes              Int                  @default(0)
   punchPairing                 PunchPairingMode     @default(first_last)
