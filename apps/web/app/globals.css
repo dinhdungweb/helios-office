@@ -26826,3 +26826,177 @@ small {
     flex-wrap: wrap;
   }
 }
+
+/* DV-07: Cài đặt → Chấm công GPS/Wifi */
+.location-map {
+  width: 100%;
+  overflow: hidden;
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  z-index: 0;
+}
+
+.location-map.is-editable {
+  cursor: crosshair;
+}
+
+.location-overview {
+  margin-bottom: var(--space-7);
+}
+
+.location-dialog {
+  width: min(820px, calc(100vw - 32px));
+}
+
+.location-types {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.location-types legend {
+  margin-bottom: 6px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-strong);
+}
+
+.location-types label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-content: start;
+  gap: 2px 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.location-types label.is-checked {
+  background: var(--color-info-soft);
+  border-color: var(--color-info);
+}
+
+.location-types small {
+  grid-column: 1 / -1;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.location-gps {
+  display: grid;
+  gap: 10px;
+}
+
+.location-map-hint {
+  margin: -4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.location-gps-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.location-gps-fields .secondary-button {
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.location-radius input[type="range"] {
+  width: 100%;
+  padding: 0;
+  accent-color: var(--color-info);
+}
+
+.location-radius small,
+.location-dialog .account-dialog-field small {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.location-inline-button {
+  padding: 0;
+  color: var(--color-info);
+  background: none;
+  border: 0;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.location-active {
+  display: inline-flex;
+  align-items: center;
+  align-self: end;
+  gap: 8px;
+  min-height: 40px;
+  font-size: var(--font-size-sm);
+}
+
+.personnel-catalog-table.location-table :is(th, td) { text-align: left; vertical-align: top; }
+.personnel-catalog-table.location-table :is(th, td):nth-child(1) { width: 240px; }
+.personnel-catalog-table.location-table :is(th, td):nth-child(2) { width: 90px; }
+.personnel-catalog-table.location-table :is(th, td):nth-child(3) { width: auto; }
+.personnel-catalog-table.location-table :is(th, td):nth-child(4) { width: 160px; }
+.personnel-catalog-table.location-table :is(th, td):nth-child(5) { width: 110px; }
+
+.location-table tr.is-inactive td {
+  color: var(--color-text-secondary);
+}
+
+.location-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.location-detail {
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
+}
+
+.location-type {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: var(--font-weight-strong);
+}
+
+.location-type.is-gps {
+  color: var(--color-info);
+  background: var(--color-info-soft);
+}
+
+.location-type.is-ip {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.location-type.is-wifi {
+  color: #7c3aed;
+  background: #ede9fe;
+}
+
+.location-empty {
+  padding: 32px 16px !important;
+  color: var(--color-text-secondary);
+  text-align: center !important;
+}
+
+@media (max-width: 720px) {
+  .location-types,
+  .location-gps-fields {
+    grid-template-columns: 1fr;
+  }
+}

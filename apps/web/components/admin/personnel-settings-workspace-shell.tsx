@@ -27,6 +27,7 @@ export type PersonnelSettingsItem =
   | "shift"
   | "attendance-policy"
   | "standard-workday"
+  | "attendance-location"
   | "holiday"
   | "attendance-recalc"
   | "approval";
@@ -48,6 +49,7 @@ const generalItems = [
   { key: "shift", href: "/admin/settings/shifts", label: "Cài đặt ca" },
   { key: "attendance-policy", href: "/admin/settings/attendance-policy", label: "Chính sách chấm công" },
   { key: "standard-workday", href: "/admin/settings/standard-workdays", label: "Công chuẩn" },
+  { key: "attendance-location", href: "/admin/settings/attendance-locations", label: "Chấm công GPS/Wifi" },
   { key: "holiday", href: "/admin/settings/holidays", label: "Ngày lễ" },
   { key: "attendance-recalc", href: "/admin/settings/attendance-recalc", label: "Tính lại công" },
   { key: "approval", href: "/admin/settings/approval-workflows", label: "Quy trình duyệt" }

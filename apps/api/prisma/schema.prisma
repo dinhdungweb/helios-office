@@ -720,6 +720,7 @@ model Workplace {
   archivedAt         DateTime?
   department         Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   attendanceDevices  AttendanceDevice[]
+  attendanceLocations AttendanceLocation[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
@@ -935,6 +936,36 @@ model AttendanceDay {
 enum AttendancePeriodStatus {
   open
   locked
+}
+
+enum AttendanceLocationType {
+  gps
+  wifi
+  ip
+}
+
+// A place web/app check-ins are accepted from (DV-07): a GPS point with a radius, a wifi network
+// (SSID/BSSID, readable by the mobile app only) or office IP ranges (for the browser).
+model AttendanceLocation {
+  id           String                 @id @default(uuid())
+  name         String
+  type         AttendanceLocationType
+  workplaceId  String?
+  workplace    Workplace?             @relation(fields: [workplaceId], references: [id], onDelete: SetNull)
+  latitude     Float?
+  longitude    Float?
+  radiusMeters Int                    @default(100)
+  ssid         String?
+  bssid        String?
+  // IPv4 / IPv6 addresses or CIDR ranges.
+  ipRanges     String[]               @default([])
+  // active | inactive
+  status       String                 @default("active")
+  note         String?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  @@index([workplaceId])
 }
 
 enum StandardWorkdayMode {

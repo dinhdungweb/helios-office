@@ -365,7 +365,9 @@ modules:
       - id: DV-07
         title: Điểm chấm công hợp lệ (GPS + bán kính, wifi SSID/BSSID, dải IP)
         api: ["GET /attendance-locations", "POST /attendance-locations", "PATCH /attendance-locations/:id", "DELETE /attendance-locations/:id"]
-        status: todo
+        ui: /admin/settings/attendance-locations
+        status: done
+        note: Cài đặt → Chấm công GPS/Wifi như 1Office. Ba kiểu điểm - GPS (bấm bản đồ OpenStreetMap qua Leaflet hoặc lấy vị trí hiện tại, bán kính mặc định 100 m), mạng văn phòng theo IP / dải CIDR (IPv4, IPv6; nút thêm IP hiện tại), wifi SSID / BSSID (chỉ app di động đọc được). Gắn nơi làm việc, bật / tắt, quyền attendance.device.manage, có nhật ký. Hàm so khớp vị trí (khoảng cách, độ chính xác GPS tối đa cộng 100 m, dải IP) dùng lại ở AT-13
 
   # ---------------------------------------------------------------------------
   - code: HR
