@@ -707,17 +707,18 @@ model JobLevel {
 }
 
 model Workplace {
-  id                 String           @id @default(uuid())
-  name               String           @unique
+  id                 String             @id @default(uuid())
+  name               String             @unique
   addressLine        String?
   administrativeArea String?
   departmentId       String?
   description        String?
-  status             JobCatalogStatus @default(active)
+  status             JobCatalogStatus   @default(active)
   archivedAt         DateTime?
-  department         Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  department         Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  attendanceDevices  AttendanceDevice[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   @@index([departmentId])
 }
@@ -1070,17 +1071,23 @@ model ApprovalWorkflowDefinition {
   @@index([updatedById])
 }
 
+// A fingerprint / face device that pushes punches (AT-19). New device ids register themselves on
+// their first sync; an "inactive" device is refused until HR turns it back on.
 model AttendanceDevice {
-  id         String                @id @default(uuid())
-  deviceId   String                @unique
-  deviceName String?
-  storeCode  String?
-  status     String                @default("active")
-  lastSyncAt DateTime?
-  rawLogs    AttendanceRawLog[]
-  syncErrors AttendanceSyncError[]
-  createdAt  DateTime              @default(now())
-  updatedAt  DateTime              @updatedAt
+  id          String                @id @default(uuid())
+  deviceId    String                @unique
+  deviceName  String?
+  storeCode   String?
+  workplaceId String?
+  workplace   Workplace?            @relation(fields: [workplaceId], references: [id], onDelete: SetNull)
+  note        String?
+  // active | inactive
+  status      String                @default("active")
+  lastSyncAt  DateTime?
+  rawLogs     AttendanceRawLog[]
+  syncErrors  AttendanceSyncError[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
 }
 
 model AttendanceRawLog {
@@ -1102,16 +1109,22 @@ model AttendanceRawLog {
 }
 
 model AttendanceSyncError {
-  id           String           @id @default(uuid())
-  deviceId     String
-  employeeCode String?
-  storeCode    String?
-  punchTime    DateTime?
-  errorType    String
-  errorMessage String
-  rawPayload   Json?
-  device       AttendanceDevice @relation(fields: [deviceId], references: [deviceId])
-  createdAt    DateTime         @default(now())
+  id             String           @id @default(uuid())
+  deviceId       String
+  employeeCode   String?
+  storeCode      String?
+  punchTime      DateTime?
+  errorType      String
+  errorMessage   String
+  rawPayload     Json?
+  device         AttendanceDevice @relation(fields: [deviceId], references: [deviceId])
+  createdAt      DateTime         @default(now())
+  // AT-20: handled by mapping the code to an employee (the punch then becomes a raw log) or dismissed.
+  resolvedAt     DateTime?
+  resolvedById   String?
+  // assigned | dismissed
+  resolution     String?
+  resolutionNote String?
 
   @@index([deviceId, createdAt])
   @@index([employeeCode, createdAt])

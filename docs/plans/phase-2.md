@@ -61,9 +61,9 @@ Chia 7 cụm, làm theo thứ tự. Đóng cụm nào chạy `npm run typecheck 
 
 | # | Item | Việc | Kiểm tra | Trạng thái |
 |---|---|---|---|---|
-| 16 | AT-19 | CRUD `/attendance-devices` (tên, mã cửa hàng/nơi làm việc, trạng thái, lần đồng bộ cuối); máy bị tắt thì từ chối sync | E2E | |
-| 17 | AT-20 | `GET /attendance/sync-errors`, `POST .../:id/resolve`: gán mã chấm công cho nhân sự rồi xử lý lại các log lỗi của mã đó | E2E: log `EMPLOYEE_NOT_FOUND` → gán mã → vào bảng công | |
-| 18 | AT-21 | `GET /attendance/raw-logs` (lọc người/máy/khoảng ngày, phân trang, phạm vi dữ liệu); xem từ ô bảng công | Trình duyệt | |
+| 16 | AT-19 | CRUD `/attendance-devices` (tên, mã cửa hàng/nơi làm việc, trạng thái, lần đồng bộ cuối); máy bị tắt thì từ chối sync | Unit + trình duyệt (thay E2E): tắt máy → sync 403 | ✅ |
+| 17 | AT-20 | `GET /attendance/sync-errors`, `POST .../:id/resolve`: gán mã chấm công cho nhân sự rồi xử lý lại các log lỗi của mã đó | Unit + trình duyệt (thay E2E): log `EMPLOYEE_NOT_FOUND` → gán mã → vào log gốc, tính lại công | ✅ |
+| 18 | AT-21 | `GET /attendance/raw-logs` (lọc người/máy/khoảng ngày, phân trang, phạm vi dữ liệu); xem từ ô bảng công | Trình duyệt | ✅ |
 | 19 | AT-23 | Job hằng ngày: nhắc qua thông báo (NT-05) những người thiếu log của ngày hôm trước; giờ chạy cấu hình được | Unit: chọn đúng người, không nhắc ngày nghỉ/lễ | |
 
 ### 2f. Check-in trên web/app
@@ -77,7 +77,7 @@ Chia 7 cụm, làm theo thứ tự. Đóng cụm nào chạy `npm run typecheck 
 
 ### 2h. Bổ sung theo 1Office
 
-Tổ chức màn hình (2026-10-22): HCNS là nhóm quyền như 1Office, không có khu riêng. Mọi màn chấm công nằm trong phân hệ **Công** (`/user/attendance/...`) với tab hiện theo quyền: Bảng công cá nhân, Phân ca, Cài đặt; Bảng chấm công (task 12) và Máy chấm (task 16) thêm vào cùng chỗ.
+Tổ chức màn hình (2026-10-22): HCNS là nhóm quyền như 1Office, không có khu riêng. Mọi màn chấm công nằm trong phân hệ **Công** (`/user/attendance/...`) với tab hiện theo quyền: Bảng công cá nhân, Phân ca, Cài đặt; Bảng chấm công (task 12) và Máy chấm công (task 16–18, `/user/attendance/devices`) thêm vào cùng chỗ.
 
 Đọc 1Office ngày 2026-10-22 (chỉ xem): [1office-attendance-reference.md](../design/1office-attendance-reference.md). Quyết định ở thiết kế mục 9a. Ngưỡng muộn/sớm đã đổi mặc định về 0 (migration `20261022040000_zero_late_grace`).
 

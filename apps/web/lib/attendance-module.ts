@@ -4,7 +4,7 @@ import { getCurrentSessionUserOrSignOut } from "@/lib/auth-user";
 // HCNS permission group) also sees the shift schedule and the settings. Each tab shows only with
 // the permissions its API needs.
 
-export type AttendanceModuleTabKey = "personal" | "timesheet" | "shift-schedule" | "settings";
+export type AttendanceModuleTabKey = "personal" | "timesheet" | "shift-schedule" | "devices" | "settings";
 
 export type AttendanceModuleTab = { key: AttendanceModuleTabKey; label: string; href: string; active: boolean };
 
@@ -15,11 +15,15 @@ const ATTENDANCE_READ = [
   "permission.attendance-timesheets.manage"
 ];
 const ATTENDANCE_SETUP = ["permission.attendance-timesheets.manage"];
+// Raw punches are readable with attendance view; machines and sync errors need their own rights.
+const DEVICE_MANAGE = "attendance.device.manage";
+const DEVICE_TAB = [DEVICE_MANAGE, "permission.attendance.manage", "permission.attendance.view"];
 
 const TABS: Array<{ key: AttendanceModuleTabKey; label: string; href: string; permissions: string[] | null }> = [
   { key: "personal", label: "Bảng công cá nhân", href: "/user/attendance", permissions: null },
   { key: "timesheet", label: "Bảng chấm công", href: "/user/attendance/timesheet", permissions: ATTENDANCE_READ },
   { key: "shift-schedule", label: "Phân ca", href: "/user/attendance/shift-schedule", permissions: ATTENDANCE_READ },
+  { key: "devices", label: "Máy chấm công", href: "/user/attendance/devices", permissions: DEVICE_TAB },
   { key: "settings", label: "Cài đặt", href: "/admin/settings/shifts", permissions: ATTENDANCE_SETUP }
 ];
 
@@ -53,4 +57,16 @@ export async function canManageConfirmation() {
   const account = (await getCurrentSessionUserOrSignOut())?.account;
   const keys = account?.effectivePermissionKeys ?? [];
   return account?.adminRole === "system_admin" || keys.includes("permission.attendance-timesheets.manage") || keys.includes("permission.attendance.manage");
+}
+
+// What the "Máy chấm công" tab shows (AT-19/20/21): machines, sync errors and raw punches.
+export async function getDeviceAccess() {
+  const account = (await getCurrentSessionUserOrSignOut())?.account;
+  const isAdmin = account?.adminRole === "system_admin";
+  const keys = new Set(account?.effectivePermissionKeys ?? []);
+  return {
+    devices: isAdmin || keys.has(DEVICE_MANAGE),
+    errors: isAdmin || keys.has(DEVICE_MANAGE) || keys.has("permission.attendance.manage"),
+    logs: isAdmin || DEVICE_TAB.some((key) => keys.has(key))
+  };
 }

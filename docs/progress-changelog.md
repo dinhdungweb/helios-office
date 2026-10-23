@@ -24,9 +24,10 @@ Trạng thái: nhánh `feat/phase-2`, chưa push. Plan: `docs/plans/phase-2.md`.
 - Bảng chấm công tháng (AT-16) và sửa công tay (AT-15) ở Công → Bảng chấm công: ô giờ / công kèm V, S; cột tổng như 1Office; bấm ô xem log, kết quả, lịch sử sửa và sửa công (bắt buộc lý do, bỏ sửa tay).
 - Chốt / mở chốt kỳ công (AT-17) trên bảng chấm công: kỳ đã chốt không sửa công, không xếp ca, tính lại bỏ qua; mở chốt bắt buộc lý do; đóng dấu kỳ lương trùng tháng.
 - Nhân viên xác nhận công (AT-24): HR mở xác nhận trên bảng chấm công, nhân viên xác nhận hoặc phản hồi trên bảng công cá nhân, HR ghi cách xử lý. Xuất bảng chấm công ra Excel (AT-18): bảng tháng + chi tiết ngày.
+- Máy chấm công (AT-19/20/21) ở Công → Máy chấm công: danh sách máy (thêm, sửa, gán địa điểm, bật / tắt; máy tắt thì đồng bộ bị từ chối, máy đã có log chỉ tắt không xoá), lỗi đồng bộ (gán mã chấm công lạ cho đúng nhân sự thì các lượt chấm bị từ chối được nhập lại và tính lại công; lỗi khác bỏ qua kèm lý do), dữ liệu chấm công gốc lọc theo ngày, máy, người.
 - Đồng bộ máy chấm công đọc giờ không kèm múi giờ theo giờ công ty (không theo giờ máy chủ) và tính lại ngay các ngày bị ảnh hưởng, gồm ngày trước đó cho ca đêm. Tính lại toàn bộ: `npm run attendance:recalculate -- [--from] [--to]` (chạy lại không đổi gì nếu dữ liệu không đổi).
 
-Kiểm tra: 286 unit + 45 e2e pass, audit pass. Thử thật: đồng bộ 08:10–17:05 → muộn 10 phút, 0,98 công.
+Kiểm tra: 295 unit + 45 e2e pass, audit pass. Thử thật: đồng bộ 08:10–17:05 → muộn 10 phút, 0,98 công.
 
 Tiếp theo: máy chấm công (AT-19), lỗi đồng bộ (AT-20), log gốc (AT-21), nhắc quên chấm (AT-23).
 

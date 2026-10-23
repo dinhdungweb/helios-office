@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
 import { EmployeeStatus, Prisma, type AttendanceDayStatus } from "@prisma/client";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { pageArgs, paginated, sortArgs } from "../../common/pagination/list-query";
@@ -142,12 +142,17 @@ export class AttendanceService {
       return this.syncResponse(0, 0, []);
     }
 
+    // A new device id registers itself; one HR turned off is refused (AT-19). The machine keeps its
+    // punches and sends them again once it is back on.
+    const known = await this.prisma.attendanceDevice.findUnique({ where: { deviceId: dto.device_id }, select: { status: true } });
+    if (known?.status === "inactive") {
+      throw new ForbiddenException("Máy chấm công này đã bị tắt trên Helios.");
+    }
     const device = await this.prisma.attendanceDevice.upsert({
       where: { deviceId: dto.device_id },
       update: {
         storeCode: dto.store_code?.trim() || null,
-        lastSyncAt: new Date(),
-        status: "active"
+        lastSyncAt: new Date()
       },
       create: {
         deviceId: dto.device_id,

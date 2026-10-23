@@ -749,15 +749,21 @@ modules:
       - id: AT-19
         title: Quản lý máy chấm công
         api: ["GET /attendance-devices", "POST /attendance-devices", "PATCH /attendance-devices/:id", "DELETE /attendance-devices/:id"]
-        status: todo
+        ui: /user/attendance/devices
+        status: done
+        note: Tab Máy chấm công trong phân hệ Công (quyền attendance.device.manage). Mã máy, tên, địa điểm làm việc, mã cửa hàng, ghi chú, số lượt chấm và lỗi, lần đồng bộ gần nhất. Máy tắt thì cổng đồng bộ từ chối dữ liệu; máy đã có log chỉ tắt được, không xoá. Máy lạ vẫn tự đăng ký ở lần đồng bộ đầu
       - id: AT-20
         title: Lỗi đồng bộ và mapping mã chấm công
-        api: ["GET /attendance/sync-errors", "POST /attendance/sync-errors/:id/resolve"]
-        status: todo
+        api: ["GET /attendance/sync-errors", "GET /attendance/sync-errors/candidates", "POST /attendance/sync-errors/:id/resolve"]
+        ui: /user/attendance/devices?view=errors
+        status: done
+        note: Lỗi chưa xử lý / đã xử lý, lọc theo máy và mã. Mã chấm công chưa gán thì HR chọn nhân sự trong phạm vi, mã lưu vào hồ sơ, mọi lượt chấm bị từ chối cùng mã được nhập thành log gốc và công được tính lại; mã đang thuộc người khác thì chặn. Lỗi khác bỏ qua kèm lý do. Có nhật ký
       - id: AT-21
         title: Xem log chấm công gốc
         api: ["GET /attendance/raw-logs"]
-        status: todo
+        ui: /user/attendance/devices?view=logs
+        status: done
+        note: Dữ liệu chấm công theo khoảng ngày (mặc định 7 ngày gần nhất), máy, tên hoặc mã nhân viên, có phân trang; theo phạm vi dữ liệu của quyền chấm công
       - id: AT-22
         title: Cập nhật công khi đơn nghỉ/OT/đổi ca/giải trình được duyệt
         phase: 3

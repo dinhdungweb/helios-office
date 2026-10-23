@@ -24,6 +24,8 @@ import {
 } from "./attendance-query.dto";
 import { AttendanceConfirmationService, CONFIRMATION_MANAGE_PERMISSIONS } from "./attendance-confirmation.service";
 import { AttendancePeriodService } from "./attendance-period.service";
+import { RawLogQueryDto, ResolveSyncErrorDto, SyncErrorQueryDto } from "./attendance-logs.dto";
+import { AttendanceLogsService, RAW_LOG_PERMISSIONS, SYNC_ERROR_PERMISSIONS } from "./attendance-logs.service";
 import { AttendanceTimesheetService, TIMESHEET_PERMISSIONS } from "./attendance-timesheet.service";
 import { ATTENDANCE_VIEW_PERMISSIONS, AttendanceService } from "./attendance.service";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
@@ -46,6 +48,7 @@ export class AttendanceController {
     private readonly timesheets: AttendanceTimesheetService,
     private readonly periods: AttendancePeriodService,
     private readonly confirmations: AttendanceConfirmationService,
+    private readonly logs: AttendanceLogsService,
     private readonly dataScope: DataScopeService,
     private readonly prisma: PrismaService
   ) {}
@@ -132,6 +135,43 @@ export class AttendanceController {
   @ApiOkResponse({ description: "Reopen a locked month; a reason is required and the action is audited." })
   unlockPeriod(@CurrentUser() user: AuthenticatedUser, @Param("month") month: string, @Body() body: UnlockPeriodDto) {
     return this.periods.unlock(user, month, body.reason);
+  }
+
+  @Get("raw-logs")
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(...RAW_LOG_PERMISSIONS)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Raw punches (AT-21) of people in scope, filtered by range, person, device or name; paginated." })
+  rawLogs(@CurrentUser() user: AuthenticatedUser, @Query() query: RawLogQueryDto) {
+    return this.logs.rawLogs(user, query);
+  }
+
+  @Get("sync-errors")
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(...SYNC_ERROR_PERMISSIONS)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Punches the sync refused (AT-20), open ones by default." })
+  syncErrors(@Query() query: SyncErrorQueryDto) {
+    return this.logs.syncErrors(query);
+  }
+
+  @Get("sync-errors/candidates")
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(...SYNC_ERROR_PERMISSIONS)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Up to 20 people in scope to give an unknown attendance code to, searched by name or code." })
+  syncErrorCandidates(@CurrentUser() user: AuthenticatedUser, @Query("q") q?: string) {
+    return this.logs.candidates(user, q);
+  }
+
+  @Post("sync-errors/:id/resolve")
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(...SYNC_ERROR_PERMISSIONS)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Give the unknown code to an employee (its refused punches become raw logs and days are recalculated), or dismiss the error." })
+  resolveSyncError(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string, @Body() body: ResolveSyncErrorDto) {
+    return this.logs.resolve(user, id, body);
   }
 
   @Get("summary")
