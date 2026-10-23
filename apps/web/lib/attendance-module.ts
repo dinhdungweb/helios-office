@@ -47,3 +47,10 @@ export async function canLockAttendancePeriods() {
   const account = (await getCurrentSessionUserOrSignOut())?.account;
   return account?.adminRole === "system_admin" || Boolean(account?.effectivePermissionKeys?.includes("permission.attendance-period.lock"));
 }
+
+// Whether the viewer may open confirmation and handle feedback (AT-24).
+export async function canManageConfirmation() {
+  const account = (await getCurrentSessionUserOrSignOut())?.account;
+  const keys = account?.effectivePermissionKeys ?? [];
+  return account?.adminRole === "system_admin" || keys.includes("permission.attendance-timesheets.manage") || keys.includes("permission.attendance.manage");
+}

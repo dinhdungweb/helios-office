@@ -10,7 +10,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { EXPORTS_QUEUE } from "../queue/queue.constants";
 import { QueueService } from "../queue/queue.service";
 import { ImportExportRegistry } from "./import-export.registry";
-import { writeSheet, XLSX_MIME_TYPE } from "./spreadsheet";
+import { writeSheet, writeWorkbook, XLSX_MIME_TYPE } from "./spreadsheet";
 
 export type ExportJobData = { jobId: string };
 
@@ -83,14 +83,17 @@ export class ExportsService {
       const handler = this.registry.exportHandler(job.type);
       // Stored already parsed by create(); parsing again could drop normalised keys.
       const params = (job.params ?? {}) as Record<string, unknown>;
-      const rows = await handler.rows(params, { accountId: job.createdById, employeeId: null, scope: job.scope as unknown as ResolvedScope });
+      const context = { accountId: job.createdById, employeeId: null, scope: job.scope as unknown as ResolvedScope };
+      // Multi-sheet handlers build their own columns; others write one sheet from `columns`.
+      const sheets = handler.sheets ? await handler.sheets(params, context) : null;
+      const rows = sheets ? sheets[0]?.rows ?? [] : await handler.rows(params, context);
       const file = await this.files.saveGenerated({
         purpose: "export_file",
         ownerId: job.createdById,
         createdById: job.createdById,
         fileName: handler.fileName(params),
         mimeType: XLSX_MIME_TYPE,
-        body: await writeSheet(handler.title, handler.columns, rows)
+        body: sheets ? await writeWorkbook(sheets) : await writeSheet(handler.title, handler.columns, rows)
       });
 
       await this.prisma.exportJob.update({

@@ -11,7 +11,18 @@ import { AttendanceSyncDto } from "./attendance-sync.dto";
 import { AttendanceSyncGuard } from "./attendance-sync.guard";
 import { AdjustAttendanceDto, RevokeAdjustmentDto } from "./attendance-adjustment.dto";
 import { ATTENDANCE_EDIT_PERMISSIONS, AttendanceAdjustmentsService } from "./attendance-adjustments.service";
-import { AttendanceListQueryDto, LockPeriodDto, MyAttendanceQueryDto, TimesheetQueryDto, UnlockPeriodDto } from "./attendance-query.dto";
+import {
+  AttendanceListQueryDto,
+  ConfirmationWindowDto,
+  ConfirmTimesheetDto,
+  LockPeriodDto,
+  MyAttendanceQueryDto,
+  MyTimesheetQueryDto,
+  ResolveFeedbackDto,
+  TimesheetQueryDto,
+  UnlockPeriodDto
+} from "./attendance-query.dto";
+import { AttendanceConfirmationService, CONFIRMATION_MANAGE_PERMISSIONS } from "./attendance-confirmation.service";
 import { AttendancePeriodService } from "./attendance-period.service";
 import { AttendanceTimesheetService, TIMESHEET_PERMISSIONS } from "./attendance-timesheet.service";
 import { ATTENDANCE_VIEW_PERMISSIONS, AttendanceService } from "./attendance.service";
@@ -34,6 +45,7 @@ export class AttendanceController {
     private readonly adjustments: AttendanceAdjustmentsService,
     private readonly timesheets: AttendanceTimesheetService,
     private readonly periods: AttendancePeriodService,
+    private readonly confirmations: AttendanceConfirmationService,
     private readonly dataScope: DataScopeService,
     private readonly prisma: PrismaService
   ) {}
@@ -70,8 +82,46 @@ export class AttendanceController {
   @RequireAnyPermission(PERIOD_LOCK_PERMISSION)
   @ApiBearerAuth()
   @ApiOkResponse({ description: "Lock a month (AT-17): no more manual changes or schedule edits, recalculations skip it." })
-  lockPeriod(@CurrentUser() user: AuthenticatedUser, @Param("month") month: string, @Body() body: LockPeriodDto) {
+  async lockPeriod(@CurrentUser() user: AuthenticatedUser, @Param("month") month: string, @Body() body: LockPeriodDto) {
+    await this.confirmations.assertConfirmedForLock(month);
     return this.periods.lock(user, month, body?.note);
+  }
+
+  @Post("timesheets/:month/confirmation")
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(...CONFIRMATION_MANAGE_PERMISSIONS)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Open or close employee confirmation for a month (AT-24)." })
+  setConfirmationWindow(@CurrentUser() user: AuthenticatedUser, @Param("month") month: string, @Body() body: ConfirmationWindowDto) {
+    return this.confirmations.setOpen(user, month, body.open);
+  }
+
+  @Post("timesheets/:month/confirmations/:employeeId/resolve")
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(...CONFIRMATION_MANAGE_PERMISSIONS)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Record how an employee's feedback on their month was handled." })
+  resolveFeedback(@CurrentUser() user: AuthenticatedUser, @Param("month") month: string, @Param("employeeId") employeeId: string, @Body() body: ResolveFeedbackDto) {
+    return this.confirmations.resolve(user, month, employeeId, body.resolution);
+  }
+
+  @Get("me/timesheet")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "My month (AT-24): totals, whether confirmation is open, and my answer." })
+  myTimesheet(@CurrentUser() user: AuthenticatedUser, @Query() query: MyTimesheetQueryDto) {
+    return this.confirmations.myMonth(user, query.month);
+  }
+
+  @Post("me/timesheet/:month/confirm")
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Confirm my month, or send feedback to HR, while confirmation is open." })
+  confirmMyTimesheet(@CurrentUser() user: AuthenticatedUser, @Param("month") month: string, @Body() body: ConfirmTimesheetDto) {
+    return this.confirmations.answer(user, month, body.action, body.feedback);
   }
 
   @Post("timesheets/:month/unlock")

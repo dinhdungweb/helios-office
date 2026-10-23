@@ -26149,3 +26149,120 @@ small {
   border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
 }
+
+/* AT-24: timesheet confirmation */
+.attendance-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-7);
+  padding: var(--space-7) var(--space-8);
+  background: var(--color-info-soft);
+  border: 1px solid color-mix(in srgb, var(--color-info) 30%, transparent);
+  border-radius: var(--radius-md);
+}
+
+.attendance-confirm.is-done {
+  background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface-muted));
+  border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
+}
+
+.attendance-confirm-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 360px;
+}
+
+.attendance-confirm-text strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.attendance-confirm-text span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.attendance-confirm-resolution {
+  color: var(--color-success) !important;
+}
+
+.attendance-confirm-pending {
+  color: #b45309 !important;
+}
+
+.attendance-confirm-actions {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.attendance-confirm-feedback {
+  display: grid;
+  gap: var(--space-5);
+  flex: 1 1 100%;
+}
+
+.attendance-confirm-feedback textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.attendance-confirm-feedback .attendance-confirm-actions {
+  justify-content: flex-end;
+}
+
+.timesheet-confirm-summary {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.timesheet-confirm {
+  display: inline-flex;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.timesheet-confirm.is-pending {
+  color: var(--color-text-secondary);
+}
+
+.timesheet-confirm.is-confirmed {
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+}
+
+.timesheet-confirm.is-feedback {
+  color: #b45309;
+  background: #fde7c3;
+  font-weight: var(--font-weight-strong);
+  cursor: pointer;
+}
+
+.timesheet-confirm.is-resolved {
+  color: var(--color-info);
+  background: var(--color-info-soft);
+  cursor: pointer;
+}
+
+.timesheet-feedback-quote {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--color-surface-strong);
+  border-left: 3px solid #b45309;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.timesheet-feedback-quote small {
+  color: var(--color-text-secondary);
+}

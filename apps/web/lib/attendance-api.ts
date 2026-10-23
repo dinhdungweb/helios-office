@@ -127,3 +127,34 @@ export function resolveAttendanceMonth(requested: string | undefined) {
   if (requested && /^\d{4}-(0[1-9]|1[0-2])$/.test(requested)) return requested;
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit" }).format(new Date());
 }
+
+// AT-24: my answer on a month and whether HR has opened confirmation.
+export type AttendanceConfirmation = {
+  status: "confirmed" | "feedback";
+  feedback: string | null;
+  respondedAt: string;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  resolution: string | null;
+};
+
+export type MyMonthConfirmation = {
+  month: string;
+  locked: boolean;
+  confirmationOpen: boolean;
+  confirmation: AttendanceConfirmation | null;
+};
+
+export async function getMyMonthConfirmation(month: string): Promise<MyMonthConfirmation | null> {
+  const accessToken = await getSessionAccessToken();
+  if (!accessToken) return null;
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/attendance/me/timesheet?month=${month}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store"
+    });
+    return response.ok ? ((await response.json()) as MyMonthConfirmation) : null;
+  } catch {
+    return null;
+  }
+}

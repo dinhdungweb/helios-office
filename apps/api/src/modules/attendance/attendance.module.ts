@@ -1,15 +1,15 @@
 import { Module } from "@nestjs/common";
 import { AttendanceAdjustmentsService } from "./attendance-adjustments.service";
 import { AttendanceController } from "./attendance.controller";
-import { AttendanceTimesheetService } from "./attendance-timesheet.service";
 import { AttendanceCalculationModule } from "./attendance-calculation.module";
+import { AttendanceTransferModule } from "./attendance-transfer.module";
 import { AttendanceService } from "./attendance.service";
 import { AttendanceSyncGuard } from "./attendance-sync.guard";
 import { AuthModule } from "../auth/auth.module";
 
 @Module({
-  imports: [AuthModule, AttendanceCalculationModule],
+  imports: [AuthModule, AttendanceCalculationModule, AttendanceTransferModule],
   controllers: [AttendanceController],
-  providers: [AttendanceService, AttendanceAdjustmentsService, AttendanceTimesheetService, AttendanceSyncGuard]
+  providers: [AttendanceService, AttendanceAdjustmentsService, AttendanceSyncGuard]
 })
 export class AttendanceModule {}

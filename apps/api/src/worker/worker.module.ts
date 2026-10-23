@@ -9,6 +9,7 @@ import { PrismaModule } from "../common/prisma/prisma.module";
 import { QueueModule } from "../common/queue/queue.module";
 import { AdminSettingsModule } from "../modules/admin-settings/admin-settings.module";
 import { AttendanceCalculationModule } from "../modules/attendance/attendance-calculation.module";
+import { AttendanceTransferModule } from "../modules/attendance/attendance-transfer.module";
 import { EmployeeTransferModule } from "../modules/employees/employee-transfer.module";
 import { NotificationDeliveryService } from "../modules/notifications/notification-delivery.service";
 import { AttendanceRecalcProcessor } from "./attendance-recalc.processor";
@@ -37,7 +38,8 @@ import { FileCleanupService } from "./file-cleanup.service";
     FilesModule,
     ImportExportModule,
     EmployeeTransferModule,
-    AttendanceCalculationModule
+    AttendanceCalculationModule,
+    AttendanceTransferModule
   ],
   providers: [WorkerRuntime, RealtimeEmitter, NotificationDeliveryService, NotificationsProcessor, EmailProcessor, ImportExportProcessor, AttendanceRecalcProcessor, FileCleanupService],
   exports: [WorkerRuntime]

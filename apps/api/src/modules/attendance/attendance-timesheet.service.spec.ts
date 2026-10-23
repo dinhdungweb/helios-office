@@ -55,8 +55,12 @@ function setup() {
     employeeWhere: jest.fn().mockReturnValue({ departmentId: { in: ["d1"] } })
   };
   const calculation = { getPolicy: jest.fn().mockResolvedValue({ timezone: "Asia/Ho_Chi_Minh", defaultShiftId: "hc", workWeekdays: [1, 2, 3, 4, 5] }) };
+  const confirmations = {
+    byEmployee: jest.fn().mockResolvedValue(new Map([["e1", { status: "confirmed" }]])),
+    counts: jest.fn().mockResolvedValue({ people: 2, confirmed: 1, feedback: 0, pending: 1 })
+  };
   const periods = { assertOpen: jest.fn(), assertRangeOpen: jest.fn(), view: jest.fn().mockResolvedValue({ month: "2026-10", status: "open" }) };
-  return { service: new AttendanceTimesheetService(prisma as never, dataScope as never, calculation as never, periods as never), prisma };
+  return { service: new AttendanceTimesheetService(prisma as never, dataScope as never, calculation as never, periods as never, confirmations as never), prisma };
 }
 
 describe("AttendanceTimesheetService (AT-16)", () => {

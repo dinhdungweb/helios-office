@@ -54,7 +54,9 @@ export class AttendancePeriodService {
   async view(month: string) {
     this.checkMonth(month);
     const period = await this.prisma.attendancePeriod.findUnique({ where: { month } });
-    if (!period) return { month, status: AttendancePeriodStatus.open, lockedAt: null, lockedBy: null, note: null, unlockedAt: null, unlockedBy: null, unlockReason: null };
+    if (!period) {
+      return { month, status: AttendancePeriodStatus.open, lockedAt: null, lockedBy: null, note: null, unlockedAt: null, unlockedBy: null, unlockReason: null, confirmationOpen: false };
+    }
 
     const names = await this.names([period.lockedById, period.unlockedById]);
     return {
@@ -65,7 +67,8 @@ export class AttendancePeriodService {
       note: period.note,
       unlockedAt: period.unlockedAt,
       unlockedBy: period.unlockedById ? names.get(period.unlockedById) ?? null : null,
-      unlockReason: period.unlockReason
+      unlockReason: period.unlockReason,
+      confirmationOpen: Boolean(period.confirmationOpenedAt)
     };
   }
 

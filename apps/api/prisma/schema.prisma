@@ -346,6 +346,7 @@ model Employee {
   attendanceRawLogs         AttendanceRawLog[]
   attendanceDays            AttendanceDay[]
   attendanceAdjustments     AttendanceAdjustment[]
+  attendanceConfirmations   AttendanceConfirmation[]
   shiftAssignments          ShiftAssignment[]
   leaveRequests             LeaveRequest[]
   payrollItems              PayrollItem[]
@@ -935,19 +936,48 @@ enum AttendancePeriodStatus {
 // A month of attendance (AT-17). Once locked, nothing may change its days: no manual change, no
 // schedule edit, and recalculations skip it. A month without a row is open.
 model AttendancePeriod {
-  id           String                 @id @default(uuid())
+  id                     String                 @id @default(uuid())
   // YYYY-MM
-  month        String                 @unique
-  status       AttendancePeriodStatus @default(open)
-  lockedAt     DateTime?
+  month                  String                 @unique
+  status                 AttendancePeriodStatus @default(open)
+  lockedAt               DateTime?
   // Employee id, or the account id when the account has no employee profile.
-  lockedById   String?
-  note         String?
-  unlockedAt   DateTime?
-  unlockedById String?
-  unlockReason String?
-  createdAt    DateTime               @default(now())
-  updatedAt    DateTime               @updatedAt
+  lockedById             String?
+  note                   String?
+  unlockedAt             DateTime?
+  unlockedById           String?
+  unlockReason           String?
+  // AT-24: employees may confirm or give feedback on their month while this is set.
+  confirmationOpenedAt   DateTime?
+  confirmationOpenedById String?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+}
+
+enum AttendanceConfirmationStatus {
+  confirmed
+  feedback
+}
+
+// An employee's answer on their month (AT-24): confirmed, or feedback for HR, who can record how
+// it was handled. One row per person and month; answering again replaces the answer.
+model AttendanceConfirmation {
+  id           String                       @id @default(uuid())
+  employeeId   String
+  employee     Employee                     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  // YYYY-MM
+  month        String
+  status       AttendanceConfirmationStatus
+  feedback     String?
+  respondedAt  DateTime
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolution   String?
+  createdAt    DateTime                     @default(now())
+  updatedAt    DateTime                     @updatedAt
+
+  @@unique([employeeId, month])
+  @@index([month])
 }
 
 enum AttendanceRecalcStatus {

@@ -40,8 +40,18 @@ export type TimesheetTotals = {
   workingDays: number;
 };
 
+export type TimesheetConfirmation = {
+  status: "confirmed" | "feedback";
+  feedback: string | null;
+  respondedAt: string;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  resolution: string | null;
+};
+
 export type TimesheetRow = {
   employee: { id: string; code: string; fullName: string; department: { id: string; name: string } };
+  confirmation: TimesheetConfirmation | null;
   cells: TimesheetCell[];
   totals: TimesheetTotals;
 };
@@ -55,6 +65,7 @@ export type AttendancePeriod = {
   unlockedAt: string | null;
   unlockedBy: string | null;
   unlockReason: string | null;
+  confirmationOpen: boolean;
 };
 
 export type Timesheet = {
@@ -63,6 +74,7 @@ export type Timesheet = {
   to: string;
   today: string;
   period: AttendancePeriod;
+  confirmations: { people: number; confirmed: number; feedback: number; pending: number };
   dates: Array<{ date: string; weekday: number; holiday: { name: string; type: string } | null }>;
   items: TimesheetRow[];
   total: number;

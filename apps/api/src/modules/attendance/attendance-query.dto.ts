@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { AttendanceDayStatus } from "@prisma/client";
-import { IsEnum, IsOptional, IsString, Matches, MaxLength, MinLength } from "class-validator";
+import { IsBoolean, IsEnum, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from "class-validator";
 import { ListQueryDto } from "../../common/pagination/list-query";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -74,4 +74,37 @@ export class UnlockPeriodDto {
   @MinLength(3, { message: "Nhập lý do mở chốt." })
   @MaxLength(500)
   reason!: string;
+}
+
+export class MyTimesheetQueryDto {
+  @ApiPropertyOptional({ example: "2026-10", description: "Default: the current month" })
+  @IsOptional()
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, { message: "Tháng phải có dạng YYYY-MM." })
+  month?: string;
+}
+
+export class ConfirmTimesheetDto {
+  @ApiPropertyOptional({ enum: ["confirm", "feedback"] })
+  @IsIn(["confirm", "feedback"])
+  action!: "confirm" | "feedback";
+
+  @ApiPropertyOptional({ description: "Required with action = feedback" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  feedback?: string;
+}
+
+export class ConfirmationWindowDto {
+  @ApiPropertyOptional({ description: "true opens confirmation for the month, false closes it" })
+  @IsBoolean()
+  open!: boolean;
+}
+
+export class ResolveFeedbackDto {
+  @ApiPropertyOptional({ description: "How the feedback was handled" })
+  @IsString()
+  @MinLength(3, { message: "Nhập cách đã xử lý phản hồi." })
+  @MaxLength(1000)
+  resolution!: string;
 }

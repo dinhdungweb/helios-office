@@ -11,6 +11,7 @@ import {
   WarningCircle
 } from "@/lib/icons";
 import { AbsenceRequestCreateBoard } from "@/components/user/absence-request-create-board";
+import { AttendanceConfirmationBanner } from "@/components/attendance/attendance-confirmation-banner";
 import { AttendanceModuleTabs } from "@/components/attendance/attendance-module-tabs";
 import { AttendanceBoard } from "@/components/user/attendance-board";
 import { CheckinOutRequestCreateBoard } from "@/components/user/checkin-out-request-create-board";
@@ -28,7 +29,7 @@ import { UserFrame } from "@/components/user/user-frame";
 import { getCurrentSessionUser } from "@/lib/auth-user";
 import { announcements } from "@/lib/mock-data";
 import { getEmployeeDirectoryData } from "@/lib/employee-directory-api";
-import { getMyAttendanceData, getMyShiftSchedule, resolveAttendanceMonth } from "@/lib/attendance-api";
+import { getMyAttendanceData, getMyMonthConfirmation, getMyShiftSchedule, resolveAttendanceMonth } from "@/lib/attendance-api";
 import { getAttendanceModuleTabs } from "@/lib/attendance-module";
 
 type UserPageProps = {
@@ -263,11 +264,22 @@ function UserHome() {
 
 async function UserAttendance({ month }: { month?: string }) {
   const attendanceMonth = resolveAttendanceMonth(month);
-  const [data, schedule, tabs] = await Promise.all([getMyAttendanceData(attendanceMonth), getMyShiftSchedule(attendanceMonth), getAttendanceModuleTabs("personal")]);
+  const [data, schedule, tabs, confirmation] = await Promise.all([
+    getMyAttendanceData(attendanceMonth),
+    getMyShiftSchedule(attendanceMonth),
+    getAttendanceModuleTabs("personal"),
+    getMyMonthConfirmation(attendanceMonth)
+  ]);
 
   return (
     <UserFrame activeModule="attendance">
-      <AttendanceBoard data={data} key={schedule.month} moduleTabs={<AttendanceModuleTabs tabs={tabs} />} schedule={schedule} />
+      <AttendanceBoard
+        banner={<AttendanceConfirmationBanner data={confirmation} />}
+        data={data}
+        key={schedule.month}
+        moduleTabs={<AttendanceModuleTabs tabs={tabs} />}
+        schedule={schedule}
+      />
     </UserFrame>
   );
 }

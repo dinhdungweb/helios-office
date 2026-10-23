@@ -741,8 +741,10 @@ modules:
         depends: [AT-16]
       - id: AT-18
         title: Export bảng công
-        api: ["GET /attendance/timesheets/:month/export"]
-        status: todo
+        api: ["POST /exports"]
+        ui: /user/attendance/timesheet
+        status: done
+        note: Nút Xuất Excel trên bảng chấm công, dùng khung Export chung (POST /exports, type attendance-timesheet, tham số month và departmentId), file tạo ở worker theo phạm vi dữ liệu. Sheet bảng tháng (giờ làm mỗi ngày hoặc N / L / X, cột tổng, xác nhận) và sheet chi tiết ngày. Khung export mở rộng cho nhiều sheet có cột theo dữ liệu. Thử 2026-10-23 — số liệu file khớp màn hình
         depends: [AT-16, CORE-19]
       - id: AT-19
         title: Quản lý máy chấm công
@@ -767,8 +769,10 @@ modules:
         depends: [NT-05]
       - id: AT-24
         title: Bảng công tháng của tôi + xác nhận công
-        api: ["GET /attendance/me/timesheet", "POST /attendance/me/timesheet/:month/confirm"]
-        status: todo
+        api: ["GET /attendance/me/timesheet", "POST /attendance/me/timesheet/:month/confirm", "POST /attendance/timesheets/:month/confirmation", "POST /attendance/timesheets/:month/confirmations/:employeeId/resolve"]
+        ui: /user/attendance
+        status: done
+        note: HR mở / đóng xác nhận công theo tháng trên bảng chấm công, thấy cột Xác nhận và bộ đếm, đọc và ghi cách xử lý phản hồi; nhân viên xác nhận hoặc phản hồi trên bảng công cá nhân, đổi được tới khi chốt. Chính sách bắt buộc xác nhận thì chặn chốt kỳ khi còn người chưa xác nhận. Thử trình duyệt 2026-10-23 hai vai (admin, khanglm)
         depends: [AT-16]
       - id: AT-25
         title: Công chuẩn theo phòng ban / vị trí

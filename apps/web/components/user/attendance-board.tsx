@@ -575,7 +575,7 @@ function shiftMonth(month: string, delta: number) {
 
 // AT-09: personal monthly attendance calendar with each day's shift from the schedule. Pages key it
 // by month, so selection and the picker reset when the month changes.
-export function AttendanceBoard({ data, moduleTabs, schedule }: { data: AttendanceData; moduleTabs: ReactNode; schedule: MyScheduleData }) {
+export function AttendanceBoard({ banner, data, moduleTabs, schedule }: { banner?: ReactNode; data: AttendanceData; moduleTabs: ReactNode; schedule: MyScheduleData }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -687,6 +687,8 @@ export function AttendanceBoard({ data, moduleTabs, schedule }: { data: Attendan
           ) : null}
         </div>
       </header>
+
+      {banner}
 
       <section className={isNavigating ? "attendance-board-layout is-loading" : "attendance-board-layout"} aria-busy={isNavigating}>
         <div className="attendance-calendar-panel" aria-labelledby="attendance-calendar-title" ref={calendarPanelRef}>

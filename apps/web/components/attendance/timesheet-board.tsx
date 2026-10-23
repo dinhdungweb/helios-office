@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState, useTransition, type CSSProper
 import type { Route } from "next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ModalDialog, StateBlock } from "@/components/ui/primitives";
+import { ExportStatus, useServerExport } from "@/components/ui/use-server-export";
 import { AttendanceDayDrawer, STATUS_LABELS } from "@/components/attendance/attendance-day-drawer";
-import { lockPeriodAction, unlockPeriodAction } from "@/lib/attendance-actions";
+import { lockPeriodAction, resolveFeedbackAction, setConfirmationWindowAction, unlockPeriodAction } from "@/lib/attendance-actions";
 import type { AttendancePeriod, TimesheetCell, TimesheetData, TimesheetRow } from "@/lib/timesheet-api";
 import { CaretLeft, CaretRight } from "@/lib/icons";
 
@@ -131,14 +132,90 @@ function PeriodDialog({ mode, month, rows, onClose, onDone }: { mode: "lock" | "
   );
 }
 
+// AT-24: one person's feedback on the month and HR's handling of it.
+function FeedbackDialog({ month, row, onClose, onDone }: { month: string; row: TimesheetRow; onClose: () => void; onDone: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const [resolution, setResolution] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const answer = row.confirmation!;
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    dialog?.showModal();
+    return () => {
+      if (dialog?.open) dialog.close();
+    };
+  }, []);
+
+  const submit = async () => {
+    setError(null);
+    setIsSaving(true);
+    const result = await resolveFeedbackAction(month, row.employee.id, resolution);
+    setIsSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    onDone();
+    onClose();
+  };
+
+  return (
+    <ModalDialog className="shift-dialog" ref={dialogRef} title={`Phản hồi của ${row.employee.fullName}`} onCloseRequest={onClose} onCancel={onClose}>
+      <div className="account-dialog-form">
+        <blockquote className="timesheet-feedback-quote">
+          {answer.feedback}
+          <small>{vnDateTime(answer.respondedAt)}</small>
+        </blockquote>
+        {answer.resolvedAt ? (
+          <p className="timesheet-period-text">
+            Đã xử lý{answer.resolvedBy ? ` bởi ${answer.resolvedBy}` : ""} lúc {vnDateTime(answer.resolvedAt)}: {answer.resolution}
+          </p>
+        ) : (
+          <>
+            <p className="timesheet-period-text">Sửa công các ngày liên quan (bấm vào ô trên bảng) rồi ghi lại cách đã xử lý để nhân viên biết.</p>
+            <label className="account-dialog-field">
+              <span>Cách đã xử lý</span>
+              <textarea maxLength={1000} rows={2} value={resolution} onChange={(event) => setResolution(event.target.value)} />
+            </label>
+          </>
+        )}
+        {error ? <p className="account-dialog-error" role="alert">{error}</p> : null}
+        <div className="account-dialog-actions">
+          <button className="secondary-button" type="button" onClick={onClose}>
+            ĐÓNG
+          </button>
+          {answer.resolvedAt ? null : (
+            <button className="primary-button" disabled={isSaving || resolution.trim().length < 3} type="button" onClick={submit}>
+              {isSaving ? "ĐANG LƯU..." : "ĐÃ XỬ LÝ"}
+            </button>
+          )}
+        </div>
+      </div>
+    </ModalDialog>
+  );
+}
+
+function ConfirmationBadge({ row, onOpen }: { row: TimesheetRow; onOpen: () => void }) {
+  const answer = row.confirmation;
+  if (!answer) return <span className="timesheet-confirm is-pending">Chưa</span>;
+  if (answer.status === "confirmed") return <span className="timesheet-confirm is-confirmed">Đã xác nhận</span>;
+  return (
+    <button className={answer.resolvedAt ? "timesheet-confirm is-resolved" : "timesheet-confirm is-feedback"} title={answer.feedback ?? undefined} type="button" onClick={onOpen}>
+      {answer.resolvedAt ? "Đã xử lý" : "Phản hồi"}
+    </button>
+  );
+}
+
 function PeriodBadge({ period }: { period: AttendancePeriod }) {
   return period.status === "locked" ? <span className="timesheet-period is-locked">Đã chốt</span> : <span className="timesheet-period">Đang mở</span>;
 }
 
-type Props = { data: TimesheetData; canEdit: boolean; canLock: boolean; departmentId: string; q: string };
+type Props = { data: TimesheetData; canConfirm: boolean; canEdit: boolean; canLock: boolean; departmentId: string; q: string };
 
 // AT-16: monthly timesheet for the people in the viewer's scope (Công → Bảng chấm công).
-export function TimesheetBoard({ data, canEdit, canLock, departmentId, q }: Props) {
+export function TimesheetBoard({ data, canConfirm, canEdit, canLock, departmentId, q }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -146,6 +223,10 @@ export function TimesheetBoard({ data, canEdit, canLock, departmentId, q }: Prop
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [search, setSearch] = useState(q);
   const [periodDialog, setPeriodDialog] = useState<"lock" | "unlock" | null>(null);
+  const serverExport = useServerExport();
+  const [feedbackRow, setFeedbackRow] = useState<TimesheetRow | null>(null);
+  const [windowError, setWindowError] = useState<string | null>(null);
+  const [isTogglingWindow, setIsTogglingWindow] = useState(false);
   const [isNavigating, startNavigation] = useTransition();
 
   const navigate = useCallback(
@@ -165,6 +246,14 @@ export function TimesheetBoard({ data, canEdit, canLock, departmentId, q }: Prop
   }
 
   const { sheet } = data;
+  const toggleConfirmation = async () => {
+    setWindowError(null);
+    setIsTogglingWindow(true);
+    const result = await setConfirmationWindowAction(sheet.month, !sheet.period.confirmationOpen);
+    setIsTogglingWindow(false);
+    if (result.ok) refresh();
+    else setWindowError(result.error);
+  };
   const [year, monthNumber] = sheet.month.split("-").map(Number);
   const first = (sheet.page - 1) * sheet.limit + 1;
   const last = Math.min(sheet.total, sheet.page * sheet.limit);
@@ -201,6 +290,11 @@ export function TimesheetBoard({ data, canEdit, canLock, departmentId, q }: Prop
         >
           <input aria-label="Tìm nhân sự" placeholder="Tìm theo tên hoặc mã" value={search} onChange={(event) => setSearch(event.target.value)} />
         </form>
+        {canConfirm && sheet.period.status !== "locked" ? (
+          <button className="secondary-button" disabled={isTogglingWindow} type="button" onClick={toggleConfirmation}>
+            {sheet.period.confirmationOpen ? "Đóng xác nhận" : "Mở xác nhận công"}
+          </button>
+        ) : null}
         {canLock ? (
           sheet.period.status === "locked" ? (
             <button className="secondary-button" type="button" onClick={() => setPeriodDialog("unlock")}>
@@ -212,6 +306,14 @@ export function TimesheetBoard({ data, canEdit, canLock, departmentId, q }: Prop
             </button>
           )
         ) : null}
+        <button
+          className="secondary-button"
+          disabled={serverExport.running}
+          type="button"
+          onClick={() => serverExport.run("attendance-timesheet", { month: sheet.month, ...(departmentId ? { departmentId } : {}) })}
+        >
+          {serverExport.running ? "Đang xuất..." : "Xuất Excel"}
+        </button>
         <div className="timesheet-display" role="group" aria-label="Hiển thị ô ngày">
           <button aria-pressed={display === "hours"} className={display === "hours" ? "is-active" : undefined} type="button" onClick={() => setDisplay("hours")}>
             Giờ
@@ -222,6 +324,15 @@ export function TimesheetBoard({ data, canEdit, canLock, departmentId, q }: Prop
         </div>
       </header>
 
+      {sheet.period.confirmationOpen || sheet.confirmations.confirmed + sheet.confirmations.feedback > 0 ? (
+        <p className="timesheet-confirm-summary" role="status">
+          {sheet.period.confirmationOpen ? "Đang mở xác nhận công. " : "Đã đóng xác nhận công. "}
+          Đã xác nhận <strong>{sheet.confirmations.confirmed}/{sheet.confirmations.people}</strong> người · <strong>{sheet.confirmations.feedback}</strong> phản hồi ·{" "}
+          {sheet.confirmations.pending} chưa trả lời.
+        </p>
+      ) : null}
+      <ExportStatus state={serverExport.state} onDismiss={serverExport.dismiss} />
+      {windowError ? <p className="account-dialog-error" role="alert">{windowError}</p> : null}
       {sheet.period.status === "locked" ? (
         <p className="timesheet-period-banner" role="status">
           Kỳ công đã chốt{sheet.period.lockedAt ? ` lúc ${vnDateTime(sheet.period.lockedAt)}` : ""}
@@ -286,6 +397,9 @@ export function TimesheetBoard({ data, canEdit, canLock, departmentId, q }: Prop
               </th>
               <th className="timesheet-group" colSpan={2} scope="colgroup">
                 Tổng
+              </th>
+              <th className="timesheet-group" rowSpan={2} scope="col">
+                Xác nhận
               </th>
             </tr>
             <tr>
@@ -366,11 +480,14 @@ export function TimesheetBoard({ data, canEdit, canLock, departmentId, q }: Prop
                 <td className="timesheet-total">{units(row.totals.standardUnits)}</td>
                 <td className="timesheet-total">{row.totals.workedHours}</td>
                 <td className="timesheet-total is-strong">{units(row.totals.totalUnits)}</td>
+                <td className="timesheet-total">
+                  <ConfirmationBadge row={row} onOpen={() => setFeedbackRow(row)} />
+                </td>
               </tr>
             ))}
             {sheet.items.length === 0 ? (
               <tr>
-                <td className="timesheet-empty" colSpan={sheet.dates.length + 17}>
+                <td className="timesheet-empty" colSpan={sheet.dates.length + 18}>
                   Không có nhân sự nào phù hợp trong phạm vi của bạn.
                 </td>
               </tr>
@@ -413,6 +530,7 @@ export function TimesheetBoard({ data, canEdit, canLock, departmentId, q }: Prop
       </footer>
 
       {openDay ? <AttendanceDayDrawer canEdit={canEdit} dayId={openDay} locked={sheet.period.status === "locked"} onChanged={refresh} onClose={closeDrawer} /> : null}
+      {feedbackRow ? <FeedbackDialog month={sheet.month} row={feedbackRow} onClose={() => setFeedbackRow(null)} onDone={refresh} /> : null}
       {periodDialog ? <PeriodDialog mode={periodDialog} month={sheet.month} rows={sheet.items} onClose={() => setPeriodDialog(null)} onDone={refresh} /> : null}
     </section>
   );

@@ -107,7 +107,7 @@ async function post<T>(path: string, body: unknown): Promise<AttendanceActionRes
       cache: "no-store"
     });
     if (!response.ok) {
-      if (response.status === 403) return { ok: false, error: "Tài khoản của bạn không có quyền chốt kỳ công." };
+      if (response.status === 403) return { ok: false, error: "Tài khoản của bạn không có quyền thực hiện thao tác này." };
       const errorBody = (await response.json().catch(() => null)) as { message?: string | string[] } | null;
       const message = Array.isArray(errorBody?.message) ? errorBody.message.join(". ") : errorBody?.message;
       return { ok: false, error: response.status >= 500 || !message ? "Không thực hiện được. Vui lòng thử lại sau." : message };
@@ -126,6 +126,28 @@ export async function lockPeriodAction(month: string, note: string) {
 
 export async function unlockPeriodAction(month: string, reason: string) {
   const result = await post<unknown>(`/attendance/timesheets/${encodeURIComponent(month)}/unlock`, { reason: reason.trim() });
+  if (result.ok) revalidatePath("/user/attendance/timesheet");
+  return result;
+}
+
+// AT-24: employees answer on their month; HR opens confirmation and handles feedback.
+export async function answerMyMonthAction(month: string, action: "confirm" | "feedback", feedback?: string) {
+  const result = await post<unknown>(`/attendance/me/timesheet/${encodeURIComponent(month)}/confirm`, { action, feedback: feedback?.trim() || undefined });
+  if (result.ok) {
+    revalidatePath("/user/attendance");
+    revalidatePath("/user");
+  }
+  return result;
+}
+
+export async function setConfirmationWindowAction(month: string, open: boolean) {
+  const result = await post<unknown>(`/attendance/timesheets/${encodeURIComponent(month)}/confirmation`, { open });
+  if (result.ok) revalidatePath("/user/attendance/timesheet");
+  return result;
+}
+
+export async function resolveFeedbackAction(month: string, employeeId: string, resolution: string) {
+  const result = await post<unknown>(`/attendance/timesheets/${encodeURIComponent(month)}/confirmations/${encodeURIComponent(employeeId)}/resolve`, { resolution: resolution.trim() });
   if (result.ok) revalidatePath("/user/attendance/timesheet");
   return result;
 }

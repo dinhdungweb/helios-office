@@ -3,10 +3,12 @@ import type { AttendanceDayStatus, Prisma } from "@prisma/client";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { pageArgs, paginated } from "../../common/pagination/list-query";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import type { ResolvedScope } from "../../common/data-scope/data-scope.types";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { datesBetween, resolveDayShift } from "../shifts/shift-resolver";
 import { requiredMinutesFor } from "../shifts/shift-rules";
 import { AttendanceCalculationService } from "./attendance-calculation.service";
+import { AttendanceConfirmationService } from "./attendance-confirmation.service";
 import { AttendancePeriodService } from "./attendance-period.service";
 import type { TimesheetQueryDto } from "./attendance-query.dto";
 import { addDays, isoWeekday, localDate, zonedInstant } from "./engine/zoned-time";
@@ -52,10 +54,21 @@ export class AttendanceTimesheetService {
     private readonly prisma: PrismaService,
     private readonly dataScope: DataScopeService,
     private readonly calculation: AttendanceCalculationService,
-    private readonly periods: AttendancePeriodService
+    private readonly periods: AttendancePeriodService,
+    private readonly confirmations: AttendanceConfirmationService
   ) {}
 
   async monthly(user: AuthenticatedUser, query: TimesheetQueryDto) {
+    const scope = await this.dataScope.resolve(user, TIMESHEET_PERMISSIONS);
+    return this.build(scope, query, true);
+  }
+
+  // The whole month for an export (AT-18): every person in the scope, no paging.
+  async fullMonth(scope: ResolvedScope, query: Pick<TimesheetQueryDto, "month" | "departmentId">) {
+    return this.build(scope, query, false);
+  }
+
+  private async build(scope: ResolvedScope, query: TimesheetQueryDto, paged: boolean) {
     const policy = await this.calculation.getPolicy();
     const timeZone = policy.timezone;
     const today = localDate(Date.now(), timeZone);
@@ -66,7 +79,6 @@ export class AttendanceTimesheetService {
     const to = addDays(`${addDays(from, 31).slice(0, 7)}-01`, -1);
     const dates = datesBetween(from, to);
 
-    const scope = await this.dataScope.resolve(user, TIMESHEET_PERMISSIONS);
     const where: Prisma.EmployeeWhereInput = {
       AND: [
         this.dataScope.employeeWhere(scope),
@@ -77,7 +89,7 @@ export class AttendanceTimesheetService {
         { OR: [{ endDate: null }, { endDate: { gte: new Date(zonedInstant(from, 0, timeZone)) } }] }
       ]
     };
-    const { skip, take } = pageArgs(query);
+    const { skip, take } = paged ? pageArgs(query) : { skip: undefined, take: undefined };
     const [total, employees] = await Promise.all([
       this.prisma.employee.count({ where }),
       this.prisma.employee.findMany({
@@ -90,7 +102,7 @@ export class AttendanceTimesheetService {
     ]);
     const ids = employees.map((employee) => employee.id);
 
-    const [results, assignments, holidays, shifts, period] = await Promise.all([
+    const [results, assignments, holidays, shifts, period, answers, confirmationCounts] = await Promise.all([
       this.prisma.attendanceDay.findMany({
         where: { employeeId: { in: ids }, workDate: { gte: dbDate(from), lte: dbDate(to) } },
         include: { shift: { select: { code: true, color: true } } }
@@ -98,7 +110,9 @@ export class AttendanceTimesheetService {
       this.prisma.shiftAssignment.findMany({ where: { employeeId: { in: ids }, date: { gte: dbDate(from), lte: dbDate(to) } }, select: { employeeId: true, date: true, shiftId: true } }),
       this.prisma.holiday.findMany({ where: { date: { gte: dbDate(from), lte: dbDate(to) } } }),
       this.prisma.shift.findMany(),
-      this.periods.view(month)
+      this.periods.view(month),
+      this.confirmations.byEmployee(month, ids),
+      this.confirmations.counts(month, this.dataScope.employeeWhere(scope))
     ]);
     const resultByCell = new Map(results.map((result) => [`${result.employeeId}:${isoDate(result.workDate)}`, result]));
     const assignmentByCell = new Map(assignments.map((assignment) => [`${assignment.employeeId}:${isoDate(assignment.date)}`, assignment.shiftId]));
@@ -156,6 +170,7 @@ export class AttendanceTimesheetService {
       const nightMinutes = results.filter((result) => result.employeeId === employee.id).reduce((totalValue, result) => totalValue + result.nightMinutes, 0);
       return {
         employee: { id: employee.id, code: employee.code, fullName: employee.fullName, department: { id: employee.department.id, name: employee.department.name } },
+        confirmation: answers.get(employee.id) ?? null,
         cells,
         totals: {
           lateCount: worked.filter((cell) => cell.lateMinutes > 0).length,
@@ -183,6 +198,7 @@ export class AttendanceTimesheetService {
       to,
       today,
       period,
+      confirmations: confirmationCounts,
       dates: dates.map((date) => {
         const holiday = holidayByDate.get(date);
         return { date, weekday: isoWeekday(date), holiday: holiday ? { name: holiday.name, type: holiday.type } : null };
