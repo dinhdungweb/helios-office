@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { CheckInPanel } from "@/components/attendance/check-in-panel";
 import { ModalDialog } from "@/components/ui/primitives";
 import { registerThisDeviceAction, withdrawDeviceAction } from "@/lib/my-device-actions";
 import type { MyDevice, MyDeviceData, MyDeviceStatus } from "@/lib/my-device";
@@ -130,15 +131,19 @@ function DevicesDialog({ devices, maxDevices, onClose }: { devices: MyDevice[]; 
   );
 }
 
-// DV-05 (and AT-13 below it): this browser's approval for check-in, on the personal timesheet.
-export function MyDeviceCard({ data, children }: { data: MyDeviceData; children?: ReactNode }) {
+// DV-05 and AT-13: this browser's approval for check-in and the check-in buttons, on the personal
+// timesheet. Check-in shows once the device is approved, or always when the policy needs no device.
+export function MyDeviceCard({ data }: { data: MyDeviceData }) {
   const [dialog, setDialog] = useState<"register" | "list" | null>(null);
   if (data.source === "unavailable") return null;
   const current = data.current;
+  const canCheckIn = current?.status === "approved" || !data.rules.requireApprovedDevice;
 
   let message: ReactNode;
   let action: ReactNode = null;
-  if (!current) {
+  if (!current && !data.rules.requireApprovedDevice) {
+    message = "Công ty không yêu cầu duyệt thiết bị, bạn chấm công được ngay trên trình duyệt này.";
+  } else if (!current) {
     message = "Trình duyệt này chưa được đăng ký chấm công. Gửi yêu cầu để HR duyệt.";
     action = (
       <button className="primary-button" type="button" onClick={() => setDialog("register")}>
@@ -170,13 +175,13 @@ export function MyDeviceCard({ data, children }: { data: MyDeviceData; children?
         </div>
         <p>{message}</p>
       </div>
-      {children}
       <div className="my-device-actions">
         {action}
         <button className="my-device-link" type="button" onClick={() => setDialog("list")}>
           Thiết bị của tôi ({data.devices.length})
         </button>
       </div>
+      {canCheckIn ? <CheckInPanel punches={data.punches} rules={data.rules} /> : null}
       {dialog === "register" ? <RegisterDialog resend={Boolean(current)} suggestedName={current?.deviceName ?? data.suggestedName} onClose={() => setDialog(null)} /> : null}
       {dialog === "list" ? <DevicesDialog devices={data.devices} maxDevices={data.maxDevices} onClose={() => setDialog(null)} /> : null}
     </section>

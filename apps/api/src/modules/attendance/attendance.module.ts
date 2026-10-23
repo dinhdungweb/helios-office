@@ -3,6 +3,8 @@ import { AttendanceAdjustmentsService } from "./attendance-adjustments.service";
 import { AttendanceController } from "./attendance.controller";
 import { AttendanceDevicesController } from "./attendance-devices.controller";
 import { AttendanceDevicesService } from "./attendance-devices.service";
+import { AttendanceCheckInController } from "./attendance-check-in.controller";
+import { AttendanceCheckInService } from "./attendance-check-in.service";
 import { AttendanceLocationsController } from "./attendance-locations.controller";
 import { AttendanceLocationsService } from "./attendance-locations.service";
 import { AttendanceLogsService } from "./attendance-logs.service";
@@ -16,7 +18,7 @@ import { AuthModule } from "../auth/auth.module";
 
 @Module({
   imports: [AuthModule, AttendanceCalculationModule, AttendanceTransferModule, AttendanceReminderModule],
-  controllers: [AttendanceController, AttendanceDevicesController, AttendanceLocationsController, StandardWorkdayController],
-  providers: [AttendanceService, AttendanceAdjustmentsService, AttendanceDevicesService, AttendanceLocationsService, AttendanceLogsService, AttendanceSyncGuard]
+  controllers: [AttendanceController, AttendanceCheckInController, AttendanceDevicesController, AttendanceLocationsController, StandardWorkdayController],
+  providers: [AttendanceService, AttendanceAdjustmentsService, AttendanceDevicesService, AttendanceCheckInService, AttendanceLocationsService, AttendanceLogsService, AttendanceSyncGuard]
 })
 export class AttendanceModule {}

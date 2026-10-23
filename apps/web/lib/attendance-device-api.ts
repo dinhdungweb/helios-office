@@ -29,6 +29,9 @@ export type RawLogRecord = {
   syncedAt: string;
   employee: { id: string; code: string; fullName: string; department: string };
   device: { deviceId: string; deviceName: string | null };
+  source: "machine" | "web" | "app";
+  direction: "in" | "out" | null;
+  locationName: string | null;
 };
 
 export type SyncErrorRecord = {

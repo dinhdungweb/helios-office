@@ -263,7 +263,10 @@ export function AttendanceDayDrawer({ dayId, canEdit, locked, onClose, onChanged
                     <li key={punch.punchTime}>
                       <strong>{local.time}</strong>
                       <span>
-                        {local.date !== detail.workDate ? `${displayDate(local.date).slice(0, 5)} · ` : ""}Máy {punch.deviceId ?? "?"}
+                        {local.date !== detail.workDate ? `${displayDate(local.date).slice(0, 5)} · ` : ""}
+                        {punch.source === "machine"
+                          ? `Máy ${punch.deviceId ?? "?"}`
+                          : [punch.direction === "in" ? "Vào" : punch.direction === "out" ? "Ra" : null, punch.source === "app" ? "App" : "Web", punch.clientDeviceName, punch.locationName].filter(Boolean).join(" · ")}
                       </span>
                     </li>
                   );

@@ -209,6 +209,8 @@ Ngày thuộc kỳ đã chốt luôn bị bỏ qua và được ghi vào kết q
 
   Sai điều kiện nào thì từ chối, kèm lý do cụ thể. **Không** lưu log "nghi ngờ" để tự duyệt sau.
 - Chống bấm hai lần: lần check-in cách lần trước dưới 1 phút thì bỏ qua.
+- **Trình duyệt không đọc được wifi.** Trên web, "wifi văn phòng" kiểm tra bằng dải IP công cộng của văn phòng (điểm kiểu IP); SSID/BSSID chỉ dùng cho app. Web server chuyển IP của trình duyệt cho API kèm `WEB_SERVICE_TOKEN`; API chỉ tin IP chuyển tiếp khi token đúng. Mỗi cách kiểm tra được bật là một cách hợp lệ: GPS khớp hoặc mạng văn phòng khớp đều được; tắt cả hai thì không kiểm tra vị trí.
+- Lấy vị trí luôn lấy mới (không dùng vị trí cũ trong bộ nhớ trình duyệt), vì vị trí cũ có thể là lúc nhân viên còn ở ngoài.
 - **Nhân viên tự đăng ký thiết bị** (`DV-05`): gửi yêu cầu từ trình duyệt hoặc app, HR duyệt trong màn hình đã có (DV-01 → 04).
 
 ## 9a. Đối chiếu với 1Office

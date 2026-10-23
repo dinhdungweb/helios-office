@@ -362,7 +362,9 @@ modules:
         note: Khung Thiết bị chấm công trên bảng công cá nhân. Trình duyệt nhận mã web-uuid trong cookie httpOnly, tên gợi ý theo trình duyệt và hệ điều hành; gửi yêu cầu, xem danh sách thiết bị của mình, rút yêu cầu chưa duyệt. Chặn thiết bị của người khác, thiết bị bị khoá, vượt số thiết bị cho phép; yêu cầu bị từ chối gửi lại được. HR duyệt ở màn hình đã có, thêm bộ lọc nền tảng Web. Thử hai vai 2026-10-23
       - id: DV-06
         title: Áp chính sách thiết bị khi check-in trên web/app
-        status: todo
+        ui: /admin/settings/accounts/device-auth
+        status: done
+        note: Chính sách thêm công tắc Thiết bị đã duyệt (mặc định bật). Khi chấm công - thiết bị phải của chính người chấm và đã duyệt; vị trí phải trong một điểm hợp lệ theo cách được bật (GPS, hoặc wifi trên app / dải IP trên web); tắt cả hai thì chấm ở đâu cũng được. Mỗi lý do từ chối có mã riêng (device_unregistered, device_pending, device_rejected, device_locked, device_not_yours, no_places, no_position, outside_places)
         depends: [AT-13]
       - id: DV-07
         title: Điểm chấm công hợp lệ (GPS + bán kính, wifi SSID/BSSID, dải IP)
@@ -716,8 +718,10 @@ modules:
         depends: [AT-11]
       - id: AT-13
         title: Check-in / check-out trên web và app
-        api: ["POST /attendance/check-in", "POST /attendance/check-out"]
-        status: todo
+        api: ["POST /attendance/check-in", "POST /attendance/check-out", "GET /attendance/me/punches"]
+        ui: /user/attendance
+        status: done
+        note: Nút Chấm công vào / ra trên bảng công cá nhân, đồng hồ và các lượt chấm hôm nay. Lượt chấm là log gốc (source web hoặc app, chiều vào / ra, toạ độ, độ chính xác, IP, thiết bị, điểm khớp) rồi tính lại ngày ngay. Web chuyển IP của trình duyệt kèm WEB_SERVICE_TOKEN; app gọi thẳng thì dùng IP kết nối. Bấm lại trong 1 phút không tính thêm. Tháng đã chốt thì không chấm được. Thử trình duyệt với vị trí giả lập 2026-10-23
         depends: [DV-07]
       - id: AT-14
         title: Check-in kèm ảnh và toạ độ GPS

@@ -593,6 +593,7 @@ function DevicePolicyDialog({
     draft.requireNotificationEnabled !== policy.requireNotificationEnabled ||
     draft.requireGpsForAttendance !== policy.requireGpsForAttendance ||
     draft.requireWifiForOffice !== policy.requireWifiForOffice ||
+    draft.requireApprovedDevice !== policy.requireApprovedDevice ||
     draft.approvalRefreshHint !== policy.approvalRefreshHint;
 
   useEffect(() => {
@@ -709,13 +710,28 @@ function DevicePolicyDialog({
                   <ShieldCheck size={17} weight="duotone" aria-hidden="true" />
                 </span>
                 <div>
-                  <h3>Wifi văn phòng</h3>
-                  <p>{draft.requireWifiForOffice ? "Kiểm tra theo dải mạng" : "Không kiểm tra"}</p>
+                  <h3>Wifi / mạng văn phòng</h3>
+                  <p>{draft.requireWifiForOffice ? "Wifi trên app, dải IP trên web" : "Không kiểm tra"}</p>
                 </div>
                 <FormSwitch
                   checked={draft.requireWifiForOffice}
                   label={draft.requireWifiForOffice ? "Bật" : "Tắt"}
                   onChange={(event) => updateDraft({ requireWifiForOffice: event.target.checked })}
+                />
+              </article>
+
+              <article>
+                <span>
+                  <Phone size={17} weight="duotone" aria-hidden="true" />
+                </span>
+                <div>
+                  <h3>Thiết bị đã duyệt</h3>
+                  <p>{draft.requireApprovedDevice ? "Chỉ chấm công trên thiết bị HR đã duyệt" : "Thiết bị nào cũng chấm được"}</p>
+                </div>
+                <FormSwitch
+                  checked={draft.requireApprovedDevice}
+                  label={draft.requireApprovedDevice ? "Bật" : "Tắt"}
+                  onChange={(event) => updateDraft({ requireApprovedDevice: event.target.checked })}
                 />
               </article>
             </div>
@@ -772,9 +788,14 @@ function DevicePolicyPanel({
       icon: GlobeHemisphereWest
     },
     {
-      label: "Wifi văn phòng",
-      value: policy.requireWifiForOffice ? "Kiểm tra theo dải mạng" : "Không kiểm tra",
+      label: "Wifi / mạng văn phòng",
+      value: policy.requireWifiForOffice ? "Wifi trên app, dải IP trên web" : "Không kiểm tra",
       icon: ShieldCheck
+    },
+    {
+      label: "Thiết bị đã duyệt",
+      value: policy.requireApprovedDevice ? "Bắt buộc" : "Không bắt buộc",
+      icon: Phone
     }
   ];
 

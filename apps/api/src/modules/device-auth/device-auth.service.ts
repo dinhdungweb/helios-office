@@ -11,6 +11,7 @@ const defaultPolicy = {
   requireNotificationEnabled: true,
   requireGpsForAttendance: true,
   requireWifiForOffice: true,
+  requireApprovedDevice: true,
   approvalRefreshHint: "Sau khi được xác thực, nhân viên nên đăng xuất và đăng nhập lại App hoặc tải lại trang GPS."
 };
 
@@ -99,6 +100,8 @@ export class DeviceAuthService {
     ]);
     return {
       maxDevices: policy.maxDevicesPerUser,
+      // What check-in needs (DV-06), so the screen asks for location only when it counts.
+      rules: { requireApprovedDevice: policy.requireApprovedDevice, requireGps: policy.requireGpsForAttendance, requireOfficeNetwork: policy.requireWifiForOffice },
       devices: requests.map((request) => ({
         id: request.id,
         deviceId: request.deviceId,

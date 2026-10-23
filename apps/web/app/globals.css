@@ -27155,3 +27155,143 @@ small {
     grid-column: 1 / -1;
   }
 }
+
+/* AT-13: check-in buttons under the device card */
+.check-in-panel {
+  display: grid;
+  flex-basis: 100%;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px 20px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--color-border-subtle);
+}
+
+.check-in-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+}
+
+.check-in-clock strong {
+  color: var(--color-text-primary);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.check-in-today {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+}
+
+.check-in-today > span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.check-in-today em {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-style: normal;
+}
+
+.check-in-today ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check-in-today li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 3px 10px;
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.check-in-today li.is-out {
+  color: var(--color-info);
+  background: var(--color-info-soft);
+}
+
+.check-in-today li strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.check-in-today li small {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.check-in-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.check-in-buttons button {
+  min-width: 132px;
+}
+
+.check-in-message {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.check-in-message small {
+  display: block;
+  margin-top: 2px;
+  opacity: 0.85;
+}
+
+.check-in-message.is-success {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.check-in-message.is-error {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.check-in-message.is-info {
+  color: var(--color-text-secondary);
+  background: var(--color-surface-strong);
+}
+
+.check-in-rules {
+  grid-column: 1 / -1;
+  margin: -4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.device-table td small {
+  display: block;
+}
+
+@media (max-width: 720px) {
+  .check-in-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .check-in-buttons button {
+    flex: 1;
+    min-width: 0;
+  }
+}

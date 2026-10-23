@@ -74,7 +74,11 @@ export class AttendanceLogsService {
           employeeCode: log.employeeCode,
           syncedAt: log.syncedAt,
           employee: { id: log.employee.id, code: log.employee.code, fullName: log.employee.fullName, department: log.employee.department.name },
-          device: { deviceId: log.device.deviceId, deviceName: log.device.deviceName }
+          // Web/app check-ins (AT-13) have no machine: they name the approved device and the place.
+          source: log.source,
+          direction: log.direction,
+          device: log.device ? { deviceId: log.device.deviceId, deviceName: log.device.deviceName } : { deviceId: log.clientDeviceId ?? log.source, deviceName: log.clientDeviceName },
+          locationName: log.locationName
         })),
         total,
         query

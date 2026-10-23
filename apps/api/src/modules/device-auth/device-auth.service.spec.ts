@@ -31,7 +31,7 @@ function setup(options: { existing?: unknown; inUse?: number; max?: number; mine
       update: jest.fn(async ({ data }) => request({ ...(options.existing as object), ...data })),
       delete: jest.fn()
     },
-    deviceAuthPolicy: { upsert: jest.fn().mockResolvedValue({ maxDevicesPerUser: options.max ?? 1 }) },
+    deviceAuthPolicy: { upsert: jest.fn().mockResolvedValue({ maxDevicesPerUser: options.max ?? 1, requireApprovedDevice: true, requireGpsForAttendance: true, requireWifiForOffice: false }) },
     employee: {
       findUnique: jest.fn().mockResolvedValue({ code: "HL-003", fullName: "Lê Minh Khang", avatarUrl: null, department: { name: "Phòng Bán hàng online", parent: { name: "Khối Kinh doanh" } } })
     },
@@ -78,6 +78,7 @@ describe("DeviceAuthService, employee side (DV-05)", () => {
     const { service } = setup({ mine: [request(), request({ id: "r2", deviceId: "ios-abcdefgh12", status: "approved" })], max: 2 });
     const result = await service.myDevices(me, "web-1234567890");
     expect(result.maxDevices).toBe(2);
+    expect(result.rules).toEqual({ requireApprovedDevice: true, requireGps: true, requireOfficeNetwork: false });
     expect(result.devices.map((device) => [device.id, device.current])).toEqual([["r1", true], ["r2", false]]);
 
     await expect(setup({ existing: request({ employeeId: "e9" }) }).service.withdrawMine(me, "r1")).rejects.toBeInstanceOf(NotFoundException);

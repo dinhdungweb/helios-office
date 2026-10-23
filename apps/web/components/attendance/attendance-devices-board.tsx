@@ -16,7 +16,19 @@ import {
 import type { AttendanceDeviceRecord, DeviceBoardData, DeviceView, Paged, SyncErrorRecord } from "@/lib/attendance-device-api";
 import { PencilSimple, Plus, Trash, WarningCircle } from "@/lib/icons";
 
-const VERIFY_LABELS: Record<string, string> = { finger: "Vân tay", fingerprint: "Vân tay", face: "Khuôn mặt", card: "Thẻ", password: "Mật khẩu", pin: "Mật khẩu" };
+const VERIFY_LABELS: Record<string, string> = {
+  finger: "Vân tay",
+  fingerprint: "Vân tay",
+  face: "Khuôn mặt",
+  card: "Thẻ",
+  password: "Mật khẩu",
+  pin: "Mật khẩu",
+  // Web/app check-ins (AT-13): how the place was confirmed.
+  gps: "GPS",
+  ip: "Mạng văn phòng",
+  wifi: "Wifi",
+  none: "Không kiểm tra vị trí"
+};
 
 // Built from parts: vi-VN Intl prints dates as "22-10" in some runtimes.
 function vnParts(value: string) {
@@ -624,7 +636,10 @@ export function AttendanceDevicesBoard({ data, access, filters }: Props) {
                         <th scope="row">{log.employee.fullName}</th>
                         <td>{log.employee.department}</td>
                         <td className="device-code">{log.employeeCode}</td>
-                        <td>{log.device.deviceName || log.device.deviceId}</td>
+                        <td>
+                          {log.source === "machine" ? log.device.deviceName || log.device.deviceId : `${log.source === "app" ? "App" : "Web"}${log.device.deviceName ? ` · ${log.device.deviceName}` : ""}`}
+                          {log.locationName ? <small>{log.locationName}</small> : null}
+                        </td>
                         <td>{log.verifyType ? VERIFY_LABELS[log.verifyType.toLowerCase()] ?? log.verifyType : <span className="device-muted">—</span>}</td>
                         <td className="device-time">{vnDateTime(log.syncedAt)}</td>
                       </tr>

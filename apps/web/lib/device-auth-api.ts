@@ -24,6 +24,8 @@ export type DeviceAuthPolicy = {
   requireNotificationEnabled: boolean;
   requireGpsForAttendance: boolean;
   requireWifiForOffice: boolean;
+  // DV-06: web/app check-ins only from an approved device.
+  requireApprovedDevice: boolean;
   approvalRefreshHint: string;
 };
 

@@ -29,7 +29,7 @@ export type AttendanceDayDetail = {
   calculatedAt: string;
   employee: { id: string; code: string; fullName: string; department: { id: string; name: string } };
   shift: { id: string; code: string; name: string; color: string | null; startMinute: number; endMinute: number; breakStartMinute: number | null; breakEndMinute: number | null } | null;
-  punches: Array<{ punchTime: string; deviceId: string | null; verifyType: string | null }>;
+  punches: Array<{ punchTime: string; deviceId: string | null; verifyType: string | null; source: string; direction: string | null; clientDeviceName: string | null; locationName: string | null }>;
   adjustments: Array<{
     id: string;
     checkIn?: string | null;

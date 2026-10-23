@@ -287,6 +287,8 @@ model DeviceAuthPolicy {
   requireNotificationEnabled Boolean  @default(true)
   requireGpsForAttendance    Boolean  @default(true)
   requireWifiForOffice       Boolean  @default(true)
+  // DV-06: web/app check-ins only from a device HR approved.
+  requireApprovedDevice      Boolean  @default(true)
   approvalRefreshHint        String
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
@@ -710,19 +712,19 @@ model JobLevel {
 }
 
 model Workplace {
-  id                 String             @id @default(uuid())
-  name               String             @unique
-  addressLine        String?
-  administrativeArea String?
-  departmentId       String?
-  description        String?
-  status             JobCatalogStatus   @default(active)
-  archivedAt         DateTime?
-  department         Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  attendanceDevices  AttendanceDevice[]
+  id                  String               @id @default(uuid())
+  name                String               @unique
+  addressLine         String?
+  administrativeArea  String?
+  departmentId        String?
+  description         String?
+  status              JobCatalogStatus     @default(active)
+  archivedAt          DateTime?
+  department          Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  attendanceDevices   AttendanceDevice[]
   attendanceLocations AttendanceLocation[]
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@index([departmentId])
 }
@@ -1161,19 +1163,36 @@ model AttendanceDevice {
   updatedAt   DateTime              @updatedAt
 }
 
+// A punch from a machine (AT-03) or a web/app check-in (AT-13). Web/app punches have no machine;
+// they keep where they came from so HR can check them later.
 model AttendanceRawLog {
-  id           String           @id @default(uuid())
-  deviceId     String
-  employeeId   String
-  employeeCode String
-  storeCode    String?
-  punchTime    DateTime
-  verifyType   String?
-  rawPayload   Json?
-  syncedAt     DateTime         @default(now())
-  device       AttendanceDevice @relation(fields: [deviceId], references: [deviceId])
-  employee     Employee         @relation(fields: [employeeId], references: [id])
-  createdAt    DateTime         @default(now())
+  id               String            @id @default(uuid())
+  deviceId         String?
+  employeeId       String
+  employeeCode     String
+  storeCode        String?
+  punchTime        DateTime
+  verifyType       String?
+  rawPayload       Json?
+  syncedAt         DateTime          @default(now())
+  // machine | web | app
+  source           String            @default("machine")
+  // in | out, for web/app check-ins
+  direction        String?
+  latitude         Float?
+  longitude        Float?
+  accuracyMeters   Float?
+  ssid             String?
+  bssid            String?
+  ipAddress        String?
+  // The approved device used (DeviceAuthRequest) and the place matched, kept by value.
+  clientDeviceId   String?
+  clientDeviceName String?
+  locationId       String?
+  locationName     String?
+  device           AttendanceDevice? @relation(fields: [deviceId], references: [deviceId], onDelete: Restrict)
+  employee         Employee          @relation(fields: [employeeId], references: [id])
+  createdAt        DateTime          @default(now())
 
   @@unique([deviceId, employeeCode, punchTime])
   @@index([employeeId, punchTime])

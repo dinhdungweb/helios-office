@@ -35,6 +35,11 @@ export class UpdateDeviceAuthPolicyDto {
   @IsBoolean()
   requireWifiForOffice?: boolean;
 
+  @ApiPropertyOptional({ description: "DV-06: web/app check-ins only from an approved device" })
+  @IsOptional()
+  @IsBoolean()
+  requireApprovedDevice?: boolean;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
