@@ -32,6 +32,8 @@ import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { RecalculateAttendanceDto } from "./attendance-recalc.dto";
 import { AttendanceRecalcService } from "./attendance-recalc.service";
+import { RunReminderDto } from "./attendance-reminder.dto";
+import { AttendanceReminderService } from "./attendance-reminder.service";
 
 const ATTENDANCE_MANAGE = "permission.attendance.manage";
 const RECALC_PERMISSIONS = [ATTENDANCE_MANAGE, "permission.attendance-timesheets.manage"];
@@ -49,6 +51,7 @@ export class AttendanceController {
     private readonly periods: AttendancePeriodService,
     private readonly confirmations: AttendanceConfirmationService,
     private readonly logs: AttendanceLogsService,
+    private readonly reminders: AttendanceReminderService,
     private readonly dataScope: DataScopeService,
     private readonly prisma: PrismaService
   ) {}
@@ -216,6 +219,25 @@ export class AttendanceController {
     const job = await this.recalc.request({ from: body.from, to: body.to, employeeIds, reason: "manual", requestedById: user.account?.employeeId ?? undefined });
     if (!job) throw new BadRequestException("Khoảng ngày chỉ gồm ngày chưa tới, không có gì để tính lại.");
     return job;
+  }
+
+  @Get("reminders")
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(...RECALC_PERMISSIONS)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Recent missing-punch reminder runs (AT-23), newest work date first." })
+  recentReminders() {
+    return this.reminders.recent();
+  }
+
+  @Post("reminders/run")
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @RequireAnyPermission(...RECALC_PERMISSIONS)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: "Send missing-punch reminders now for a past work date (yesterday by default)." })
+  runReminders(@CurrentUser() user: AuthenticatedUser, @Body() body: RunReminderDto) {
+    return this.reminders.runNow(user, body.date);
   }
 
   @Get("recalculations")

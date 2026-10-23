@@ -6,6 +6,7 @@ import type {
   HolidayRecord,
   RecalcData,
   RecalcJob,
+  ReminderRun,
   ScheduleData,
   ScheduleGrid,
   ShiftPatternData,
@@ -70,6 +71,11 @@ export async function getShiftPatterns(): Promise<ShiftPatternData> {
   } catch (error) {
     return { source: "unavailable", error: error instanceof Error ? error.message : "Không tải được mẫu xếp ca." };
   }
+}
+
+// AT-23: shown under the reminder settings; empty when the viewer may not see it.
+export async function getReminderRuns(): Promise<ReminderRun[]> {
+  return requestJson<ReminderRun[]>("/attendance/reminders").catch(() => []);
 }
 
 export async function getRecalcData(): Promise<RecalcData> {

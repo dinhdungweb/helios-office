@@ -26652,3 +26652,26 @@ small {
     max-width: none;
   }
 }
+
+/* AT-23: missing-punch reminder settings */
+.reminder-time-input {
+  width: 120px;
+  text-align: left;
+}
+
+.reminder-time-input:disabled {
+  opacity: 0.5;
+}
+
+.reminder-status .secondary-button {
+  white-space: nowrap;
+}
+
+.reminder-status-message {
+  color: var(--color-success) !important;
+  font-weight: var(--font-weight-strong);
+}
+
+.reminder-status-message.is-error {
+  color: var(--color-danger) !important;
+}

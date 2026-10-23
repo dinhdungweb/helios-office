@@ -109,6 +109,13 @@ export async function deleteShiftAction(shiftId: string) {
   return send(`/shifts/${encodeURIComponent(shiftId)}`, "DELETE");
 }
 
+// AT-23: send missing-punch reminders now (yesterday by default).
+export async function runMissingPunchReminderAction(date?: string) {
+  const result = await request<{ workDate: string; notified: number; skipped?: string }>("/attendance/reminders/run", "POST", date ? { date } : {});
+  if (result.ok) revalidatePath("/admin/settings/attendance-policy");
+  return result;
+}
+
 export async function updateAttendancePolicyAction(policy: Partial<AttendancePolicy>) {
   // defaultShift is the API's read-only expansion of defaultShiftId.
   const payload: Partial<AttendancePolicy> = { ...policy };

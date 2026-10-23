@@ -51,6 +51,18 @@ export type AttendancePolicy = {
   nightAllowancePercent: number;
   holidayPaid: boolean;
   requireTimesheetConfirmation: boolean;
+  missingPunchReminder: boolean;
+  missingPunchReminderTime: string;
+};
+
+// AT-23: one pass of missing-punch reminders for a work date.
+export type ReminderRun = {
+  workDate: string;
+  trigger: "auto" | "manual";
+  startedAt: string;
+  finishedAt: string | null;
+  notified: number;
+  error: string | null;
 };
 
 export type ShiftSettingsData =

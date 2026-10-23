@@ -64,7 +64,7 @@ Chia 7 cụm, làm theo thứ tự. Đóng cụm nào chạy `npm run typecheck 
 | 16 | AT-19 | CRUD `/attendance-devices` (tên, mã cửa hàng/nơi làm việc, trạng thái, lần đồng bộ cuối); máy bị tắt thì từ chối sync | Unit + trình duyệt (thay E2E): tắt máy → sync 403 | ✅ |
 | 17 | AT-20 | `GET /attendance/sync-errors`, `POST .../:id/resolve`: gán mã chấm công cho nhân sự rồi xử lý lại các log lỗi của mã đó | Unit + trình duyệt (thay E2E): log `EMPLOYEE_NOT_FOUND` → gán mã → vào log gốc, tính lại công | ✅ |
 | 18 | AT-21 | `GET /attendance/raw-logs` (lọc người/máy/khoảng ngày, phân trang, phạm vi dữ liệu); xem từ ô bảng công | Trình duyệt | ✅ |
-| 19 | AT-23 | Job hằng ngày: nhắc qua thông báo (NT-05) những người thiếu log của ngày hôm trước; giờ chạy cấu hình được | Unit: chọn đúng người, không nhắc ngày nghỉ/lễ | |
+| 19 | AT-23 | Job hằng ngày: nhắc qua thông báo (NT-05) những người thiếu log của ngày hôm trước; giờ chạy cấu hình được | Unit: chọn đúng người, không nhắc ngày nghỉ/lễ | ✅ |
 
 ### 2f. Check-in trên web/app
 

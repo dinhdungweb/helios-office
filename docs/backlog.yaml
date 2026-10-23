@@ -771,7 +771,10 @@ modules:
         depends: [AT-11, AP-10]
       - id: AT-23
         title: Nhắc quên chấm công
-        status: todo
+        api: ["GET /attendance/reminders", "POST /attendance/reminders/run"]
+        ui: /admin/settings/attendance-policy
+        status: done
+        note: Worker kiểm tra 5 phút một lần, quá giờ nhắc trong chính sách (mặc định 08.30, bật / tắt được) thì gửi thông báo attendance.missing_punch cho người ngày hôm qua thiếu giờ vào hoặc giờ ra; mỗi ngày gửi một lần (khoá theo ngày trong AttendanceReminderRun). Không nhắc ngày nghỉ, ngày lễ, tháng đã chốt. HR gửi tay và xem lần gần nhất ở Chính sách chấm công. Lưu chính sách chỉ tính lại công khi quy tắc tính công đổi giá trị
         depends: [NT-05]
       - id: AT-24
         title: Bảng công tháng của tôi + xác nhận công

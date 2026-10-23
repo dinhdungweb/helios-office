@@ -6,6 +6,7 @@ export const NOTIFICATION_EVENT_TYPES = [
   { key: "request.rejected", module: "requests", label: "Đơn bị từ chối", defaultEmail: true, mandatory: false },
   { key: "payslip.published", module: "payroll", label: "Phiếu lương đã công bố", defaultEmail: true, mandatory: true },
   { key: "contract.expiring", module: "contracts", label: "Hợp đồng sắp hết hạn", defaultEmail: true, mandatory: false },
+  { key: "attendance.missing_punch", module: "attendance", label: "Nhắc quên chấm công", defaultEmail: false, mandatory: false },
   { key: "system.test", module: "system", label: "Thông báo thử", defaultEmail: false, mandatory: false }
 ] as const;
 

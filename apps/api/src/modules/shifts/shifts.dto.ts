@@ -282,4 +282,14 @@ export class UpdateAttendancePolicyDto {
   @IsOptional()
   @IsBoolean()
   requireTimesheetConfirmation?: boolean;
+
+  @ApiPropertyOptional({ description: "AT-23: remind people with a missing punch the day before" })
+  @IsOptional()
+  @IsBoolean()
+  missingPunchReminder?: boolean;
+
+  @ApiPropertyOptional({ example: "08:30", description: "Local time the reminder is sent" })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: "Giờ nhắc phải có dạng HH:mm." })
+  missingPunchReminderTime?: string;
 }

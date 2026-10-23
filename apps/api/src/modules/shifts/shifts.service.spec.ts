@@ -118,5 +118,15 @@ describe("ShiftsService (AT-05, AT-06)", () => {
 
     await used.service.updatePolicy({ lateGraceMinutes: 3 }, "emp-hr");
     expect(used.recalc.rulesChanged).toHaveBeenLastCalledWith("policy", "emp-hr");
+
+    // AT-23: reminder settings change no figure, so nothing is recalculated.
+    used.recalc.rulesChanged.mockClear();
+    await used.service.updatePolicy({ missingPunchReminder: false, missingPunchReminderTime: "09:00" }, "emp-hr");
+    expect(used.recalc.rulesChanged).not.toHaveBeenCalled();
+
+    // The form sends every field: unchanged values recalculate nothing either.
+    used.prisma.attendancePolicy.upsert.mockResolvedValueOnce({ id: "default", lateGraceMinutes: 3, workWeekdays: [1, 2, 3, 4, 5] });
+    await used.service.updatePolicy({ lateGraceMinutes: 3, workWeekdays: [5, 4, 3, 2, 1], missingPunchReminderTime: "07:45" }, "emp-hr");
+    expect(used.recalc.rulesChanged).not.toHaveBeenCalled();
   });
 });

@@ -4,8 +4,8 @@ import { useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { FormSwitch } from "@/components/ui/form-controls";
 import { StateBlock } from "@/components/ui/primitives";
-import { updateAttendancePolicyAction } from "@/lib/shift-actions";
-import type { AttendancePolicy, ShiftSettingsData } from "@/lib/shift-format";
+import { runMissingPunchReminderAction, updateAttendancePolicyAction } from "@/lib/shift-actions";
+import type { AttendancePolicy, ReminderRun, ShiftSettingsData } from "@/lib/shift-format";
 
 const WEEKDAYS = [
   { value: 1, label: "T2" },
@@ -65,9 +65,59 @@ function NumberInput({ label, max, min, onChange, value }: { label: string; max:
   );
 }
 
+function vnDateTime(value: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date(value));
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("hour")}:${get("minute")} ${get("day")}/${get("month")}`;
+}
+
+// AT-23: the last reminder passes and a button to send yesterday's reminders now.
+function ReminderStatus({ runs }: { runs: ReminderRun[] }) {
+  const router = useRouter();
+  const [isSending, setIsSending] = useState(false);
+  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+  const last = runs[0];
+
+  const sendNow = async () => {
+    setMessage(null);
+    setIsSending(true);
+    const result = await runMissingPunchReminderAction();
+    setIsSending(false);
+    if (!result.ok) {
+      setMessage({ text: result.error, error: true });
+      return;
+    }
+    const day = result.data.workDate.split("-").reverse().slice(0, 2).join("/");
+    setMessage({
+      text: result.data.skipped === "locked" ? `Kỳ công của ngày ${day} đã chốt, không gửi nhắc.` : result.data.notified ? `Đã nhắc ${result.data.notified} người quên chấm ngày ${day}.` : `Ngày ${day} không ai quên chấm.`,
+      error: false
+    });
+    router.refresh();
+  };
+
+  return (
+    <div className="system-settings-row reminder-status">
+      <div>
+        <span className="system-settings-label">Lần nhắc gần nhất</span>
+        <p>
+          {last
+            ? last.error
+              ? `Ngày ${last.workDate.split("-").reverse().slice(0, 2).join("/")}: ${last.error}`
+              : `Ngày ${last.workDate.split("-").reverse().slice(0, 2).join("/")} — ${last.finishedAt ? `nhắc ${last.notified} người` : "đang gửi"} (${last.trigger === "auto" ? "tự động" : "gửi tay"} lúc ${vnDateTime(last.startedAt)})`
+            : "Chưa gửi lần nào."}
+        </p>
+        {message ? <p className={message.error ? "reminder-status-message is-error" : "reminder-status-message"} role="status">{message.text}</p> : null}
+      </div>
+      <button className="secondary-button" disabled={isSending} type="button" onClick={sendNow}>
+        {isSending ? "Đang gửi..." : "Gửi nhắc cho hôm qua"}
+      </button>
+    </div>
+  );
+}
+
 // AT-06: every rule the engine uses is set here; shifts may override some of them. Defaults follow
 // common Vietnamese practice and the 2019 Labour Code (docs/design/attendance-engine.md §4, §10).
-export function AttendancePolicyBoard({ data }: { data: ShiftSettingsData }) {
+export function AttendancePolicyBoard({ data, reminderRuns = [] }: { data: ShiftSettingsData; reminderRuns?: ReminderRun[] }) {
   const router = useRouter();
   const [policy, setPolicy] = useState<AttendancePolicy | null>(data.source === "api" ? data.policy : null);
   const [isSaving, startSaving] = useTransition();
@@ -95,7 +145,7 @@ export function AttendancePolicyBoard({ data }: { data: ShiftSettingsData }) {
     event.preventDefault();
     startSaving(async () => {
       const result = await updateAttendancePolicyAction(policy);
-      setFeedback(result.ok ? { message: "Đã lưu. Công từ đầu tháng trước đến hôm nay đang được tính lại theo chính sách mới (theo dõi ở mục Tính lại công).", error: false } : { message: result.error, error: true });
+      setFeedback(result.ok ? { message: "Đã lưu. Nếu quy tắc tính công thay đổi, công từ đầu tháng trước đến hôm nay được tính lại (theo dõi ở mục Tính lại công).", error: false } : { message: result.error, error: true });
       if (result.ok) router.refresh();
     });
   };
@@ -260,6 +310,30 @@ export function AttendancePolicyBoard({ data }: { data: ShiftSettingsData }) {
               onChange={(event) => set("requireTimesheetConfirmation", event.target.checked)}
             />
           </Row>
+        </section>
+
+        <section className="system-settings-card" aria-labelledby="policy-reminder">
+          <header><h2 id="policy-reminder">Nhắc quên chấm công</h2></header>
+          <Row label="Nhắc người quên chấm" hint="Mỗi sáng gửi thông báo cho người ngày hôm trước thiếu giờ vào hoặc giờ ra. Không nhắc ngày nghỉ, ngày lễ và tháng đã chốt.">
+            <FormSwitch
+              checked={policy.missingPunchReminder}
+              className="system-settings-switch"
+              label={<span className="sr-only">Nhắc quên chấm công</span>}
+              onChange={(event) => set("missingPunchReminder", event.target.checked)}
+            />
+          </Row>
+          <Row label="Giờ gửi" hint="Theo múi giờ công ty, cho dữ liệu của ngày hôm trước.">
+            <input
+              aria-label="Giờ gửi nhắc"
+              className="system-settings-number-input reminder-time-input"
+              disabled={!policy.missingPunchReminder}
+              required
+              type="time"
+              value={policy.missingPunchReminderTime}
+              onChange={(event) => event.target.value && set("missingPunchReminderTime", event.target.value)}
+            />
+          </Row>
+          <ReminderStatus runs={reminderRuns} />
         </section>
       </div>
 

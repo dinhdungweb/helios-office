@@ -547,6 +547,9 @@ model AttendancePolicy {
   nightAllowancePercent        Int                  @default(30)
   holidayPaid                  Boolean              @default(true)
   requireTimesheetConfirmation Boolean              @default(false)
+  // AT-23: remind people with a missing check-in or check-out the day before, at this local time.
+  missingPunchReminder         Boolean              @default(true)
+  missingPunchReminderTime     String               @default("08:30")
   updatedAt                    DateTime             @updatedAt
 }
 
@@ -932,6 +935,18 @@ model AttendanceDay {
 enum AttendancePeriodStatus {
   open
   locked
+}
+
+// One missing-punch reminder pass for a work date (AT-23). The date is the key, so the daily job
+// sends once even with several workers or a restart; HR may send again by hand.
+model AttendanceReminderRun {
+  workDate      String    @id
+  trigger       String
+  triggeredById String?
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  notified      Int       @default(0)
+  error         String?
 }
 
 // A month of attendance (AT-17). Once locked, nothing may change its days: no manual change, no

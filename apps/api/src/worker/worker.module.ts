@@ -9,10 +9,12 @@ import { PrismaModule } from "../common/prisma/prisma.module";
 import { QueueModule } from "../common/queue/queue.module";
 import { AdminSettingsModule } from "../modules/admin-settings/admin-settings.module";
 import { AttendanceCalculationModule } from "../modules/attendance/attendance-calculation.module";
+import { AttendanceReminderModule } from "../modules/attendance/attendance-reminder.module";
 import { AttendanceTransferModule } from "../modules/attendance/attendance-transfer.module";
 import { EmployeeTransferModule } from "../modules/employees/employee-transfer.module";
 import { NotificationDeliveryService } from "../modules/notifications/notification-delivery.service";
 import { AttendanceRecalcProcessor } from "./attendance-recalc.processor";
+import { AttendanceReminderScheduler } from "./attendance-reminder.scheduler";
 import { EmailProcessor } from "./email.processor";
 import { ImportExportProcessor } from "./import-export.processor";
 import { NotificationsProcessor } from "./notifications.processor";
@@ -39,9 +41,10 @@ import { FileCleanupService } from "./file-cleanup.service";
     ImportExportModule,
     EmployeeTransferModule,
     AttendanceCalculationModule,
-    AttendanceTransferModule
+    AttendanceTransferModule,
+    AttendanceReminderModule
   ],
-  providers: [WorkerRuntime, RealtimeEmitter, NotificationDeliveryService, NotificationsProcessor, EmailProcessor, ImportExportProcessor, AttendanceRecalcProcessor, FileCleanupService],
+  providers: [WorkerRuntime, RealtimeEmitter, NotificationDeliveryService, NotificationsProcessor, EmailProcessor, ImportExportProcessor, AttendanceRecalcProcessor, FileCleanupService, AttendanceReminderScheduler],
   exports: [WorkerRuntime]
 })
 export class WorkerModule {}
