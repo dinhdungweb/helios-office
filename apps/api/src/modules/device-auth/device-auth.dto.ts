@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { DeviceAuthStatus } from "@prisma/client";
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min } from "class-validator";
+import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, Min } from "class-validator";
 
 export class UpdateDeviceAuthStatusDto {
   @ApiProperty({ enum: DeviceAuthStatus, example: DeviceAuthStatus.approved })
@@ -39,4 +39,18 @@ export class UpdateDeviceAuthPolicyDto {
   @IsOptional()
   @IsString()
   approvalRefreshHint?: string;
+}
+
+// DV-05: an employee registers the browser or phone they check in from.
+export class SubmitMyDeviceDto {
+  @ApiProperty({ example: "web-3f1c2a9e-5d1b-4f7a-9c8e-0b2d4e6f8a1c" })
+  @IsString()
+  @Matches(/^(web|ios|android)-[A-Za-z0-9._-]{8,120}$/, { message: "Mã thiết bị không hợp lệ." })
+  deviceId!: string;
+
+  @ApiProperty({ example: "Chrome · Windows" })
+  @IsString()
+  @IsNotEmpty({ message: "Nhập tên thiết bị." })
+  @MaxLength(80)
+  deviceName!: string;
 }

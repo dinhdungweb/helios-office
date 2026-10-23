@@ -50,7 +50,7 @@ const statusTones: Record<DeviceAuthStatus, BadgeTone> = {
 const statusFilters: DeviceAuthStatus[] = ["pending", "approved", "rejected", "locked"];
 
 type QuickFilter = "all" | DeviceAuthStatus;
-type PlatformFilter = "all" | "ios" | "android";
+type PlatformFilter = "all" | "ios" | "android" | "web";
 type ColumnKey = "device" | "deviceId" | "submittedAt" | "status";
 
 const columnOptions: Array<{ key: ColumnKey; label: string }> = [
@@ -62,8 +62,10 @@ const columnOptions: Array<{ key: ColumnKey; label: string }> = [
 
 const defaultVisibleColumns = new Set<ColumnKey>(columnOptions.map((column) => column.key));
 
-function getPlatform(request: DeviceAuthRequest): "ios" | "android" {
-  return request.deviceId.toLowerCase().startsWith("ios") ? "ios" : "android";
+// Device ids start with their platform; web browsers register themselves since DV-05.
+function getPlatform(request: DeviceAuthRequest): "ios" | "android" | "web" {
+  const id = request.deviceId.toLowerCase();
+  return id.startsWith("web") ? "web" : id.startsWith("ios") ? "ios" : "android";
 }
 
 function todayApprovalNote(status: DeviceAuthStatus) {
@@ -433,6 +435,7 @@ function DeviceRequestTable({
                     <FilterOption isSelected={platformFilter === "all"} label="Tất cả" onClick={() => setPlatformFilter("all")} />
                     <FilterOption isSelected={platformFilter === "ios"} label="iOS" onClick={() => setPlatformFilter("ios")} />
                     <FilterOption isSelected={platformFilter === "android"} label="Android" onClick={() => setPlatformFilter("android")} />
+                    <FilterOption isSelected={platformFilter === "web"} label="Web" onClick={() => setPlatformFilter("web")} />
                   </div>
                 </section>
 

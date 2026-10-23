@@ -1,11 +1,11 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
-import { DeviceAuthController } from "./device-auth.controller";
+import { DeviceAuthController, MyDeviceAuthController } from "./device-auth.controller";
 import { DeviceAuthService } from "./device-auth.service";
 
 @Module({
   imports: [AuthModule],
-  controllers: [DeviceAuthController],
+  controllers: [DeviceAuthController, MyDeviceAuthController],
   providers: [DeviceAuthService],
   exports: [DeviceAuthService]
 })

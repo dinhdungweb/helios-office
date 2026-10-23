@@ -356,8 +356,10 @@ modules:
         status: done
       - id: DV-05
         title: Nhân viên tự gửi yêu cầu đăng ký thiết bị và xem thiết bị của mình
-        api: ["POST /device-auth/my-requests", "GET /device-auth/my-devices"]
-        status: todo
+        api: ["POST /device-auth/my-requests", "GET /device-auth/my-devices", "DELETE /device-auth/my-requests/:id"]
+        ui: /user/attendance
+        status: done
+        note: Khung Thiết bị chấm công trên bảng công cá nhân. Trình duyệt nhận mã web-uuid trong cookie httpOnly, tên gợi ý theo trình duyệt và hệ điều hành; gửi yêu cầu, xem danh sách thiết bị của mình, rút yêu cầu chưa duyệt. Chặn thiết bị của người khác, thiết bị bị khoá, vượt số thiết bị cho phép; yêu cầu bị từ chối gửi lại được. HR duyệt ở màn hình đã có, thêm bộ lọc nền tảng Web. Thử hai vai 2026-10-23
       - id: DV-06
         title: Áp chính sách thiết bị khi check-in trên web/app
         status: todo

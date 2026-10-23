@@ -27000,3 +27000,158 @@ small {
     grid-template-columns: 1fr;
   }
 }
+
+/* DV-05: this browser as a check-in device, on the personal timesheet */
+.my-device-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-bottom: var(--space-7);
+  padding: 14px 18px;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.my-device-main {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.my-device-main p {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.my-device-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.my-device-title > span:first-child {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.my-device-status {
+  display: inline-flex;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: var(--font-weight-strong);
+  white-space: nowrap;
+}
+
+.my-device-status.is-none {
+  color: var(--color-text-secondary);
+  background: var(--color-surface-strong);
+}
+
+.my-device-status.is-pending {
+  color: #b45309;
+  background: #fde7c3;
+}
+
+.my-device-status.is-approved {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.my-device-status.is-rejected,
+.my-device-status.is-locked {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.my-device-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.my-device-link {
+  padding: 0;
+  color: var(--color-info);
+  background: none;
+  border: 0;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.my-device-hint {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.my-device-dialog {
+  width: min(620px, calc(100vw - 32px));
+}
+
+.my-device-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.my-device-list li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.my-device-list strong,
+.my-device-list small {
+  display: block;
+}
+
+.my-device-list small {
+  margin-top: 2px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.my-device-list .secondary-button {
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.my-device-list li.my-device-empty {
+  display: block;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.my-device-current {
+  margin-left: 8px;
+  padding: 1px 8px;
+  color: var(--color-info);
+  background: var(--color-info-soft);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: var(--font-weight-strong);
+}
+
+@media (max-width: 720px) {
+  .my-device-list li {
+    grid-template-columns: 1fr auto;
+  }
+
+  .my-device-list li > :last-child {
+    grid-column: 1 / -1;
+  }
+}
