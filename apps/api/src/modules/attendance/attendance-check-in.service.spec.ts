@@ -13,14 +13,15 @@ const office = { id: "gps-1", name: "Văn phòng", type: "gps", latitude: 21.028
 const network = { id: "ip-1", name: "Mạng văn phòng", type: "ip", latitude: null, longitude: null, radiusMeters: 100, ssid: null, bssid: null, ipRanges: ["113.160.12.0/24"], status: "active" };
 const approved = { id: "d1", deviceId: "web-1234567890", deviceName: "Laptop", employeeId: "e1", status: "approved" };
 
-function setup(options: { policy?: Record<string, boolean>; device?: unknown; locations?: unknown[]; last?: unknown } = {}) {
+function setup(options: { policy?: Record<string, boolean>; device?: unknown; locations?: unknown[]; last?: unknown; photo?: unknown; photoUsed?: boolean } = {}) {
   const prisma = {
     employee: { findUnique: jest.fn().mockResolvedValue({ id: "e1", code: "HL-003", attendanceCode: "3", status: "active" }) },
     deviceAuthPolicy: { findUnique: jest.fn().mockResolvedValue({ requireApprovedDevice: true, requireGpsForAttendance: true, requireWifiForOffice: true, ...options.policy }) },
     deviceAuthRequest: { findUnique: jest.fn().mockResolvedValue(options.device === undefined ? approved : options.device), update: jest.fn() },
+    storedFile: { findUnique: jest.fn().mockResolvedValue(options.photo === undefined ? { id: "f1", purpose: "checkin_photo", ownerId: "e1", status: "ready" } : options.photo) },
     attendanceLocation: { findMany: jest.fn().mockResolvedValue(options.locations ?? [office, network]) },
     attendanceRawLog: {
-      findFirst: jest.fn().mockResolvedValue(options.last ?? null),
+      findFirst: jest.fn(async ({ where }) => (where.photoFileId ? (options.photoUsed ? { id: "other" } : null) : (options.last ?? null))),
       create: jest.fn(async ({ data }) => ({ id: "log-1", deviceId: null, ...data })),
       findMany: jest.fn().mockResolvedValue([])
     }
@@ -108,6 +109,21 @@ describe("AttendanceCheckInService (AT-13, DV-06)", () => {
     expect(calculation.recalculateForPunches).not.toHaveBeenCalled();
   });
 
+  it("takes a photo of mine, and refuses a missing, foreign or reused one (AT-14)", async () => {
+    const inside = { deviceId: "web-1234567890", latitude: 21.0285, longitude: 105.8542 };
+    const photo = "8f14e45f-ceea-467a-9f3c-2a1b5c6d7e8f";
+    const ok = setup({ policy: { requirePhoto: true } });
+    await ok.service.punch(me, "in", { ...inside, photoFileId: photo }, web);
+    expect(ok.prisma.attendanceRawLog.create.mock.calls[0][0].data.photoFileId).toBe(photo);
+
+    expect(await reason(setup({ policy: { requirePhoto: true } }).service.punch(me, "in", inside, web))).toMatch(/^photo_required/);
+    expect(await reason(setup({ photo: { id: "f1", purpose: "checkin_photo", ownerId: "e9", status: "ready" } }).service.punch(me, "in", { ...inside, photoFileId: photo }, web))).toMatch(/^photo_invalid/);
+    expect(await reason(setup({ photo: { id: "f1", purpose: "checkin_photo", ownerId: "e1", status: "pending" } }).service.punch(me, "in", { ...inside, photoFileId: photo }, web))).toMatch(/^photo_invalid/);
+    expect(await reason(setup({ photoUsed: true }).service.punch(me, "in", { ...inside, photoFileId: photo }, web))).toMatch(/^photo_invalid: .*đã dùng/);
+    // Optional photo: a punch without one is fine.
+    expect(await reason(setup().service.punch(me, "in", inside, web))).toBe("accepted");
+  });
+
   it("needs an employee profile", async () => {
     const noProfile = { ...me, account: { ...me.account!, employeeId: null } } as AuthenticatedUser;
     await expect(setup().service.punch(noProfile, "in", {}, web)).rejects.toBeInstanceOf(NotFoundException);
@@ -120,5 +136,35 @@ describe("checkInContext", () => {
     expect(checkInContext(headers, "127.0.0.1", "secret-token")).toEqual({ source: "web", ip: "113.160.12.9", userAgent: "Chrome" });
     expect(checkInContext({ ...headers, "x-helios-service-token": "wrong-token!" }, "10.1.1.1", "secret-token")).toEqual({ source: "app", ip: "10.1.1.1", userAgent: "node" });
     expect(checkInContext(headers, "10.1.1.1", undefined)).toMatchObject({ source: "app", ip: "10.1.1.1" });
+  });
+});
+
+describe("CheckinPhotoFilePolicy (AT-14)", () => {
+  const { CheckinPhotoFilePolicy } = jest.requireActual("./checkin-photo-file.policy") as typeof import("./checkin-photo-file.policy");
+  const hr = { ...me, account: { ...me.account!, employeeId: "emp-hr", effectivePermissionKeys: ["permission.attendance.view"] } } as AuthenticatedUser;
+  const stranger = { ...me, account: { ...me.account!, employeeId: "e5", effectivePermissionKeys: [] } } as AuthenticatedUser;
+  const file = { ownerId: "e1" } as never;
+
+  function policy(inScope: boolean) {
+    const dataScope = {
+      resolve: jest.fn().mockResolvedValue({ level: "department" }),
+      assertEmployeeInScope: jest.fn(async () => {
+        if (!inScope) throw new NotFoundException();
+      })
+    };
+    return new CheckinPhotoFilePolicy({ registerPolicy: jest.fn() } as never, dataScope as never);
+  }
+
+  it("lets me upload only my own photo and nobody delete one", async () => {
+    await expect(policy(true).canUpload(me, { ownerType: "Employee", ownerId: "e1" })).resolves.toBe(true);
+    await expect(policy(true).canUpload(me, { ownerType: "Employee", ownerId: "e9" })).resolves.toBe(false);
+    await expect(policy(true).canDelete()).resolves.toBe(false);
+  });
+
+  it("shows the photo to its owner and to attendance viewers with the owner in scope", async () => {
+    await expect(policy(false).canRead(me, file)).resolves.toBe(true);
+    await expect(policy(true).canRead(hr, file)).resolves.toBe(true);
+    await expect(policy(false).canRead(hr, file)).resolves.toBe(false);
+    await expect(policy(true).canRead(stranger, file)).resolves.toBe(false);
   });
 });

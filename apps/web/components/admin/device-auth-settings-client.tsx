@@ -19,6 +19,7 @@ import {
   Lock,
   PencilSimple,
   Phone,
+  UserCircle,
   ShieldCheck,
   SlidersHorizontal,
   Trash,
@@ -594,6 +595,7 @@ function DevicePolicyDialog({
     draft.requireGpsForAttendance !== policy.requireGpsForAttendance ||
     draft.requireWifiForOffice !== policy.requireWifiForOffice ||
     draft.requireApprovedDevice !== policy.requireApprovedDevice ||
+    draft.requirePhoto !== policy.requirePhoto ||
     draft.approvalRefreshHint !== policy.approvalRefreshHint;
 
   useEffect(() => {
@@ -734,6 +736,21 @@ function DevicePolicyDialog({
                   onChange={(event) => updateDraft({ requireApprovedDevice: event.target.checked })}
                 />
               </article>
+
+              <article>
+                <span>
+                  <UserCircle size={17} weight="duotone" aria-hidden="true" />
+                </span>
+                <div>
+                  <h3>Chụp ảnh khi chấm công</h3>
+                  <p>{draft.requirePhoto ? "Bắt buộc chụp ảnh khuôn mặt" : "Không cần ảnh"}</p>
+                </div>
+                <FormSwitch
+                  checked={draft.requirePhoto}
+                  label={draft.requirePhoto ? "Bật" : "Tắt"}
+                  onChange={(event) => updateDraft({ requirePhoto: event.target.checked })}
+                />
+              </article>
             </div>
           </fieldset>
 
@@ -796,6 +813,11 @@ function DevicePolicyPanel({
       label: "Thiết bị đã duyệt",
       value: policy.requireApprovedDevice ? "Bắt buộc" : "Không bắt buộc",
       icon: Phone
+    },
+    {
+      label: "Chụp ảnh khi chấm công",
+      value: policy.requirePhoto ? "Bắt buộc" : "Không cần",
+      icon: UserCircle
     }
   ];
 

@@ -73,7 +73,7 @@ Chia 7 cụm, làm theo thứ tự. Đóng cụm nào chạy `npm run typecheck 
 | 20 | DV-07 | CRUD `/attendance-locations` (GPS + bán kính, wifi SSID/BSSID, dải IP; gắn nơi làm việc); trang quản lý có bản đồ chọn điểm | Unit: kiểm tra khoảng cách, dải IP | ✅ |
 | 21 | DV-05 | `POST /device-auth/my-requests`, `GET /device-auth/my-devices`: nhân viên tự đăng ký thiết bị; HR duyệt ở màn hình đã có | Trình duyệt hai vai | ✅ |
 | 22 | AT-13, DV-06 | `POST /attendance/check-in`, `check-out`: kiểm tra thiết bị đã duyệt + điểm hợp lệ theo `DeviceAuthPolicy`, ghi `AttendanceRawLog(source = web/app)`, tính lại ngày; nút chấm công trên `/user/attendance` | Unit từng lý do từ chối (thay E2E). Trình duyệt với vị trí giả lập | ✅ |
-| 23 | AT-14 | Ảnh khi check-in (file service, mục đích `attendance_photo`) + toạ độ; HR xem ảnh từ ô bảng công | Trình duyệt | |
+| 23 | AT-14 | Ảnh khi check-in (file service, mục đích `attendance_photo`) + toạ độ; HR xem ảnh từ ô bảng công | Trình duyệt (camera giả lập) | ✅ |
 
 ### 2h. Bổ sung theo 1Office
 

@@ -120,7 +120,7 @@ export function AttendanceRecalcBoard({ data }: { data: RecalcData }) {
         <h2 id="recalc-title">Tính lại công</h2>
       </header>
       <p className="shift-catalog-hint">
-        Công được tính lại tự động khi đồng bộ máy chấm công, đổi lịch ca, ngày lễ, chính sách chấm công hoặc sửa ca đang dùng. Dùng mục này khi cần tính lại thủ
+        Công được tính lại tự động khi có lượt chấm mới (máy chấm, web), đổi lịch ca, ngày lễ, chính sách chấm công hoặc sửa ca đang dùng. Dùng mục này khi cần tính lại thủ
         công, ví dụ sau khi nhập bù log cũ. Ngày chưa tới không được tính.
       </p>
 

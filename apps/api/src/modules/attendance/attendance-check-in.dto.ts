@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNumber, IsOptional, IsString, Matches, Max, MaxLength, Min } from "class-validator";
+import { IsNumber, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min } from "class-validator";
 
 // POST /attendance/check-in and /check-out (AT-13): where the employee is and from which device.
 export class CheckInDto {
@@ -39,4 +39,9 @@ export class CheckInDto {
   @IsString()
   @MaxLength(32)
   bssid?: string;
+
+  @ApiPropertyOptional({ description: "AT-14: a ready StoredFile of purpose checkin_photo, uploaded by me just before" })
+  @IsOptional()
+  @IsUUID()
+  photoFileId?: string;
 }

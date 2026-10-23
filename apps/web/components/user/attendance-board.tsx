@@ -111,7 +111,7 @@ const STATUS_LABELS: Record<AttendanceDayStatus, string> = {
 };
 
 const CHANGE_SOURCE_LABELS: Record<string, string> = {
-  punch_sync: "đồng bộ máy chấm công",
+  punch_sync: "có lượt chấm công mới",
   recalculation: "tính lại",
   manual: "HR sửa tay"
 };

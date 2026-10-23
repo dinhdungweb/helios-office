@@ -23,7 +23,7 @@ export const STATUS_LABELS: Record<AttendanceDayStatus, string> = {
   day_off: "Ngày nghỉ"
 };
 
-const SOURCE_LABELS: Record<string, string> = { punch_sync: "đồng bộ máy chấm công", recalculation: "tính lại", manual: "HR sửa tay" };
+const SOURCE_LABELS: Record<string, string> = { punch_sync: "có lượt chấm công mới", recalculation: "tính lại", manual: "HR sửa tay" };
 const VIOLATIONS = new Set<AttendanceDayStatus>(["late", "early_leave", "late_and_early", "missing_checkin", "missing_checkout", "absent"]);
 
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -268,6 +268,12 @@ export function AttendanceDayDrawer({ dayId, canEdit, locked, onClose, onChanged
                           ? `Máy ${punch.deviceId ?? "?"}`
                           : [punch.direction === "in" ? "Vào" : punch.direction === "out" ? "Ra" : null, punch.source === "app" ? "App" : "Web", punch.clientDeviceName, punch.locationName].filter(Boolean).join(" · ")}
                       </span>
+                      {punch.photoFileId ? (
+                        <a className="timesheet-drawer-photo" href={`/api/files/${punch.photoFileId}`} rel="noreferrer" target="_blank" title="Mở ảnh chấm công">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- a short-lived storage URL behind a redirect */}
+                          <img alt="Ảnh chấm công" loading="lazy" src={`/api/files/${punch.photoFileId}`} />
+                        </a>
+                      ) : null}
                     </li>
                   );
                 })}

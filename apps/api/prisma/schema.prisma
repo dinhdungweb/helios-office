@@ -289,6 +289,8 @@ model DeviceAuthPolicy {
   requireWifiForOffice       Boolean  @default(true)
   // DV-06: web/app check-ins only from a device HR approved.
   requireApprovedDevice      Boolean  @default(true)
+  // AT-14: a photo with every web/app check-in.
+  requirePhoto               Boolean  @default(false)
   approvalRefreshHint        String
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
@@ -1190,6 +1192,8 @@ model AttendanceRawLog {
   clientDeviceName String?
   locationId       String?
   locationName     String?
+  // AT-14: StoredFile (purpose checkin_photo) taken at the punch.
+  photoFileId      String?
   device           AttendanceDevice? @relation(fields: [deviceId], references: [deviceId], onDelete: Restrict)
   employee         Employee          @relation(fields: [employeeId], references: [id])
   createdAt        DateTime          @default(now())

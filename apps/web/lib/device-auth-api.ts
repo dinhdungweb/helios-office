@@ -26,6 +26,8 @@ export type DeviceAuthPolicy = {
   requireWifiForOffice: boolean;
   // DV-06: web/app check-ins only from an approved device.
   requireApprovedDevice: boolean;
+  // AT-14: a photo with every web/app check-in.
+  requirePhoto: boolean;
   approvalRefreshHint: string;
 };
 

@@ -725,7 +725,9 @@ modules:
         depends: [DV-07]
       - id: AT-14
         title: Check-in kèm ảnh và toạ độ GPS
-        status: todo
+        ui: /user/attendance
+        status: done
+        note: Chính sách thêm công tắc Chụp ảnh khi chấm công (mặc định tắt). Bật thì bấm chấm công mở camera trước (camera trước, xem lại, chụp lại; không có camera thì chọn ảnh), ảnh thu nhỏ 960 px JPEG rồi lên MinIO qua presign (purpose checkin_photo, chủ là nhân sự), lượt chấm giữ photoFileId; ảnh phải của chính người chấm, đã tải xong, chưa dùng cho lượt khác. Xem ảnh - chính nhân sự hoặc người có quyền xem log chấm công trong phạm vi; không ai xoá được. HR xem ảnh thu nhỏ trong chi tiết ngày và link trong tab Dữ liệu chấm công qua route /api/files/:id (mở trực tiếp ảnh). Toạ độ GPS đã lưu từ AT-13
         depends: [AT-13, CORE-11]
       - id: AT-15
         title: HR sửa công thủ công (có lịch sử)

@@ -21,9 +21,9 @@ export type MyDevice = {
 };
 
 // AT-13: what check-in needs (DV-06) and my punches today.
-export type CheckInRules = { requireApprovedDevice: boolean; requireGps: boolean; requireOfficeNetwork: boolean };
+export type CheckInRules = { requireApprovedDevice: boolean; requireGps: boolean; requireOfficeNetwork: boolean; requirePhoto: boolean };
 
-export type MyPunch = { id: string; punchTime: string; source: "machine" | "web" | "app"; direction: "in" | "out" | null; place: string | null; device: string | null };
+export type MyPunch = { id: string; punchTime: string; source: "machine" | "web" | "app"; direction: "in" | "out" | null; place: string | null; device: string | null; photoFileId: string | null };
 
 export type MyDeviceData =
   | { source: "api"; maxDevices: number; devices: MyDevice[]; current: MyDevice | null; suggestedName: string; rules: CheckInRules; punches: MyPunch[] }

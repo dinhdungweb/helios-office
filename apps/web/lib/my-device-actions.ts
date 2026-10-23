@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
+import { getCurrentSessionUser } from "@/lib/auth-user";
 import { DEVICE_COOKIE, type MyPunch } from "@/lib/my-device";
 import { getServerEnv } from "@/lib/server-env";
 
@@ -60,9 +61,46 @@ export type CheckInResult =
   | { ok: true; duplicate: boolean; punch: MyPunch; punches: MyPunch[] }
   | { ok: false; reason: string | null; error: string };
 
-export async function checkInAction(direction: "in" | "out", position: CheckInPosition): Promise<CheckInResult> {
+// AT-14: a check-in photo, as a JPEG data URL from the camera, goes straight to storage
+// (presign → PUT → complete) and only its id travels with the punch.
+const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
+
+async function uploadCheckInPhoto(accessToken: string, dataUrl: string) {
+  const match = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(dataUrl);
+  if (!match) throw new Error("photo format");
+  const bytes = Buffer.from(match[2], "base64");
+  if (bytes.length === 0 || bytes.length > MAX_PHOTO_BYTES) throw new Error("photo size");
+  const employeeId = (await getCurrentSessionUser())?.account?.employeeId;
+  if (!employeeId) throw new Error("no employee");
+
+  const api = getApiBaseUrl();
+  const headers = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
+  const presign = await fetch(`${api}/files/presign`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ fileName: `checkin-${Date.now()}.${match[1].split("/")[1].replace("jpeg", "jpg")}`, mimeType: match[1], size: bytes.length, purpose: "checkin_photo", ownerId: employeeId }),
+    cache: "no-store"
+  });
+  if (!presign.ok) throw new Error(`presign ${presign.status}`);
+  const upload = (await presign.json()) as { file: { id: string }; uploadUrl: string; headers: Record<string, string> };
+  const stored = await fetch(upload.uploadUrl, { method: "PUT", headers: upload.headers, body: bytes });
+  if (!stored.ok) throw new Error(`storage ${stored.status}`);
+  const completed = await fetch(`${api}/files/${upload.file.id}/complete`, { method: "POST", headers, cache: "no-store" });
+  if (!completed.ok) throw new Error(`complete ${completed.status}`);
+  return upload.file.id;
+}
+
+export async function checkInAction(direction: "in" | "out", position: CheckInPosition, photo?: string): Promise<CheckInResult> {
   const accessToken = await getSessionAccessToken();
   if (!accessToken) return { ok: false, reason: null, error: "Phiên đăng nhập đã hết hạn. Đăng nhập lại để tiếp tục." };
+  let photoFileId: string | undefined;
+  if (photo) {
+    try {
+      photoFileId = await uploadCheckInPhoto(accessToken, photo);
+    } catch {
+      return { ok: false, reason: "photo_upload", error: "Không tải được ảnh lên. Kiểm tra mạng rồi chụp lại." };
+    }
+  }
   const incoming = await headers();
   const clientIp = incoming.get("x-forwarded-for")?.split(",")[0]?.trim() || incoming.get("x-real-ip")?.trim() || "";
   const deviceId = (await cookies()).get(DEVICE_COOKIE)?.value;
@@ -76,7 +114,7 @@ export async function checkInAction(direction: "in" | "out", position: CheckInPo
         "x-helios-client-ip": clientIp,
         "x-helios-client-agent": incoming.get("user-agent")?.slice(0, 300) ?? ""
       },
-      body: JSON.stringify({ deviceId, ...(position ? { latitude: position.latitude, longitude: position.longitude, accuracy: Math.round(position.accuracy) } : {}) }),
+      body: JSON.stringify({ deviceId, photoFileId, ...(position ? { latitude: position.latitude, longitude: position.longitude, accuracy: Math.round(position.accuracy) } : {}) }),
       cache: "no-store"
     });
     if (!response.ok) {

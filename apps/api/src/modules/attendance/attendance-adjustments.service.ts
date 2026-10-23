@@ -159,7 +159,7 @@ export class AttendanceAdjustmentsService {
     const to = day.scheduledEnd ? new Date(day.scheduledEnd.getTime() + 12 * 3_600_000) : new Date(zonedInstant(date, 1440, timeZone));
     const logs = await this.prisma.attendanceRawLog.findMany({
       where: { employeeId: day.employeeId, punchTime: { gte: from, lt: to } },
-      select: { punchTime: true, deviceId: true, verifyType: true, source: true, direction: true, clientDeviceName: true, locationName: true },
+      select: { punchTime: true, deviceId: true, verifyType: true, source: true, direction: true, clientDeviceName: true, locationName: true, photoFileId: true },
       orderBy: { punchTime: "asc" }
     });
     return logs;

@@ -78,7 +78,8 @@ export class AttendanceLogsService {
           source: log.source,
           direction: log.direction,
           device: log.device ? { deviceId: log.device.deviceId, deviceName: log.device.deviceName } : { deviceId: log.clientDeviceId ?? log.source, deviceName: log.clientDeviceName },
-          locationName: log.locationName
+          locationName: log.locationName,
+          photoFileId: log.photoFileId
         })),
         total,
         query

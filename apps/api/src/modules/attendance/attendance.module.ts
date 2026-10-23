@@ -13,12 +13,13 @@ import { AttendanceReminderModule } from "./attendance-reminder.module";
 import { AttendanceTransferModule } from "./attendance-transfer.module";
 import { AttendanceService } from "./attendance.service";
 import { AttendanceSyncGuard } from "./attendance-sync.guard";
+import { CheckinPhotoFilePolicy } from "./checkin-photo-file.policy";
 import { StandardWorkdayController } from "./standard-workdays.controller";
 import { AuthModule } from "../auth/auth.module";
 
 @Module({
   imports: [AuthModule, AttendanceCalculationModule, AttendanceTransferModule, AttendanceReminderModule],
   controllers: [AttendanceController, AttendanceCheckInController, AttendanceDevicesController, AttendanceLocationsController, StandardWorkdayController],
-  providers: [AttendanceService, AttendanceAdjustmentsService, AttendanceDevicesService, AttendanceCheckInService, AttendanceLocationsService, AttendanceLogsService, AttendanceSyncGuard]
+  providers: [AttendanceService, AttendanceAdjustmentsService, AttendanceDevicesService, AttendanceCheckInService, AttendanceLocationsService, AttendanceLogsService, AttendanceSyncGuard, CheckinPhotoFilePolicy]
 })
 export class AttendanceModule {}

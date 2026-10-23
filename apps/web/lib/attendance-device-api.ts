@@ -32,6 +32,7 @@ export type RawLogRecord = {
   source: "machine" | "web" | "app";
   direction: "in" | "out" | null;
   locationName: string | null;
+  photoFileId: string | null;
 };
 
 export type SyncErrorRecord = {

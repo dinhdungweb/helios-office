@@ -40,6 +40,11 @@ export class UpdateDeviceAuthPolicyDto {
   @IsBoolean()
   requireApprovedDevice?: boolean;
 
+  @ApiPropertyOptional({ description: "AT-14: a photo with every web/app check-in" })
+  @IsOptional()
+  @IsBoolean()
+  requirePhoto?: boolean;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

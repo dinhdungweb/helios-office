@@ -39,7 +39,7 @@ const prisma = {
 const storage = {
   bucket: "test-bucket",
   presignUpload: async (key: string) => `https://storage.test/${key}?put`,
-  presignDownload: async (key: string) => `https://storage.test/${key}?get`,
+  presignDownload: async (key: string, _name?: string, _type?: string, disposition = "attachment") => `https://storage.test/${key}?get&${disposition}`,
   head: async (key: string) => (objects.has(key) ? { ...objects.get(key)!, etag: "etag-1" } : null),
   put: async (key: string, body: Buffer, contentType: string) => {
     objects.set(key, { size: body.length, contentType });
@@ -141,7 +141,9 @@ describe("FilesService", () => {
       size: 4,
       buffer: Buffer.from("data")
     });
-    expect(await service.downloadUrl(uploader, stored.id)).toContain("?get");
+    expect(await service.downloadUrl(uploader, stored.id)).toContain("?get&attachment");
+    // An image may open in the browser when asked.
+    expect(await service.downloadUrl(uploader, stored.id, true)).toContain("?get&inline");
     await expect(service.downloadUrl(outsider, stored.id)).rejects.toBeInstanceOf(NotFoundException);
     await expect(service.remove(outsider, stored.id)).rejects.toBeInstanceOf(NotFoundException);
     await expect(service.downloadUrl(uploader, "missing")).rejects.toBeInstanceOf(NotFoundException);

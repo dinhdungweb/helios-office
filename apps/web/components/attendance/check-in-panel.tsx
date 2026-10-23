@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CheckInCamera } from "@/components/attendance/check-in-camera";
 import { checkInAction, type CheckInPosition } from "@/lib/my-device-actions";
 import type { CheckInRules, MyPunch } from "@/lib/my-device";
 import { Clock } from "@/lib/icons";
@@ -39,6 +40,8 @@ export function CheckInPanel({ rules, punches: initial }: { rules: CheckInRules;
   const [punches, setPunches] = useState(initial);
   const [busy, setBusy] = useState<"in" | "out" | null>(null);
   const [message, setMessage] = useState<{ tone: "success" | "error" | "info"; text: string; hint?: string } | null>(null);
+  // AT-14: with photos required, a tap opens the camera first.
+  const [camera, setCamera] = useState<"in" | "out" | null>(null);
 
   useEffect(() => {
     const tick = () => setNow(new Date());
@@ -53,12 +56,19 @@ export function CheckInPanel({ rules, punches: initial }: { rules: CheckInRules;
   const last = punches.at(-1);
   const suggestOut = last?.direction === "in" || (last !== undefined && last.direction === null && punches.length % 2 === 1);
 
-  const punch = async (direction: "in" | "out") => {
+  const start = (direction: "in" | "out") => {
+    if (rules.requirePhoto) setCamera(direction);
+    else void punch(direction);
+  };
+
+  const punch = async (direction: "in" | "out", photo?: string) => {
     setBusy(direction);
     setMessage(rules.requireGps ? { tone: "info", text: "Đang lấy vị trí..." } : null);
     const located = rules.requireGps ? await currentPosition() : { position: null, problem: null };
     setMessage(null);
-    const result = await checkInAction(direction, located.position);
+    if (photo) setMessage({ tone: "info", text: "Đang gửi ảnh..." });
+    const result = await checkInAction(direction, located.position, photo);
+    setMessage(null);
     setBusy(null);
     if (!result.ok) {
       setMessage({ tone: "error", text: result.error, hint: result.reason === "no_position" || result.reason === "outside_places" ? located.problem ?? undefined : undefined });
@@ -91,6 +101,11 @@ export function CheckInPanel({ rules, punches: initial }: { rules: CheckInRules;
                 <li key={item.id} className={item.direction === "out" ? "is-out" : "is-in"} title={label.where}>
                   {label.kind} <strong>{label.time}</strong>
                   {label.where ? <small>{label.where}</small> : null}
+                  {item.photoFileId ? (
+                    <a className="check-in-photo-link" href={`/api/files/${item.photoFileId}`} rel="noreferrer" target="_blank">
+                      Ảnh
+                    </a>
+                  ) : null}
                 </li>
               );
             })}
@@ -98,10 +113,10 @@ export function CheckInPanel({ rules, punches: initial }: { rules: CheckInRules;
         )}
       </div>
       <div className="check-in-buttons">
-        <button className={suggestOut ? "secondary-button" : "primary-button"} disabled={busy !== null} type="button" onClick={() => punch("in")}>
+        <button className={suggestOut ? "secondary-button" : "primary-button"} disabled={busy !== null} type="button" onClick={() => start("in")}>
           {busy === "in" ? "Đang chấm..." : "Chấm công vào"}
         </button>
-        <button className={suggestOut ? "primary-button" : "secondary-button"} disabled={busy !== null} type="button" onClick={() => punch("out")}>
+        <button className={suggestOut ? "primary-button" : "secondary-button"} disabled={busy !== null} type="button" onClick={() => start("out")}>
           {busy === "out" ? "Đang chấm..." : "Chấm công ra"}
         </button>
       </div>
@@ -111,9 +126,21 @@ export function CheckInPanel({ rules, punches: initial }: { rules: CheckInRules;
           {message.hint ? <small>{message.hint}</small> : null}
         </p>
       ) : null}
+      {camera ? (
+        <CheckInCamera
+          title={camera === "in" ? "Chụp ảnh chấm công vào" : "Chụp ảnh chấm công ra"}
+          onClose={() => setCamera(null)}
+          onConfirm={(photo) => {
+            const direction = camera;
+            setCamera(null);
+            void punch(direction, photo);
+          }}
+        />
+      ) : null}
       <p className="check-in-rules">
         {[
           rules.requireApprovedDevice ? "thiết bị đã duyệt" : null,
+          rules.requirePhoto ? "chụp ảnh" : null,
           rules.requireGps && rules.requireOfficeNetwork ? "trong phạm vi GPS hoặc mạng văn phòng" : rules.requireGps ? "trong phạm vi GPS" : rules.requireOfficeNetwork ? "trong mạng văn phòng" : null
         ]
           .filter(Boolean)

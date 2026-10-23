@@ -19,7 +19,7 @@ export type CheckInContext = { source: CheckInSource; ip: string | null; userAge
 // Two taps within a minute are one punch.
 const DOUBLE_TAP_MS = 60_000;
 
-const POLICY_DEFAULTS = { requireApprovedDevice: true, requireGpsForAttendance: true, requireWifiForOffice: true };
+const POLICY_DEFAULTS = { requireApprovedDevice: true, requireGpsForAttendance: true, requireWifiForOffice: true, requirePhoto: false };
 
 // The reason travels with the message so the screen can offer the right fix.
 function refuse(reason: string, message: string): never {
@@ -48,6 +48,7 @@ export class AttendanceCheckInService {
     const policy = (await this.prisma.deviceAuthPolicy.findUnique({ where: { id: "default" } })) ?? POLICY_DEFAULTS;
     const device = policy.requireApprovedDevice ? await this.approvedDevice(employeeId, dto.deviceId) : null;
     const place = await this.checkPlace(policy, dto, context);
+    const photoFileId = await this.checkPhoto(employeeId, policy.requirePhoto, dto.photoFileId);
 
     const last = await this.prisma.attendanceRawLog.findFirst({
       where: { employeeId, source: { in: ["web", "app"] }, punchTime: { gte: new Date(now.getTime() - DOUBLE_TAP_MS) } },
@@ -73,6 +74,7 @@ export class AttendanceCheckInService {
         clientDeviceName: device?.deviceName ?? null,
         locationId: place?.id ?? null,
         locationName: place?.name ?? null,
+        photoFileId,
         rawPayload: { userAgent: context.userAgent, distanceMeters: place?.distance ?? null } as Prisma.InputJsonValue
       }
     });
@@ -88,6 +90,18 @@ export class AttendanceCheckInService {
     const timeZone = await this.calculation.timezone();
     const today = localDate(Date.now(), timeZone);
     return { date: today, punches: await this.myPunches(employeeId, today, timeZone) };
+  }
+
+  // The photo must be mine, uploaded completely, and not already used for another punch.
+  private async checkPhoto(employeeId: string, required: boolean, photoFileId: string | undefined) {
+    if (!photoFileId) {
+      if (required) refuse("photo_required", "Cần chụp ảnh khi chấm công.");
+      return null;
+    }
+    const file = await this.prisma.storedFile.findUnique({ where: { id: photoFileId } });
+    if (!file || file.purpose !== "checkin_photo" || file.ownerId !== employeeId || file.status !== "ready") refuse("photo_invalid", "Ảnh chấm công không hợp lệ, hãy chụp lại.");
+    if (await this.prisma.attendanceRawLog.findFirst({ where: { photoFileId }, select: { id: true } })) refuse("photo_invalid", "Ảnh này đã dùng cho lần chấm khác, hãy chụp lại.");
+    return photoFileId;
   }
 
   private async approvedDevice(employeeId: string, deviceId: string | undefined) {
@@ -134,14 +148,15 @@ export class AttendanceCheckInService {
     return logs.map((log) => this.view(log));
   }
 
-  private view(log: { id: string; punchTime: Date; source: string; direction: string | null; locationName: string | null; clientDeviceName: string | null; deviceId: string | null; device?: { deviceName: string | null } | null }) {
+  private view(log: { id: string; punchTime: Date; source: string; direction: string | null; locationName: string | null; clientDeviceName: string | null; deviceId: string | null; photoFileId?: string | null; device?: { deviceName: string | null } | null }) {
     return {
       id: log.id,
       punchTime: log.punchTime,
       source: log.source,
       direction: log.direction,
       place: log.locationName,
-      device: log.source === "machine" ? (log.device?.deviceName ?? log.deviceId) : log.clientDeviceName
+      device: log.source === "machine" ? (log.device?.deviceName ?? log.deviceId) : log.clientDeviceName,
+      photoFileId: log.photoFileId ?? null
     };
   }
 }

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Res, UploadedFile, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Query, Res, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
@@ -42,9 +42,9 @@ export class FilesController {
   }
 
   @Get(":id")
-  @ApiOkResponse({ description: "Redirects (302) to a 5-minute download URL; 404 when missing or not allowed." })
-  async download(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string, @Res() response: Response) {
-    response.redirect(302, await this.files.downloadUrl(user, id));
+  @ApiOkResponse({ description: "Redirects (302) to a 5-minute download URL; 404 when missing or not allowed. ?inline=1 shows an image instead of saving it." })
+  async download(@CurrentUser() user: AuthenticatedUser, @Param("id") id: string, @Res() response: Response, @Query("inline") inline?: string) {
+    response.redirect(302, await this.files.downloadUrl(user, id, inline === "1"));
   }
 
   @Delete(":id")

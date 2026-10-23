@@ -639,6 +639,11 @@ export function AttendanceDevicesBoard({ data, access, filters }: Props) {
                         <td>
                           {log.source === "machine" ? log.device.deviceName || log.device.deviceId : `${log.source === "app" ? "App" : "Web"}${log.device.deviceName ? ` · ${log.device.deviceName}` : ""}`}
                           {log.locationName ? <small>{log.locationName}</small> : null}
+                          {log.photoFileId ? (
+                            <a className="device-link" href={`/api/files/${log.photoFileId}`} rel="noreferrer" target="_blank">
+                              Xem ảnh
+                            </a>
+                          ) : null}
                         </td>
                         <td>{log.verifyType ? VERIFY_LABELS[log.verifyType.toLowerCase()] ?? log.verifyType : <span className="device-muted">—</span>}</td>
                         <td className="device-time">{vnDateTime(log.syncedAt)}</td>

@@ -430,6 +430,8 @@ export type DeviceAuthPolicy = {
   requireWifiForOffice: boolean;
   // DV-06: web/app check-ins only from an approved device.
   requireApprovedDevice: boolean;
+  // AT-14: a photo with every web/app check-in.
+  requirePhoto: boolean;
   approvalRefreshHint: string;
 };
 
@@ -1962,6 +1964,7 @@ export const deviceAuthPolicy: DeviceAuthPolicy = {
   requireGpsForAttendance: true,
   requireWifiForOffice: true,
   requireApprovedDevice: true,
+  requirePhoto: false,
   approvalRefreshHint: "Sau khi được xác thực, nhân viên nên đăng xuất và đăng nhập lại App hoặc tải lại trang GPS."
 };
 
