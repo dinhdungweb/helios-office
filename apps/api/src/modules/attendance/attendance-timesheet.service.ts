@@ -10,6 +10,7 @@ import { requiredMinutesFor } from "../shifts/shift-rules";
 import { AttendanceCalculationService } from "./attendance-calculation.service";
 import { AttendanceConfirmationService } from "./attendance-confirmation.service";
 import { AttendancePeriodService } from "./attendance-period.service";
+import { StandardWorkdayService } from "./standard-workdays.service";
 import type { TimesheetQueryDto } from "./attendance-query.dto";
 import { addDays, isoWeekday, localDate, zonedInstant } from "./engine/zoned-time";
 
@@ -55,7 +56,8 @@ export class AttendanceTimesheetService {
     private readonly dataScope: DataScopeService,
     private readonly calculation: AttendanceCalculationService,
     private readonly periods: AttendancePeriodService,
-    private readonly confirmations: AttendanceConfirmationService
+    private readonly confirmations: AttendanceConfirmationService,
+    private readonly standards: StandardWorkdayService
   ) {}
 
   async monthly(user: AuthenticatedUser, query: TimesheetQueryDto) {
@@ -94,7 +96,7 @@ export class AttendanceTimesheetService {
       this.prisma.employee.count({ where }),
       this.prisma.employee.findMany({
         where,
-        select: { id: true, code: true, fullName: true, startDate: true, endDate: true, department: { select: { id: true, name: true, defaultShiftId: true } } },
+        select: { id: true, code: true, fullName: true, positionId: true, startDate: true, endDate: true, department: { select: { id: true, name: true, defaultShiftId: true } } },
         orderBy: [{ department: { name: "asc" } }, { code: "asc" }],
         skip,
         take
@@ -102,7 +104,7 @@ export class AttendanceTimesheetService {
     ]);
     const ids = employees.map((employee) => employee.id);
 
-    const [results, assignments, holidays, shifts, period, answers, confirmationCounts] = await Promise.all([
+    const [results, assignments, holidays, shifts, period, answers, confirmationCounts, standardOf] = await Promise.all([
       this.prisma.attendanceDay.findMany({
         where: { employeeId: { in: ids }, workDate: { gte: dbDate(from), lte: dbDate(to) } },
         include: { shift: { select: { code: true, color: true } } }
@@ -112,7 +114,8 @@ export class AttendanceTimesheetService {
       this.prisma.shift.findMany(),
       this.periods.view(month),
       this.confirmations.byEmployee(month, ids),
-      this.confirmations.counts(month, this.dataScope.employeeWhere(scope))
+      this.confirmations.counts(month, this.dataScope.employeeWhere(scope)),
+      this.standards.resolverFor(month)
     ]);
     const resultByCell = new Map(results.map((result) => [`${result.employeeId}:${isoDate(result.workDate)}`, result]));
     const assignmentByCell = new Map(assignments.map((assignment) => [`${assignment.employeeId}:${isoDate(assignment.date)}`, assignment.shiftId]));
@@ -167,6 +170,8 @@ export class AttendanceTimesheetService {
 
       const worked = cells.filter((cell) => cell.status !== null);
       const sum = (pick: (cell: TimesheetCell) => number) => worked.reduce((totalValue, cell) => totalValue + pick(cell), 0);
+      // AT-25: the group's rule decides; without one it is what the schedule gives.
+      const standard = standardOf({ departmentId: employee.department.id, positionId: employee.positionId }, { units: standardUnits, minutes: standardMinutes });
       const nightMinutes = results.filter((result) => result.employeeId === employee.id).reduce((totalValue, result) => totalValue + result.nightMinutes, 0);
       return {
         employee: { id: employee.id, code: employee.code, fullName: employee.fullName, department: { id: employee.department.id, name: employee.department.name } },
@@ -183,8 +188,10 @@ export class AttendanceTimesheetService {
           holidayUnits: round2(sum((cell) => cell.paidLeaveUnits)),
           nightHours: round2(nightMinutes / 60),
           outsideHours: round2(sum((cell) => cell.outsideShiftMinutes) / 60),
-          standardUnits: round2(standardUnits),
-          standardHours: round2(standardMinutes / 60),
+          standardUnits: standard.units,
+          standardHours: standard.hours,
+          standardMode: standard.mode,
+          standardRule: standard.ruleName,
           workedHours: round2(sum((cell) => cell.workedMinutes) / 60),
           totalUnits: round2(sum((cell) => cell.workUnits + cell.paidLeaveUnits)),
           workingDays: worked.filter((cell) => cell.status !== null && WORK_STATUSES.has(cell.status)).length

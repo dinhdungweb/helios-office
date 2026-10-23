@@ -785,8 +785,10 @@ modules:
         depends: [AT-16]
       - id: AT-25
         title: Công chuẩn theo phòng ban / vị trí
-        status: todo
-        note: "Như 1Office (docs/design/1office-attendance-reference.md mục 4.1) — mỗi nhóm phòng ban × vị trí chọn tự tính (số ngày trong kỳ trừ chủ nhật) hoặc số cố định; dạng công thức làm ở AT-27"
+        api: ["GET /standard-workday-rules", "POST /standard-workday-rules", "PATCH /standard-workday-rules/:id", "DELETE /standard-workday-rules/:id"]
+        ui: /admin/settings/standard-workdays
+        status: done
+        note: "Như 1Office (docs/design/1office-attendance-reference.md mục 4.1). Cài đặt → Công chuẩn, mỗi nhóm phòng ban × vị trí (để trống là tất cả) chọn số ngày trong tháng trừ Chủ nhật (cộng / trừ điều chỉnh, tương đương TOTAL_DAY-TOTAL_SUNDAY-1), số cố định, hoặc theo lịch ca (mặc định khi không có nhóm). Nhóm cụ thể hơn thắng, cùng mức thì tháng áp dụng mới hơn thắng; trùng nhóm cùng tháng bị chặn; không sửa / xoá được quy tắc ảnh hưởng kỳ đã chốt. Dùng ở cột Công chuẩn bảng chấm công, file Excel và bảng công cá nhân. Ô công chuẩn trong hồ sơ nhân sự (standardWorkdays) chưa dùng cho chấm công. Dạng công thức làm ở AT-27"
         depends: [AT-16]
       - id: AT-26
         title: Mẫu bảng chấm công (đối tượng, chu kỳ công, người xem, tách dòng)

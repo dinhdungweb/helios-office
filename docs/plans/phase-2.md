@@ -84,7 +84,7 @@ Tổ chức màn hình (2026-10-22): HCNS là nhóm quyền như 1Office, không
 | # | Item | Việc | Kiểm tra | Trạng thái |
 |---|---|---|---|---|
 | 25 | AT-07 | Lịch ca xem theo tháng như Phân ca của 1Office (ô hiện mã ca, `N` khi không có ca), giữ xem theo tuần | Trình duyệt | ✅ Nút Tuần / Tháng, cột cuối tuần tô xám, `N` khi không có ca |
-| 26 | AT-25 | Công chuẩn theo nhóm phòng ban × vị trí: tự tính (ngày trong kỳ trừ chủ nhật) hoặc số cố định; cột Công chuẩn ở bảng công | Unit: chọn đúng nhóm, tháng 2 và tháng 31 ngày | |
+| 26 | AT-25 | Công chuẩn theo nhóm phòng ban × vị trí: tự tính (ngày trong kỳ trừ chủ nhật) hoặc số cố định; cột Công chuẩn ở bảng công | Unit: chọn đúng nhóm, tháng 2 và tháng 31 ngày | ✅ |
 | 27 | AT-28 | Cài đặt kiểu 1Office: giới hạn sửa phân ca sau N ngày và tạo trước tối đa N ngày, muộn/sớm theo giây, tách giờ qua ngày, làm thêm qua ngày tính ngày trước, số ngày liên tiếp không cần chốt | Unit engine cho từng cài đặt | |
 | 28 | AT-29 | Tự động nhận ca: ngày chưa xếp ca thì chọn ca khớp log nhất trong các ca áp dụng cho phòng ban / vị trí | Unit: hai ca sáng/chiều, log 13:05 → ca chiều | |
 

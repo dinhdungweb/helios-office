@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
+import { standardFor } from "./engine/standard-workdays";
 import { Prisma } from "@prisma/client";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { AttendanceConfirmationService } from "./attendance-confirmation.service";
@@ -29,7 +30,7 @@ function setup(options: { period?: Record<string, unknown> | null; existing?: Re
         { workUnits: new Prisma.Decimal(0), paidLeaveUnits: new Prisma.Decimal(0), workedMinutes: 0, lateMinutes: 0, earlyMinutes: 0, status: "missing_checkout" }
       ])
     },
-    employee: { count: jest.fn().mockResolvedValue(options.people ?? 1), findMany: jest.fn().mockResolvedValue([]) },
+    employee: { count: jest.fn().mockResolvedValue(options.people ?? 1), findMany: jest.fn().mockResolvedValue([]), findUnique: jest.fn().mockResolvedValue({ departmentId: "d1", positionId: null }) },
     userAccount: { findMany: jest.fn().mockResolvedValue([]) },
     auditLog: { create: jest.fn() }
   };
@@ -41,7 +42,8 @@ function setup(options: { period?: Record<string, unknown> | null; existing?: Re
     timezone: jest.fn().mockResolvedValue("Asia/Ho_Chi_Minh"),
     getPolicy: jest.fn().mockResolvedValue({ requireTimesheetConfirmation: options.requireConfirmation ?? false })
   };
-  const service = new AttendanceConfirmationService(prisma as never, dataScope as never, calculation as never, { contextFields: () => ({}) } as never);
+  const standards = { resolverFor: jest.fn().mockResolvedValue((_target: unknown, schedule: { units: number; minutes: number }) => standardFor(null, "2026-10", schedule, 8)) };
+  const service = new AttendanceConfirmationService(prisma as never, dataScope as never, calculation as never, { contextFields: () => ({}) } as never, standards as never);
   return { service, prisma };
 }
 

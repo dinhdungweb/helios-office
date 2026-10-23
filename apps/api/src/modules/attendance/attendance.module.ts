@@ -9,11 +9,12 @@ import { AttendanceReminderModule } from "./attendance-reminder.module";
 import { AttendanceTransferModule } from "./attendance-transfer.module";
 import { AttendanceService } from "./attendance.service";
 import { AttendanceSyncGuard } from "./attendance-sync.guard";
+import { StandardWorkdayController } from "./standard-workdays.controller";
 import { AuthModule } from "../auth/auth.module";
 
 @Module({
   imports: [AuthModule, AttendanceCalculationModule, AttendanceTransferModule, AttendanceReminderModule],
-  controllers: [AttendanceController, AttendanceDevicesController],
+  controllers: [AttendanceController, AttendanceDevicesController, StandardWorkdayController],
   providers: [AttendanceService, AttendanceAdjustmentsService, AttendanceDevicesService, AttendanceLogsService, AttendanceSyncGuard]
 })
 export class AttendanceModule {}

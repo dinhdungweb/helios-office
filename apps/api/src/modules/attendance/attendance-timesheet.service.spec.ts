@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { standardFor } from "./engine/standard-workdays";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { AttendanceTimesheetService } from "./attendance-timesheet.service";
 
@@ -59,8 +60,9 @@ function setup() {
     byEmployee: jest.fn().mockResolvedValue(new Map([["e1", { status: "confirmed" }]])),
     counts: jest.fn().mockResolvedValue({ people: 2, confirmed: 1, feedback: 0, pending: 1 })
   };
+  const standards = { resolverFor: jest.fn().mockResolvedValue((_target: unknown, schedule: { units: number; minutes: number }) => standardFor(null, "2026-10", schedule, 8)) };
   const periods = { assertOpen: jest.fn(), assertRangeOpen: jest.fn(), view: jest.fn().mockResolvedValue({ month: "2026-10", status: "open" }) };
-  return { service: new AttendanceTimesheetService(prisma as never, dataScope as never, calculation as never, periods as never, confirmations as never), prisma };
+  return { service: new AttendanceTimesheetService(prisma as never, dataScope as never, calculation as never, periods as never, confirmations as never, standards as never), prisma };
 }
 
 describe("AttendanceTimesheetService (AT-16)", () => {
@@ -99,6 +101,8 @@ describe("AttendanceTimesheetService (AT-16)", () => {
       // 22 working weekdays in October 2026, less the company day off on 30/10.
       standardUnits: 21,
       standardHours: 168,
+      standardMode: "schedule",
+      standardRule: null,
       workedHours: 15.3,
       totalUnits: 1.92,
       workingDays: 4

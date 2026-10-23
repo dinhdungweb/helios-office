@@ -27,6 +27,7 @@ export default async function UserAttendancePage({ searchParams }: UserAttendanc
         key={schedule.month}
         moduleTabs={<AttendanceModuleTabs tabs={tabs} />}
         schedule={schedule}
+        standard={confirmation?.standard}
       />
     </UserFrame>
   );

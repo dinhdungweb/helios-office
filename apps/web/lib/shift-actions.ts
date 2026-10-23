@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
-import { timeToMinute, type AttendancePolicy, type BulkAssignInput, type BulkAssignSummary, type RecalcJob } from "@/lib/shift-format";
+import { timeToMinute, type AttendancePolicy, type BulkAssignInput, type BulkAssignSummary, type RecalcJob, type StandardRulePayload } from "@/lib/shift-format";
 
 export type ShiftActionResult = { ok: true } | { ok: false; error: string };
 export type ShiftDataResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -107,6 +107,19 @@ export async function restoreShiftAction(shiftId: string) {
 
 export async function deleteShiftAction(shiftId: string) {
   return send(`/shifts/${encodeURIComponent(shiftId)}`, "DELETE");
+}
+
+// AT-25: an empty id creates the rule.
+export async function saveStandardRuleAction(ruleId: string, payload: StandardRulePayload) {
+  const result = ruleId ? await send(`/standard-workday-rules/${encodeURIComponent(ruleId)}`, "PATCH", payload) : await send("/standard-workday-rules", "POST", payload);
+  if (result.ok) revalidatePath("/admin/settings/standard-workdays");
+  return result;
+}
+
+export async function deleteStandardRuleAction(ruleId: string) {
+  const result = await send(`/standard-workday-rules/${encodeURIComponent(ruleId)}`, "DELETE");
+  if (result.ok) revalidatePath("/admin/settings/standard-workdays");
+  return result;
 }
 
 // AT-23: send missing-punch reminders now (yesterday by default).

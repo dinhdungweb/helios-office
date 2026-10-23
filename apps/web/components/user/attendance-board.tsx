@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import type { Route } from "next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { AttendanceData, AttendanceDayResult, AttendanceDayStatus, MyScheduleData, MyScheduleDay, MyScheduleShift } from "@/lib/attendance-api";
+import type { AttendanceData, AttendanceDayResult, AttendanceDayStatus, MonthStandard, MyScheduleData, MyScheduleDay, MyScheduleShift } from "@/lib/attendance-api";
 import {
   CalendarBlank,
   CalendarCheck,
@@ -471,7 +471,7 @@ function formatDayMonth(value: string) {
   return `${day}/${month}`;
 }
 
-function AttendanceStatsPanel({ days, month, scheduleAvailable }: { days: AttendanceDay[]; month: string; scheduleAvailable: boolean }) {
+function AttendanceStatsPanel({ days, month, scheduleAvailable, groupStandard }: { days: AttendanceDay[]; month: string; scheduleAvailable: boolean; groupStandard?: MonthStandard | null }) {
   const [activeStatTab, setActiveStatTab] = useState<"active" | "inactive">("active");
   const [year, monthNumber] = month.split("-").map(Number);
   const monthDays = days.filter((day) => !day.isEmpty);
@@ -482,14 +482,15 @@ function AttendanceStatsPanel({ days, month, scheduleAvailable }: { days: Attend
   const workedHours = sum((result) => result.workedMinutes) / 60;
   // Standard: the shifts scheduled this month, minus days off for a holiday.
   const scheduled = monthDays.filter((day) => day.schedule?.employed && day.schedule.shift && !isDayOffHoliday(day.schedule));
-  const standardUnits = scheduled.reduce((total, day) => total + day.schedule!.shift!.workUnits, 0);
-  const standardHours = scheduled.reduce((total, day) => total + day.schedule!.shift!.requiredMinutes / 60, 0);
-  const standard = (value: number) => (scheduleAvailable ? round(value) : "--");
+  // AT-25: a group rule set in Cài đặt → Công chuẩn replaces the schedule's figure.
+  const standardUnits = groupStandard ? groupStandard.units : scheduled.reduce((total, day) => total + day.schedule!.shift!.workUnits, 0);
+  const standardHours = groupStandard ? groupStandard.hours : scheduled.reduce((total, day) => total + day.schedule!.shift!.requiredMinutes / 60, 0);
+  const standard = (value: number) => (groupStandard || scheduleAvailable ? round(value) : "--");
   const generatedStats: AttendanceStat[] = [
     { label: "Công làm việc", value: round(workUnits) },
     { label: "Công lễ", value: round(sum((result) => result.paidLeaveUnits)) },
     { label: "Giờ làm việc thực tính", value: workedHours.toFixed(2) },
-    { label: "Số công chuẩn (theo lịch ca)", value: standard(standardUnits) },
+    { label: groupStandard ? `Số công chuẩn (${groupStandard.rule ?? "theo nhóm"})` : "Số công chuẩn (theo lịch ca)", value: standard(standardUnits) },
     { label: "Số ngày có ca", value: scheduleAvailable ? String(scheduled.length) : "--" },
     { label: "Số lần đi muộn", value: String(results.filter((result) => result.lateMinutes > 0).length) },
     { label: "Số phút đi muộn", value: String(sum((result) => result.lateMinutes)) },
@@ -575,7 +576,19 @@ function shiftMonth(month: string, delta: number) {
 
 // AT-09: personal monthly attendance calendar with each day's shift from the schedule. Pages key it
 // by month, so selection and the picker reset when the month changes.
-export function AttendanceBoard({ banner, data, moduleTabs, schedule }: { banner?: ReactNode; data: AttendanceData; moduleTabs: ReactNode; schedule: MyScheduleData }) {
+export function AttendanceBoard({
+  banner,
+  data,
+  moduleTabs,
+  schedule,
+  standard
+}: {
+  banner?: ReactNode;
+  data: AttendanceData;
+  moduleTabs: ReactNode;
+  schedule: MyScheduleData;
+  standard?: MonthStandard | null;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -715,7 +728,7 @@ export function AttendanceBoard({ banner, data, moduleTabs, schedule }: { banner
           {detailDay ? <AttendanceDetailDialog day={detailDay} onClose={() => setSelectedDate(null)} position={detailPosition} /> : null}
         </div>
 
-        <AttendanceStatsPanel days={attendanceDays} month={month} scheduleAvailable={schedule.source === "api"} />
+        <AttendanceStatsPanel days={attendanceDays} groupStandard={standard} month={month} scheduleAvailable={schedule.source === "api"} />
       </section>
     </main>
   );

@@ -10,6 +10,8 @@ import type {
   ScheduleData,
   ScheduleGrid,
   ShiftPatternData,
+  StandardRuleRecord,
+  StandardWorkdayData,
   ShiftPatternRecord,
   ShiftRecord,
   ShiftSettingsData
@@ -70,6 +72,28 @@ export async function getShiftPatterns(): Promise<ShiftPatternData> {
     return { source: "api", patterns: await requestJson<ShiftPatternRecord[]>("/shift-patterns") };
   } catch (error) {
     return { source: "unavailable", error: error instanceof Error ? error.message : "Không tải được mẫu xếp ca." };
+  }
+}
+
+// AT-25: the rules with the departments and positions to pick from, and the last locked month.
+export async function getStandardWorkdayData(): Promise<StandardWorkdayData> {
+  try {
+    const [rules, departments, positions] = await Promise.all([
+      requestJson<{ items: StandardRuleRecord[]; lockedThrough: string | null }>("/standard-workday-rules"),
+      requestJson<Array<{ id: string; name: string; status?: string }>>("/departments"),
+      requestJson<Array<{ id: string; name: string; status?: string }>>("/job-positions").catch(() => [])
+    ]);
+    const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, "vi");
+    return {
+      source: "api",
+      rules: rules.items,
+      departments: departments.map(({ id, name }) => ({ id, name })).sort(byName),
+      positions: positions.filter((item) => item.status !== "archived").map(({ id, name }) => ({ id, name })).sort(byName),
+      lockedThrough: rules.lockedThrough
+    };
+  } catch (error) {
+    const forbidden = error instanceof Error && error.message.endsWith("returned 403");
+    return { source: "unavailable", error: forbidden ? "Tài khoản của bạn không có quyền xem công chuẩn." : "Không tải được cài đặt công chuẩn." };
   }
 }
 

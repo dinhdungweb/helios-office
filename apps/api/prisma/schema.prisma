@@ -937,6 +937,31 @@ enum AttendancePeriodStatus {
   locked
 }
 
+enum StandardWorkdayMode {
+  schedule
+  auto
+  fixed
+}
+
+// Standard work units of a month for a group of departments × positions (AT-25); empty lists mean
+// everyone. See src/modules/attendance/engine/standard-workdays.ts.
+model StandardWorkdayRule {
+  id            String              @id @default(uuid())
+  name          String
+  departmentIds String[]            @default([])
+  positionIds   String[]            @default([])
+  mode          StandardWorkdayMode
+  fixedUnits    Decimal?            @db.Decimal(5, 2)
+  adjustUnits   Decimal             @default(0) @db.Decimal(5, 2)
+  // YYYY-MM: the first month the rule applies to.
+  effectiveFrom String
+  note          String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([effectiveFrom])
+}
+
 // One missing-punch reminder pass for a work date (AT-23). The date is the key, so the daily job
 // sends once even with several workers or a restart; HR may send again by hand.
 model AttendanceReminderRun {

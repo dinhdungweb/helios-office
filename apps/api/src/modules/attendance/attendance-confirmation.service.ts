@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { AttendanceConfirmationStatus, AttendancePeriodStatus, Prisma } from "@prisma/client";
 import { AuditService } from "../../common/audit/audit.service";
+import { StandardWorkdayService } from "./standard-workdays.service";
 import { DataScopeService } from "../../common/data-scope/data-scope.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthenticatedUser } from "../auth/auth.types";
@@ -37,7 +38,8 @@ export class AttendanceConfirmationService {
     private readonly prisma: PrismaService,
     private readonly dataScope: DataScopeService,
     private readonly calculation: AttendanceCalculationService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly standards: StandardWorkdayService
   ) {}
 
   // GET /attendance/me/timesheet: my month's totals, whether I can answer, and my answer.
@@ -49,11 +51,16 @@ export class AttendanceConfirmationService {
     this.checkMonth(target);
     const { from, to } = monthBounds(target);
 
-    const [period, confirmation, days] = await Promise.all([
+    const [period, confirmation, days, employee, standardOf] = await Promise.all([
       this.prisma.attendancePeriod.findUnique({ where: { month: target } }),
       this.prisma.attendanceConfirmation.findUnique({ where: { employeeId_month: { employeeId, month: target } } }),
-      this.prisma.attendanceDay.findMany({ where: { employeeId, workDate: { gte: dbDate(from), lte: dbDate(to) } } })
+      this.prisma.attendanceDay.findMany({ where: { employeeId, workDate: { gte: dbDate(from), lte: dbDate(to) } } }),
+      this.prisma.employee.findUnique({ where: { id: employeeId }, select: { departmentId: true, positionId: true } }),
+      this.standards.resolverFor(target)
     ]);
+    // AT-25: a group rule's standard; null means the board counts the scheduled shifts itself.
+    const rule = employee ? standardOf({ departmentId: employee.departmentId, positionId: employee.positionId }, { units: 0, minutes: 0 }) : null;
+    const standard = rule && rule.mode !== "schedule" ? { units: rule.units, hours: rule.hours, rule: rule.ruleName } : null;
     const sum = (pick: (day: (typeof days)[number]) => number) => days.reduce((total, day) => total + pick(day), 0);
     const round = (value: number) => Math.round(value * 100) / 100;
 
@@ -62,6 +69,7 @@ export class AttendanceConfirmationService {
       locked: period?.status === AttendancePeriodStatus.locked,
       confirmationOpen: Boolean(period?.confirmationOpenedAt) && period?.status !== AttendancePeriodStatus.locked,
       confirmation: confirmation ? await this.view(confirmation) : null,
+      standard,
       totals: {
         workUnits: round(sum((day) => Number(day.workUnits))),
         holidayUnits: round(sum((day) => Number(day.paidLeaveUnits))),

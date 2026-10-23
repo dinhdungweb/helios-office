@@ -477,7 +477,12 @@ export function TimesheetBoard({ data, canConfirm, canEdit, canLock, departmentI
                 <td className="timesheet-total">{row.totals.holidayUnits ? units(row.totals.holidayUnits) : ""}</td>
                 <td className="timesheet-total">{row.totals.nightHours || ""}</td>
                 <td className="timesheet-total">{row.totals.outsideHours || ""}</td>
-                <td className="timesheet-total">{units(row.totals.standardUnits)}</td>
+                <td
+                  className="timesheet-total"
+                  title={row.totals.standardMode === "schedule" ? `Theo lịch ca${row.totals.standardRule ? ` (nhóm ${row.totals.standardRule})` : ""}` : `Nhóm ${row.totals.standardRule}: ${row.totals.standardMode === "auto" ? "số ngày trong tháng trừ Chủ nhật" : "số cố định"}`}
+                >
+                  {units(row.totals.standardUnits)}
+                </td>
                 <td className="timesheet-total">{row.totals.workedHours}</td>
                 <td className="timesheet-total is-strong">{units(row.totals.totalUnits)}</td>
                 <td className="timesheet-total">

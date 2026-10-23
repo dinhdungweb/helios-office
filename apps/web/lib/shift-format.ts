@@ -147,6 +147,36 @@ export type ShiftPatternRecord = {
   status: "active" | "archived";
 };
 
+// AT-25: standard work units for a group of departments × positions.
+export type StandardMode = "schedule" | "auto" | "fixed";
+
+export type StandardRuleRecord = {
+  id: string;
+  name: string;
+  departmentIds: string[];
+  positionIds: string[];
+  mode: StandardMode;
+  fixedUnits: number | null;
+  adjustUnits: number;
+  effectiveFrom: string;
+  note: string | null;
+};
+
+export type StandardRulePayload = Omit<StandardRuleRecord, "id">;
+
+export type StandardWorkdayData =
+  | { source: "api"; rules: StandardRuleRecord[]; departments: Array<{ id: string; name: string }>; positions: Array<{ id: string; name: string }>; lockedThrough: string | null }
+  | { source: "unavailable"; error: string };
+
+// Days in a YYYY-MM month minus its Sundays (1Office's TOTAL_DAY-TOTAL_SUNDAY).
+export function daysWithoutSundays(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const days = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  let sundays = 0;
+  for (let day = 1; day <= days; day += 1) if (new Date(Date.UTC(year, monthNumber - 1, day)).getUTCDay() === 0) sundays += 1;
+  return days - sundays;
+}
+
 export type ShiftPatternData = { source: "api"; patterns: ShiftPatternRecord[] } | { source: "unavailable"; error: string };
 
 export type BulkAssignInput = {

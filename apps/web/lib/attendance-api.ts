@@ -143,7 +143,11 @@ export type MyMonthConfirmation = {
   locked: boolean;
   confirmationOpen: boolean;
   confirmation: AttendanceConfirmation | null;
+  // AT-25: the group's standard; null when it follows the shift schedule.
+  standard?: MonthStandard | null;
 };
+
+export type MonthStandard = { units: number; hours: number; rule: string | null };
 
 export async function getMyMonthConfirmation(month: string): Promise<MyMonthConfirmation | null> {
   const accessToken = await getSessionAccessToken();
