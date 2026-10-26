@@ -7,7 +7,8 @@ import { requiredMinutesFor, validateShiftTimes } from "./shift-rules";
 import type { CreateShiftDto, UpdateAttendancePolicyDto, UpdateShiftDto } from "./shifts.dto";
 
 const POLICY_ID = "default";
-const REMINDER_FIELDS = new Set(["missingPunchReminder", "missingPunchReminderTime"]);
+// Policy fields that never change a figure: reminders (AT-23) and scheduling limits (AT-28).
+const NON_FIGURE_FIELDS = new Set(["missingPunchReminder", "missingPunchReminderTime", "shiftEditWindowDays", "shiftCreateAheadDays"]);
 
 const SHIFT_USAGE = {
   _count: { select: { departmentsDefault: true, policiesDefault: true, shiftAssignments: true } }
@@ -162,7 +163,7 @@ export class ShiftsService {
     // Only a rule that changed value can move a figure; the form sends every field, and the
     // reminder settings (AT-23) never do.
     const affectsFigures = Object.keys(policy).some(
-      (key) => key !== "updatedAt" && !REMINDER_FIELDS.has(key) && JSON.stringify(policy[key as keyof typeof policy]) !== JSON.stringify(before[key as keyof typeof before])
+      (key) => key !== "updatedAt" && !NON_FIGURE_FIELDS.has(key) && JSON.stringify(policy[key as keyof typeof policy]) !== JSON.stringify(before[key as keyof typeof before])
     );
     if (affectsFigures) await this.recalc.rulesChanged("policy", actorId);
 

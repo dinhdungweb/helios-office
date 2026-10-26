@@ -554,6 +554,19 @@ model AttendancePolicy {
   // AT-23: remind people with a missing check-in or check-out the day before, at this local time.
   missingPunchReminder         Boolean              @default(true)
   missingPunchReminderTime     String               @default("08:30")
+  // AT-28, like 1Office's general attendance settings.
+  // minute: seconds are ignored (08:00:59 is on time) · second: one second late counts.
+  lateEarlyUnit                String               @default("minute")
+  // none · split: hours after midnight go to the next day · split_full: split by the shift's own
+  // hours before/after midnight, so a full shift always gives each day its share.
+  overnightSplit               String               @default("none")
+  // 0 = off. Up to N consecutive shift days with a check-in on the first and a check-out on the
+  // last count in full, though nothing was punched in between.
+  continuousShiftMaxDays       Int                  @default(0)
+  // null = no limit. An assignment may be changed only within N days of being created; shifts
+  // may be scheduled at most N days ahead.
+  shiftEditWindowDays          Int?
+  shiftCreateAheadDays         Int?
   updatedAt                    DateTime             @updatedAt
 }
 

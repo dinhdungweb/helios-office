@@ -51,6 +51,25 @@ function Choice<T extends string | number>({
   );
 }
 
+// Empty means "no limit" (null).
+function OptionalDays({ label, max, onChange, value }: { label: string; max: number; onChange: (value: number | null) => void; value: number | null }) {
+  return (
+    <span className="policy-optional-days">
+      <input
+        aria-label={label}
+        className="system-settings-number-input"
+        max={max}
+        min={0}
+        placeholder="Không giới hạn"
+        type="number"
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value === "" ? null : Math.min(max, Math.max(0, Math.round(Number(event.target.value) || 0))))}
+      />
+      <span>ngày</span>
+    </span>
+  );
+}
+
 function NumberInput({ label, max, min, onChange, value }: { label: string; max: number; min: number; onChange: (value: number) => void; value: number }) {
   return (
     <input
@@ -309,6 +328,39 @@ export function AttendancePolicyBoard({ data, reminderRuns = [] }: { data: Shift
               label={<span className="sr-only">Bắt buộc xác nhận công</span>}
               onChange={(event) => set("requireTimesheetConfirmation", event.target.checked)}
             />
+          </Row>
+        </section>
+
+        <section className="system-settings-card" aria-labelledby="policy-general-1office">
+          <header><h2 id="policy-general-1office">Cài đặt chung</h2></header>
+          <Row label="Tính đi muộn, về sớm" hint="Theo phút: bỏ qua giây, vào 08:00:59 vẫn đúng giờ. Theo giây: muộn 1 giây cũng tính muộn 1 phút.">
+            <Choice
+              label="Tính đi muộn, về sớm"
+              value={policy.lateEarlyUnit}
+              options={[{ value: "minute", label: "Theo phút" }, { value: "second", label: "Theo giây" }]}
+              onChange={(value) => set("lateEarlyUnit", value)}
+            />
+          </Row>
+          <Row label="Tách giờ làm việc qua ngày" hint="Với ca qua đêm: chia giờ và công tại 0h cho ngày hôm sau. 'Tính đủ giờ ca' chia theo giờ của ca, nên đủ ca thì mỗi ngày luôn được đủ phần của mình.">
+            <Choice
+              label="Tách giờ làm việc qua ngày"
+              value={policy.overnightSplit}
+              options={[
+                { value: "none", label: "Không tách" },
+                { value: "split", label: "Tách giờ qua ngày" },
+                { value: "split_full", label: "Tách giờ qua ngày (tính đủ giờ ca)" }
+              ]}
+              onChange={(value) => set("overnightSplit", value)}
+            />
+          </Row>
+          <Row label="Số ngày liên tiếp không cần check-in / out" hint="Ca trực nhiều ngày: chấm vào ngày đầu và chấm ra ngày cuối thì cả chuỗi (tối đa số ngày này) được đủ công. 0 là tắt.">
+            <NumberInput label="Số ngày liên tiếp không cần check-in / out" max={30} min={0} value={policy.continuousShiftMaxDays} onChange={(value) => set("continuousShiftMaxDays", value)} />
+          </Row>
+          <Row label="Thời gian được sửa phân ca (kể từ lúc tạo)" hint="Quá số ngày này thì ô phân ca không đổi, không xoá được nữa. Để trống là không giới hạn.">
+            <OptionalDays label="Thời gian được sửa phân ca" max={365} value={policy.shiftEditWindowDays} onChange={(value) => set("shiftEditWindowDays", value)} />
+          </Row>
+          <Row label="Số ngày tối đa được xếp ca trước" hint="Không xếp được ca cho ngày xa hơn hôm nay quá số ngày này. Để trống là không giới hạn.">
+            <OptionalDays label="Số ngày tối đa được xếp ca trước" max={366} value={policy.shiftCreateAheadDays} onChange={(value) => set("shiftCreateAheadDays", value)} />
           </Row>
         </section>
 

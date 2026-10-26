@@ -27368,3 +27368,15 @@ small {
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-sm);
 }
+
+/* AT-28: optional day limits on the attendance policy */
+.policy-optional-days {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+}
+
+.policy-optional-days input {
+  width: 222px;
+}

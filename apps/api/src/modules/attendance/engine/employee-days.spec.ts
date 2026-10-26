@@ -21,7 +21,10 @@ const policy: CalcPolicy = {
   workUnitMode: "actual",
   workUnitRoundingHundredths: 1,
   outsideShiftMode: "record",
-  holidayPaid: true
+  holidayPaid: true,
+  lateEarlyUnit: "minute",
+  overnightSplit: "none",
+  continuousShiftMaxDays: 0
 };
 
 const shift = (id: string, startMinute: number, endMinute: number, extra: Partial<CalcShift> = {}): CalcShift => ({
@@ -173,5 +176,69 @@ describe("parsePunchTime", () => {
     expect(parsePunchTime("2026-02-30 08:00:00", TZ)).toBeNull();
     expect(parsePunchTime("2026-10-21 24:00:00", TZ)).toBeNull();
     expect(parsePunchTime("21/10/2026 08:00", TZ)).toBeNull();
+  });
+});
+
+describe("calculateEmployeeDays with 1Office general settings (AT-28)", () => {
+  const at = (date: string, time: string) => new Date(`${date}T${time}+07:00`);
+
+  it("counts lateness by the minute unless seconds are asked for", () => {
+    const punches = [at("2026-10-21", "08:00:59"), at("2026-10-21", "16:59:30")];
+    const byMinute = byDate(run({ from: "2026-10-21", to: "2026-10-21", punches })).get("2026-10-21")!.result!;
+    expect([byMinute.lateMinutes, byMinute.earlyMinutes, byMinute.status]).toEqual([0, 1, "early_leave"]);
+
+    const bySecond = byDate(run({ from: "2026-10-21", to: "2026-10-21", punches, policy: { ...policy, lateEarlyUnit: "second" } })).get("2026-10-21")!.result!;
+    expect([bySecond.lateMinutes, bySecond.status]).toEqual([1, "late_and_early"]);
+  });
+
+  it("shares a night shift's hours with the next day when splitting at midnight", () => {
+    const base = { from: "2026-10-21", to: "2026-10-22", assignments: new Map([["2026-10-21", "night"], ["2026-10-22", null]]) };
+    // Worked 23:00–06:00: 1 h before midnight, 6 h after.
+    const punches = [vn("2026-10-21", "23:00"), vn("2026-10-22", "06:00")];
+
+    const split = byDate(run({ ...base, punches, policy: { ...policy, overnightSplit: "split" } }));
+    const first = split.get("2026-10-21")!.result!;
+    const second = split.get("2026-10-22")!.result!;
+    expect([first.workedMinutes, second.workedMinutes]).toEqual([60, 360]);
+    expect(first.workUnits + second.workUnits).toBeCloseTo(0.88, 2);
+    expect(first.lateMinutes).toBe(60);
+    expect(first.flags).toContain("split_to_next");
+    expect(second.flags).toContain("split_from_previous");
+    expect(second.status).toBe("day_off");
+
+    // By the shift's own hours: 2 h of 8 before midnight, whatever was worked.
+    const full = byDate(run({ ...base, punches, policy: { ...policy, overnightSplit: "split_full" } }));
+    expect([full.get("2026-10-21")!.result!.workedMinutes, full.get("2026-10-22")!.result!.workedMinutes]).toEqual([105, 315]);
+
+    // Off: everything stays on the shift's day.
+    const off = byDate(run({ ...base, punches }));
+    expect([off.get("2026-10-21")!.result!.workedMinutes, off.get("2026-10-22")!.result!.workedMinutes]).toEqual([420, 0]);
+  });
+
+  it("counts a run of shift days in full with a check-in on the first and a check-out on the last", () => {
+    // Mon in 08:00, Tue nothing, Wed out 17:00.
+    const punches = [vn("2026-10-19", "08:00"), vn("2026-10-21", "17:00")];
+    const joined = byDate(run({ from: "2026-10-19", to: "2026-10-21", punches, policy: { ...policy, continuousShiftMaxDays: 3 } }));
+    for (const date of ["2026-10-19", "2026-10-20", "2026-10-21"]) {
+      const day = joined.get(date)!.result!;
+      expect([date, day.status, day.workUnits]).toEqual([date, "on_time", 1]);
+      expect(day.flags).toContain("continuous_shift");
+    }
+
+    // Longer than allowed: left as forgotten punches.
+    const tooLong = byDate(run({ from: "2026-10-19", to: "2026-10-21", punches, policy: { ...policy, continuousShiftMaxDays: 2 } }));
+    expect(["2026-10-19", "2026-10-20", "2026-10-21"].map((date) => tooLong.get(date)!.result!.status)).toEqual(["missing_checkout", "absent", "missing_checkin"]);
+
+    // A day HR changed by hand breaks the run.
+    const manual = new Map([["2026-10-20", { workUnits: 0.5 }]]);
+    const broken = byDate(run({ from: "2026-10-19", to: "2026-10-21", punches, manual, policy: { ...policy, continuousShiftMaxDays: 3 } }));
+    expect(broken.get("2026-10-19")!.result!.status).toBe("missing_checkout");
+  });
+
+  it("sees a run that starts before the requested range", () => {
+    const punches = [vn("2026-10-19", "08:00"), vn("2026-10-20", "17:00")];
+    const days = byDate(run({ from: "2026-10-20", to: "2026-10-20", punches, policy: { ...policy, continuousShiftMaxDays: 2 } }));
+    expect(days.size).toBe(1);
+    expect(days.get("2026-10-20")!.result!.status).toBe("on_time");
   });
 });

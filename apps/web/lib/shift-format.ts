@@ -53,6 +53,12 @@ export type AttendancePolicy = {
   requireTimesheetConfirmation: boolean;
   missingPunchReminder: boolean;
   missingPunchReminderTime: string;
+  // AT-28: 1Office's general attendance settings.
+  lateEarlyUnit: "minute" | "second";
+  overnightSplit: "none" | "split" | "split_full";
+  continuousShiftMaxDays: number;
+  shiftEditWindowDays: number | null;
+  shiftCreateAheadDays: number | null;
 };
 
 // AT-23: one pass of missing-punch reminders for a work date.

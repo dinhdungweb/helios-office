@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import type { ManualOverride } from "./engine/attendance-engine";
-import { calculateEmployeeDays, type CalcShift, type EmployeeDay } from "./engine/employee-days";
+import { calculateEmployeeDays, type CalcShift, type EmployeeDay, dependencyReach } from "./engine/employee-days";
 import { addDays, localDate, zonedInstant } from "./engine/zoned-time";
 
 // Stores the engine's results in AttendanceDay (AT-11, design §6.5). Reads every input for a batch
@@ -57,7 +57,11 @@ export class AttendanceCalculationService {
     const timeZone = policy.timezone;
     // Days that have not come yet are left alone: with no punches they would read as absences.
     const today = localDate(Date.now(), timeZone);
-    const options = { ...requested, to: requested.to < today ? requested.to : today };
+    // AT-28: a day may depend on its neighbours (runs of shift days, split overnight hours), so the
+    // range grows by that reach and twice as much is loaded as context.
+    const reach = dependencyReach(policy);
+    const wantedTo = addDays(requested.to, reach);
+    const options = { ...requested, from: addDays(requested.from, -reach), to: wantedTo < today ? wantedTo : today };
     if (options.from > options.to) return { days: 0, changed: 0, removed: 0, skipped: 0 };
     const rangeStart = new Date(zonedInstant(options.from, 0, timeZone));
     const rangeEnd = new Date(zonedInstant(addDays(options.to, 1), 0, timeZone));
@@ -76,8 +80,9 @@ export class AttendanceCalculationService {
     const shifts = new Map<string, CalcShift>(shiftRows.map((shift) => [shift.id, { ...shift, workUnits: Number(shift.workUnits) }]));
 
     // Neighbouring dates are loaded too: their shifts decide where punches near midnight go.
-    const loadFrom = addDays(options.from, -1);
-    const loadTo = addDays(options.to, 1);
+    const context = 1 + 2 * reach;
+    const loadFrom = addDays(options.from, -context);
+    const loadTo = addDays(options.to, context);
     const holidayRows = await this.prisma.holiday.findMany({ where: { date: { gte: dbDate(loadFrom), lte: dbDate(loadTo) } } });
     const holidays = new Map(holidayRows.map((holiday) => [isoDate(holiday.date), { type: holiday.type, paid: holiday.paid }]));
 
@@ -101,13 +106,13 @@ export class AttendanceCalculationService {
         this.prisma.attendanceRawLog.findMany({
           where: {
             employeeId: { in: ids },
-            punchTime: { gte: new Date(zonedInstant(addDays(options.from, -2), 0, timeZone)), lt: new Date(zonedInstant(addDays(options.to, 3), 0, timeZone)) }
+            punchTime: { gte: new Date(zonedInstant(addDays(loadFrom, -1), 0, timeZone)), lt: new Date(zonedInstant(addDays(loadTo, 2), 0, timeZone)) }
           },
           select: { employeeId: true, punchTime: true },
           orderBy: { punchTime: "asc" }
         }),
         this.prisma.attendanceAdjustment.findMany({
-          where: { employeeId: { in: ids }, revokedAt: null, workDate: { gte: dbDate(options.from), lte: dbDate(options.to) } },
+          where: { employeeId: { in: ids }, revokedAt: null, workDate: { gte: dbDate(loadFrom), lte: dbDate(loadTo) } },
           orderBy: { createdAt: "asc" }
         }),
         this.prisma.attendanceDay.findMany({

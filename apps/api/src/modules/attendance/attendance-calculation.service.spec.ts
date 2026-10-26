@@ -19,7 +19,10 @@ const policy = {
   workUnitMode: "actual",
   workUnitRoundingHundredths: 1,
   outsideShiftMode: "record",
-  holidayPaid: true
+  holidayPaid: true,
+  lateEarlyUnit: "minute",
+  overnightSplit: "none",
+  continuousShiftMaxDays: 0
 };
 
 const hc = {

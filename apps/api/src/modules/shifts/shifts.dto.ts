@@ -292,4 +292,38 @@ export class UpdateAttendancePolicyDto {
   @IsOptional()
   @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: "Giờ nhắc phải có dạng HH:mm." })
   missingPunchReminderTime?: string;
+
+  // AT-28: 1Office's general attendance settings.
+  @ApiPropertyOptional({ enum: ["minute", "second"], description: "Count lateness ignoring seconds (minute) or to the second" })
+  @IsOptional()
+  @IsIn(["minute", "second"])
+  lateEarlyUnit?: "minute" | "second";
+
+  @ApiPropertyOptional({ enum: ["none", "split", "split_full"], description: "Share a night shift's hours with the next calendar day" })
+  @IsOptional()
+  @IsIn(["none", "split", "split_full"])
+  overnightSplit?: "none" | "split" | "split_full";
+
+  @ApiPropertyOptional({ example: 2, description: "0 = off; longest run of shift days needing only a first check-in and a last check-out" })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(30)
+  continuousShiftMaxDays?: number;
+
+  @ApiPropertyOptional({ example: 3, description: "null = no limit; days after creation an assignment may still be changed" })
+  @IsOptional()
+  @ValidateIf((_dto, value) => value !== null)
+  @IsInt()
+  @Min(0)
+  @Max(365)
+  shiftEditWindowDays?: number | null;
+
+  @ApiPropertyOptional({ example: 30, description: "null = no limit; how many days ahead shifts may be scheduled" })
+  @IsOptional()
+  @ValidateIf((_dto, value) => value !== null)
+  @IsInt()
+  @Min(0)
+  @Max(366)
+  shiftCreateAheadDays?: number | null;
 }

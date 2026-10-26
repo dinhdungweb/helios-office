@@ -213,6 +213,17 @@ Ngày thuộc kỳ đã chốt luôn bị bỏ qua và được ghi vào kết q
 - Lấy vị trí luôn lấy mới (không dùng vị trí cũ trong bộ nhớ trình duyệt), vì vị trí cũ có thể là lúc nhân viên còn ở ngoài.
 - **Nhân viên tự đăng ký thiết bị** (`DV-05`): gửi yêu cầu từ trình duyệt hoặc app, HR duyệt trong màn hình đã có (DV-01 → 04).
 
+## 9b. Cài đặt chung kiểu 1Office (AT-28)
+
+Cách hiểu đã chốt với người dùng ngày 2026-10-23 (chưa xem lại được 1Office để đối chiếu chi tiết):
+
+- **Muộn / sớm theo phút hoặc giây.** Theo phút (mặc định như 1Office): bỏ phần giây của giờ chấm, vào 08:00:59 là đúng giờ, ra 16:59:30 là sớm 1 phút. Theo giây: muộn 1 giây đã tính muộn (làm tròn lên phút). Trước AT-28 engine làm tròn tới phút gần nhất; tính lại sẽ đổi một số ngày có giờ chấm lẻ giây.
+- **Tách giờ làm việc qua ngày** (ca qua 0h): không tách (như trước, cả ca thuộc ngày của ca) · tách qua ngày: phần giờ làm thực tế sau 0h, cùng tỉ lệ công và giờ đêm, chuyển sang ngày hôm sau · tách qua ngày (tính đủ giờ ca): chia theo giờ của ca trước / sau 0h. Đi muộn, về sớm, công lễ ở lại ngày của ca. Cờ `split_to_next` / `split_from_previous`.
+- **Số ngày liên tiếp không cần check-in / out** (ca trực): trên tối đa N ngày liền nhau đều có ca, ngày đầu chỉ có giờ vào, ngày cuối chỉ có giờ ra, các ngày giữa không chấm và không ngày nào HR sửa tay → cả chuỗi tính như chấm đủ (ngày giữa theo giờ ca), cờ `continuous_shift`. Mặc định 0 (tắt) dù 1Office để 2: bật sẵn sẽ biến các lần quên chấm liên tiếp thành ngày đủ công.
+- Hai cài đặt trên làm kết quả một ngày phụ thuộc ngày bên cạnh, nên tính lại mở rộng dải ngày thêm `dependencyReach` (N − 1, cộng 1 nếu tách giờ) và nạp gấp đôi làm ngữ cảnh.
+- **Giới hạn phân ca:** ô phân ca chỉ đổi / xoá trong N ngày kể từ lúc tạo; chỉ xếp ca trước tối đa N ngày. Để trống là không giới hạn. Ghi lại cùng ca thì không tính là đổi.
+- Chưa làm: "giờ làm thêm qua ngày tính vào ngày hôm trước" (cần đơn làm thêm, Phase 3).
+
 ## 9a. Đối chiếu với 1Office
 
 Hành vi 1Office đang dùng ghi ở [1office-attendance-reference.md](1office-attendance-reference.md). Chủ dự án chốt ngày 2026-10-22:

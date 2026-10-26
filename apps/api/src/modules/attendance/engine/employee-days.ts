@@ -2,7 +2,7 @@ import type { AttendancePolicy, HolidayType, Shift } from "@prisma/client";
 import { requiredMinutesFor, resolveShiftRules } from "../../shifts/shift-rules";
 import { datesBetween, resolveDayShift } from "../../shifts/shift-resolver";
 import { assignPunches, calculateDay, scheduleFor, type DayResult, type EnginePolicy, type EngineShift, type ManualOverride } from "./attendance-engine";
-import { addDays, localDate } from "./zoned-time";
+import { addDays, localDate, zonedInstant } from "./zoned-time";
 
 // One employee over a range of work dates: resolves each date's shift, splits the punches between
 // neighbouring shifts (a night shift's checkout belongs to the day before), then runs the engine.
@@ -26,6 +26,9 @@ export type CalcPolicy = Pick<
   | "workUnitRoundingHundredths"
   | "outsideShiftMode"
   | "holidayPaid"
+  | "lateEarlyUnit"
+  | "overnightSplit"
+  | "continuousShiftMaxDays"
 >;
 
 export type CalcShift = Pick<
@@ -72,8 +75,17 @@ export function enginePolicyFor(policy: CalcPolicy, shift: CalcShift | null): En
     workUnitMode: policy.workUnitMode,
     workUnitRoundingHundredths: policy.workUnitRoundingHundredths,
     outsideShiftMode: policy.outsideShiftMode,
-    holidayPaid: policy.holidayPaid
+    holidayPaid: policy.holidayPaid,
+    lateEarlyUnit: policy.lateEarlyUnit === "second" ? "second" : "minute"
   };
+}
+
+// How many days around a date its result may depend on (AT-28): a run of consecutive shift days
+// reaches N − 1 days, and splitting overnight hours reaches the next day. Recalculations widen
+// their range by this much, and load this much more as context.
+export function dependencyReach(policy: Pick<CalcPolicy, "overnightSplit" | "continuousShiftMaxDays">) {
+  const run = Number.isInteger(policy.continuousShiftMaxDays) ? Math.min(30, Math.max(0, policy.continuousShiftMaxDays - 1)) : 0;
+  return run + (policy.overnightSplit === "split" || policy.overnightSplit === "split_full" ? 1 : 0);
 }
 
 export function engineShiftFor(shift: CalcShift): EngineShift {
@@ -91,8 +103,10 @@ export function engineShiftFor(shift: CalcShift): EngineShift {
 
 export function calculateEmployeeDays(input: EmployeeDaysInput): EmployeeDay[] {
   const { policy } = input;
-  // One day either side, so punches near midnight go to the right neighbour.
-  const dates = datesBetween(addDays(input.from, -1), addDays(input.to, 1));
+  // Days either side are computed as context: punches near midnight, runs of shift days and
+  // split overnight hours may cross the edge of the range. Only from..to are returned.
+  const context = 1 + 2 * dependencyReach(policy);
+  const dates = datesBetween(addDays(input.from, -context), addDays(input.to, context));
 
   const plan = dates.map((date) => {
     const holiday = input.holidays.get(date) ?? null;
@@ -133,26 +147,105 @@ export function calculateEmployeeDays(input: EmployeeDaysInput): EmployeeDay[] {
     free.set(date, [...(free.get(date) ?? []), punch]);
   }
 
-  return plan
+  const days = plan.map((day) => {
+    const punches = day.shift ? assigned.get(day.date) ?? [] : free.get(day.date) ?? [];
+    const input_ = {
+      workDate: day.date,
+      shift: day.shift ? engineShiftFor(day.shift) : null,
+      holiday: day.holiday,
+      punches,
+      policy: day.enginePolicy,
+      employment: input.employment,
+      manual: input.manual.get(day.date) ?? null
+    };
+    return { ...day, input: input_, punches, result: calculateDay(input_) };
+  });
+
+  if (policy.continuousShiftMaxDays >= 2) joinContinuousShifts(days, policy.continuousShiftMaxDays);
+  if (policy.overnightSplit === "split" || policy.overnightSplit === "split_full") splitOvernight(days, policy.overnightSplit, policy.timezone);
+
+  return days
     .filter((day) => day.date >= input.from && day.date <= input.to)
-    .map((day) => {
-      const punches = day.shift ? assigned.get(day.date) ?? [] : free.get(day.date) ?? [];
-      const result = calculateDay({
-        workDate: day.date,
-        shift: day.shift ? engineShiftFor(day.shift) : null,
-        holiday: day.holiday,
-        punches,
-        policy: day.enginePolicy,
-        employment: input.employment,
-        manual: input.manual.get(day.date) ?? null
-      });
-      return {
-        workDate: day.date,
-        result,
-        shiftCode: day.shift?.code ?? null,
-        holidayType: day.holiday?.type ?? null,
-        punchCount: punches.length,
-        policy: result ? day.enginePolicy : null
-      };
-    });
+    .map((day) => ({
+      workDate: day.date,
+      result: day.result,
+      shiftCode: day.shift?.code ?? null,
+      holidayType: day.holiday?.type ?? null,
+      punchCount: day.punches.length,
+      policy: day.result ? day.enginePolicy : null
+    }));
+}
+
+type PlannedDay = {
+  date: string;
+  shift: CalcShift | null;
+  input: Parameters<typeof calculateDay>[0];
+  result: DayResult | null;
+};
+
+// AT-28, "Số ngày liên tiếp cho phép không cần checkin/out": on up to `maxDays` consecutive shift
+// days, a check-in on the first day and a check-out on the last make the whole run count, the days
+// in between included. Only untouched days qualify (no HR change, nothing punched in between).
+function joinContinuousShifts(days: PlannedDay[], maxDays: number) {
+  const plain = (day: PlannedDay | undefined) => Boolean(day?.shift && day.result && !day.input.manual);
+  for (let first = 0; first < days.length; first += 1) {
+    if (!plain(days[first]) || days[first].result!.status !== "missing_checkout") continue;
+    for (let last = first + 1; last < days.length && last - first + 1 <= maxDays; last += 1) {
+      const day = days[last];
+      if (!plain(day) || addDays(days[last - 1].date, 1) !== day.date) break;
+      if (day.result!.status === "missing_checkin") {
+        for (let index = first; index <= last; index += 1) {
+          const current = days[index];
+          const schedule = scheduleFor(current.date, current.input.shift!, current.input.policy);
+          const start = index === first ? current.result!.checkIn! : new Date(schedule.start);
+          const end = index === last ? current.result!.checkOut! : new Date(schedule.end);
+          current.result = calculateDay({ ...current.input, punches: [start, end] });
+          current.result?.flags.push("continuous_shift");
+        }
+        first = last;
+        break;
+      }
+      if (day.result!.status !== "absent") break;
+    }
+  }
+}
+
+// AT-28, "Tách giờ làm việc qua ngày": hours of a shift that crosses midnight are shared with the
+// next calendar day. "split" shares what was actually worked after midnight; "split_full" shares
+// by the shift's own hours before/after midnight. Late, early and holiday pay stay on the shift's day.
+function splitOvernight(days: PlannedDay[], mode: "split" | "split_full", timeZone: string) {
+  for (let index = 0; index + 1 < days.length; index += 1) {
+    const day = days[index];
+    const next = days[index + 1];
+    const result = day.result;
+    if (!day.shift || !result || !next.result || addDays(day.date, 1) !== next.date) continue;
+    if (day.shift.endMinute > day.shift.startMinute || result.workedMinutes <= 0 || !result.scheduledStart || !result.scheduledEnd) continue;
+
+    const start = result.scheduledStart.getTime();
+    const end = result.scheduledEnd.getTime();
+    const midnight = zonedInstant(addDays(localDate(start, timeZone), 1), 0, timeZone);
+    if (midnight <= start || midnight >= end) continue;
+    let before: number;
+    if (mode === "split_full" || !result.checkIn || !result.checkOut) {
+      before = (midnight - start) / (end - start);
+    } else {
+      const workStart = Math.max(start, result.checkIn.getTime());
+      const workEnd = Math.min(end, result.checkOut.getTime());
+      before = workEnd > workStart ? Math.max(0, Math.min(midnight, workEnd) - workStart) / (workEnd - workStart) : 1;
+    }
+    if (before >= 1) continue;
+
+    const share = (value: number, step = 1) => Math.round((value * before) / step) * step;
+    const keptMinutes = share(result.workedMinutes);
+    const keptNight = share(result.nightMinutes);
+    const keptUnits = Math.round(result.workUnits * before * 100) / 100;
+    next.result.workedMinutes += result.workedMinutes - keptMinutes;
+    next.result.nightMinutes += result.nightMinutes - keptNight;
+    next.result.workUnits = Math.round((next.result.workUnits + result.workUnits - keptUnits) * 100) / 100;
+    next.result.flags.push("split_from_previous");
+    result.workedMinutes = keptMinutes;
+    result.nightMinutes = keptNight;
+    result.workUnits = keptUnits;
+    result.flags.push("split_to_next");
+  }
 }

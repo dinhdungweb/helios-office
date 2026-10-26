@@ -124,3 +124,38 @@ describe("ShiftAssignmentsService (AT-07)", () => {
     expect(prisma.department.update).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("ShiftAssignmentsService schedule limits (AT-28)", () => {
+  const today = Date.parse("2026-10-23T03:00:00.000Z");
+  beforeEach(() => jest.spyOn(Date, "now").mockReturnValue(today));
+  afterEach(() => jest.restoreAllMocks());
+
+  function limited(limits: { shiftCreateAheadDays?: number | null; shiftEditWindowDays?: number | null }) {
+    const context = setup({ visibleEmployees: 1 });
+    context.prisma.attendancePolicy.findUnique.mockResolvedValue({ timezone: "Asia/Ho_Chi_Minh", shiftCreateAheadDays: null, shiftEditWindowDays: null, ...limits });
+    // e1 already has HC on 24/10, created on 10/10.
+    context.prisma.shiftAssignment.findMany.mockResolvedValue([{ id: "a1", employeeId: "e1", date: day("2026-10-24"), shiftId: "hc", createdAt: new Date("2026-10-10T02:00:00.000Z") }]);
+    return context;
+  }
+
+  it("refuses new shifts further ahead than allowed", async () => {
+    const { service, prisma } = limited({ shiftCreateAheadDays: 7 });
+    await expect(service.assign(user, { employeeIds: ["e2"], dates: ["2026-10-30", "2026-11-05"], shiftId: "hc" })).rejects.toThrow("tối đa 7 ngày (đến 30/10/2026); ngày 05/11/2026");
+    expect(prisma.shiftAssignment.upsert).not.toHaveBeenCalled();
+    await expect(service.assign(user, { employeeIds: ["e2"], dates: ["2026-10-30"], shiftId: "hc" })).resolves.toEqual({ assigned: 1 });
+  });
+
+  it("refuses to change or remove an assignment older than the edit window", async () => {
+    const { service, prisma } = limited({ shiftEditWindowDays: 3 });
+    await expect(service.assign(user, { employeeIds: ["e1"], dates: ["2026-10-24"], shiftId: "night" })).rejects.toThrow("trong 3 ngày kể từ lúc tạo; 1 ô đã quá hạn (ví dụ ngày 24/10/2026)");
+    await expect(service.clear(user, { employeeIds: ["e1"], dates: ["2026-10-24"] })).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.shiftAssignment.deleteMany).not.toHaveBeenCalled();
+    // Writing the same shift again changes nothing, so it is allowed.
+    await expect(service.assign(user, { employeeIds: ["e1"], dates: ["2026-10-24"], shiftId: "hc" })).resolves.toEqual({ assigned: 1 });
+  });
+
+  it("allows anything when no limit is set", async () => {
+    const { service } = limited({});
+    await expect(service.assign(user, { employeeIds: ["e1"], dates: ["2026-10-24", "2027-03-01"], shiftId: "night" })).resolves.toEqual({ assigned: 2 });
+  });
+});

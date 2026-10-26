@@ -42,6 +42,8 @@ export type EnginePolicy = {
   workUnitRoundingHundredths: number;
   outsideShiftMode: OutsideShiftMode;
   holidayPaid: boolean;
+  // AT-28: "minute" ignores the seconds of a punch (1Office's default); "second" counts them.
+  lateEarlyUnit: "minute" | "second";
 };
 
 export type EngineHoliday = { type: HolidayType; paid: boolean };
@@ -284,8 +286,11 @@ export function calculateDay(input: DayInput): DayResult | null {
 
   // 5. Late arrival and early departure (fixed shifts only).
   if (shift.type === "fixed") {
-    const late = minutes(Math.max(0, roundedIn - schedule.start));
-    const early = minutes(Math.max(0, schedule.end - roundedOut));
+    // By minute, 08:00:59 is on time and 16:59:30 is a minute early (the clock's minute counts);
+    // by second, any second late counts as a minute.
+    const lateMs = Math.max(0, roundedIn - schedule.start);
+    const late = policy.lateEarlyUnit === "second" ? Math.ceil(lateMs / MINUTE) : Math.floor(lateMs / MINUTE);
+    const early = Math.ceil(Math.max(0, schedule.end - roundedOut) / MINUTE);
     base.lateMinutes = late <= policy.lateGraceMinutes ? 0 : policy.lateCountMode === "excess" ? late - policy.lateGraceMinutes : late;
     base.earlyMinutes = early <= policy.earlyGraceMinutes ? 0 : policy.lateCountMode === "excess" ? early - policy.earlyGraceMinutes : early;
   }

@@ -814,8 +814,9 @@ modules:
         depends: [AT-11, PY-05]
       - id: AT-28
         title: Cài đặt chấm công kiểu 1Office (giới hạn sửa/tạo phân ca, muộn theo giây, tách giờ qua ngày, ngày liên tiếp không cần chốt)
-        status: todo
-        note: Danh sách ở docs/design/1office-attendance-reference.md mục 3
+        ui: /admin/settings/attendance-policy
+        status: done
+        note: "Mục Cài đặt chung trong Chính sách chấm công (docs/design/attendance-engine.md mục 9b). Muộn / sớm theo phút (mặc định, bỏ qua giây) hoặc theo giây. Tách giờ qua ngày - không tách / tách tại 0h theo giờ làm thực tế / tách theo giờ của ca. Ca trực nhiều ngày - tối đa N ngày liên tiếp có ca, chấm vào ngày đầu và ra ngày cuối thì cả chuỗi đủ công (mặc định 0 = tắt). Giới hạn sửa phân ca N ngày kể từ lúc tạo và xếp ca trước tối đa N ngày (để trống = không giới hạn), áp cho xếp từng ô, hàng loạt, xoá. Tính lại mở rộng dải ngày theo các cài đặt này. Chưa làm - làm thêm qua ngày tính ngày trước (cần đơn làm thêm, Phase 3)"
         depends: [AT-06]
       - id: AT-29
         title: Tự động nhận ca theo log trong các ca áp dụng cho phòng ban / vị trí

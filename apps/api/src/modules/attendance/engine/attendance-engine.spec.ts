@@ -24,7 +24,8 @@ const POLICY: EnginePolicy = {
   workUnitMode: "actual",
   workUnitRoundingHundredths: 1,
   outsideShiftMode: "record",
-  holidayPaid: true
+  holidayPaid: true,
+  lateEarlyUnit: "minute"
 };
 
 const OFFICE: EngineShift = { id: "hc", type: "fixed", startMinute: 480, endMinute: 1020, breakStartMinute: 720, breakEndMinute: 780, requiredMinutes: 480, workUnits: 1 };

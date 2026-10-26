@@ -6,7 +6,7 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 import type { AuthenticatedUser } from "../auth/auth.types";
 import { AttendancePeriodService } from "../attendance/attendance-period.service";
 import { AttendanceRecalcService } from "../attendance/attendance-recalc.service";
-import { localDate } from "../attendance/engine/zoned-time";
+import { addDays, localDate } from "../attendance/engine/zoned-time";
 import { parseCalendarDate } from "./holidays.service";
 import { planBulkCells, previewBulk, type BulkCell, type BulkRule } from "./shift-bulk";
 import { patternDays } from "./shift-patterns.service";
@@ -121,6 +121,15 @@ export class ShiftAssignmentsService {
 
     const actorId = user.account?.employeeId ?? undefined;
     const dates = dto.dates.map(parseCalendarDate);
+    const current = await this.prisma.shiftAssignment.findMany({
+      where: { employeeId: { in: dto.employeeIds }, date: { in: dates } },
+      select: { employeeId: true, date: true, shiftId: true, createdAt: true }
+    });
+    const taken = new Set(current.map((row) => `${row.employeeId}:${dateKey(row.date)}`));
+    await this.assertScheduleLimits(
+      dto.employeeIds.flatMap((employeeId) => dto.dates.filter((date) => !taken.has(`${employeeId}:${date}`))),
+      current.filter((row) => row.shiftId !== (dto.shiftId ?? null))
+    );
     await this.prisma.$transaction(
       dto.employeeIds.flatMap((employeeId) =>
         dates.map((date) =>
@@ -148,9 +157,9 @@ export class ShiftAssignmentsService {
     await this.periods.assertOpen(dto.dates);
     await this.assertInScope(user, dto.employeeIds);
 
-    const result = await this.prisma.shiftAssignment.deleteMany({
-      where: { employeeId: { in: dto.employeeIds }, date: { in: dto.dates.map(parseCalendarDate) } }
-    });
+    const where = { employeeId: { in: dto.employeeIds }, date: { in: dto.dates.map(parseCalendarDate) } };
+    await this.assertScheduleLimits([], await this.prisma.shiftAssignment.findMany({ where, select: { employeeId: true, date: true, createdAt: true } }));
+    const result = await this.prisma.shiftAssignment.deleteMany({ where });
     await this.writeAudit("shift_assignment.clear", "ShiftAssignment", "bulk", null, { employeeIds: dto.employeeIds, dates: dto.dates }, user.account?.employeeId ?? undefined);
     await this.recalc.scheduleChanged(dto.employeeIds, dto.dates, user.account?.employeeId ?? undefined);
     return { cleared: result.count };
@@ -276,7 +285,7 @@ export class ShiftAssignmentsService {
 
     const existingRows = await this.prisma.shiftAssignment.findMany({
       where: { employeeId: { in: employees.map((employee) => employee.id) }, date: { gte: from, lte: to } },
-      select: { employeeId: true, date: true, shiftId: true }
+      select: { employeeId: true, date: true, shiftId: true, createdAt: true }
     });
     const existing = new Map(existingRows.map((row) => [`${row.employeeId}:${dateKey(row.date)}`, row.shiftId]));
     const counts = previewBulk(cells, existing);
@@ -287,6 +296,11 @@ export class ShiftAssignmentsService {
     const key = (cell: BulkCell) => `${cell.employeeId}:${cell.date}`;
     const replaced = overwrite ? cells.filter((cell) => existing.has(key(cell)) && existing.get(key(cell)) !== cell.shiftId) : [];
     const created = cells.filter((cell) => !existing.has(key(cell)));
+    const replacedKeys = new Set(replaced.map(key));
+    await this.assertScheduleLimits(
+      created.map((cell) => cell.date),
+      existingRows.filter((row) => replacedKeys.has(`${row.employeeId}:${dateKey(row.date)}`))
+    );
     const actorId = user.account?.employeeId ?? undefined;
     const rows = [...created, ...replaced].map((cell) => ({
       employeeId: cell.employeeId,
@@ -348,6 +362,7 @@ export class ShiftAssignmentsService {
     if (!assignment) throw new NotFoundException(`Shift assignment ${id} was not found`);
     await this.periods.assertOpen([dateKey(assignment.date)]);
     await this.assertInScope(user, [assignment.employeeId]);
+    await this.assertScheduleLimits([], [assignment]);
 
     await this.prisma.shiftAssignment.delete({ where: { id } });
     await this.writeAudit("shift_assignment.delete", "ShiftAssignment", id, { ...assignment, date: dateKey(assignment.date) }, null, user.account?.employeeId ?? undefined);
@@ -392,6 +407,35 @@ export class ShiftAssignmentsService {
   private limitCells(employees: number, dates: number) {
     if (employees * dates > MAX_CELLS) {
       throw new BadRequestException(`Mỗi lần xếp tối đa ${MAX_CELLS} ô (người × ngày). Hãy chia nhỏ.`);
+    }
+  }
+
+  // AT-28, like 1Office: shifts may be scheduled at most N days ahead, and an assignment may be
+  // changed or removed only within N days of being created. Unset limits allow anything.
+  // `newDates` are dates of cells to create (one per cell, repeats allowed); `changed` are
+  // existing cells about to be replaced or removed.
+  private async assertScheduleLimits(newDates: string[], changed: Array<{ date: Date; createdAt: Date }>) {
+    const policy = await this.prisma.attendancePolicy.findUnique({
+      where: { id: "default" },
+      select: { timezone: true, shiftCreateAheadDays: true, shiftEditWindowDays: true }
+    });
+    if (!policy) return;
+    const label = (date: string) => date.split("-").reverse().join("/");
+    if (typeof policy.shiftCreateAheadDays === "number" && newDates.length > 0) {
+      const last = addDays(localDate(Date.now(), policy.timezone), policy.shiftCreateAheadDays);
+      const tooFar = newDates.filter((date) => date > last).sort();
+      if (tooFar.length > 0) {
+        throw new BadRequestException(`Chỉ xếp ca trước tối đa ${policy.shiftCreateAheadDays} ngày (đến ${label(last)}); ngày ${label(tooFar[0])} quá xa.`);
+      }
+    }
+    if (typeof policy.shiftEditWindowDays === "number" && changed.length > 0) {
+      const oldest = Date.now() - policy.shiftEditWindowDays * 86_400_000;
+      const frozen = changed.filter((row) => row.createdAt.getTime() < oldest).map((row) => dateKey(row.date)).sort();
+      if (frozen.length > 0) {
+        throw new BadRequestException(
+          `Phân ca chỉ sửa được trong ${policy.shiftEditWindowDays} ngày kể từ lúc tạo; ${frozen.length} ô đã quá hạn (ví dụ ngày ${label(frozen[0])}).`
+        );
+      }
     }
   }
 
