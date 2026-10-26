@@ -243,7 +243,7 @@ function LocationDialog({ location, data, onClose }: { location: AttendanceLocat
   );
 }
 
-// DV-07: Cài đặt → Chấm công GPS/Wifi, like 1Office's setting of the same name.
+// DV-07: Công → Cài đặt → Chấm công GPS/Wifi, like 1Office's setting of the same name.
 export function AttendanceLocationBoard({ data }: { data: AttendanceLocationData }) {
   const router = useRouter();
   const [editing, setEditing] = useState<AttendanceLocationRecord | "new" | null>(null);
@@ -299,7 +299,7 @@ export function AttendanceLocationBoard({ data }: { data: AttendanceLocationData
         </div>
       </header>
       <p className="shift-catalog-hint">
-        Nhân viên chấm công trên web hoặc app phải ở trong một điểm đang dùng. Trình duyệt kiểm tra được vị trí GPS và mạng văn phòng (IP); wifi chỉ app di động kiểm tra được. Bật / tắt yêu cầu ở Tài khoản → Xác thực thiết bị.
+        Nhân viên chấm công trên web hoặc app phải ở trong một điểm đang dùng. Trình duyệt kiểm tra được vị trí GPS và mạng văn phòng (IP); wifi chỉ app di động kiểm tra được. Bật / tắt cách kiểm tra ở Cài đặt đối tượng → Chấm công.
       </p>
       {message ? <p className="personnel-catalog-message is-error" role="alert">{message}</p> : null}
 

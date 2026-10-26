@@ -127,6 +127,24 @@ export async function deleteDeviceAuthRequest(requestId: string) {
   });
 }
 
+// The check-in part of the device policy (DV-06, AT-14), shown on Công → Cài đặt → Chấm công like
+// 1Office's "Timekeeping settings". null when the viewer may not read it.
+export type CheckInPolicy = Pick<DeviceAuthPolicy, "requireGpsForAttendance" | "requireWifiForOffice" | "requireApprovedDevice" | "requirePhoto">;
+
+export async function getCheckInPolicy(): Promise<CheckInPolicy | null> {
+  try {
+    const policy = await requestJson<DeviceAuthPolicy>("/device-auth/policy");
+    return {
+      requireGpsForAttendance: policy.requireGpsForAttendance,
+      requireWifiForOffice: policy.requireWifiForOffice,
+      requireApprovedDevice: policy.requireApprovedDevice,
+      requirePhoto: policy.requirePhoto
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function updateDeviceAuthPolicy(payload: DeviceAuthPolicyPayload) {
   return requestJson<DeviceAuthPolicy>("/device-auth/policy", {
     method: "PATCH",

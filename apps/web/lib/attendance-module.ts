@@ -24,7 +24,7 @@ const TABS: Array<{ key: AttendanceModuleTabKey; label: string; href: string; pe
   { key: "timesheet", label: "Bảng chấm công", href: "/user/attendance/timesheet", permissions: ATTENDANCE_READ },
   { key: "shift-schedule", label: "Phân ca", href: "/user/attendance/shift-schedule", permissions: ATTENDANCE_READ },
   { key: "devices", label: "Máy chấm công", href: "/user/attendance/devices", permissions: DEVICE_TAB },
-  { key: "settings", label: "Cài đặt", href: "/admin/settings/shifts", permissions: ATTENDANCE_SETUP }
+  { key: "settings", label: "Cài đặt", href: "/user/attendance/settings/shifts", permissions: [...ATTENDANCE_SETUP, DEVICE_MANAGE, "permission.attendance.manage"] }
 ];
 
 export async function getAttendanceModuleTabs(active: AttendanceModuleTabKey): Promise<AttendanceModuleTab[]> {

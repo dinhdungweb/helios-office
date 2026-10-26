@@ -217,7 +217,7 @@ export function ShiftSettingsBoard({ data }: { data: ShiftSettingsData }) {
 
       <p className="shift-catalog-hint">
         Ca mặc định của công ty: <strong>{data.policy.defaultShift ? `${data.policy.defaultShift.code} — ${data.policy.defaultShift.name}` : "chưa chọn"}</strong>, áp cho
-        các ngày làm việc của người chưa được xếp ca. Đổi ở <a href="/admin/settings/attendance-policy">Chính sách chấm công</a>.
+        các ngày làm việc của người chưa được xếp ca. Đổi ở <a href="/user/attendance/settings/timekeeping">Cài đặt đối tượng → Chấm công</a>.
       </p>
       {message ? <p className="personnel-catalog-message is-error" role="alert">{message}</p> : null}
 

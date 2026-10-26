@@ -23,7 +23,7 @@ export type LocationPayload = {
   note: string | null;
 };
 
-const PAGE = "/admin/settings/attendance-locations";
+const PAGE = "/user/attendance/settings/locations";
 
 async function send(method: "POST" | "PATCH" | "DELETE", path: string, body?: unknown): Promise<LocationActionResult> {
   const accessToken = await getSessionAccessToken();

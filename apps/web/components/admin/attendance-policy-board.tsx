@@ -4,6 +4,8 @@ import { useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { FormSwitch } from "@/components/ui/form-controls";
 import { StateBlock } from "@/components/ui/primitives";
+import { updateCheckInPolicyAction } from "@/lib/device-auth-actions";
+import type { CheckInPolicy } from "@/lib/device-auth-api";
 import { runMissingPunchReminderAction, updateAttendancePolicyAction } from "@/lib/shift-actions";
 import type { AttendancePolicy, ReminderRun, ShiftSettingsData } from "@/lib/shift-format";
 
@@ -136,11 +138,13 @@ function ReminderStatus({ runs }: { runs: ReminderRun[] }) {
 
 // AT-06: every rule the engine uses is set here; shifts may override some of them. Defaults follow
 // common Vietnamese practice and the 2019 Labour Code (docs/design/attendance-engine.md §4, §10).
-export function AttendancePolicyBoard({ data, reminderRuns = [] }: { data: ShiftSettingsData; reminderRuns?: ReminderRun[] }) {
+export function AttendancePolicyBoard({ data, reminderRuns = [], checkIn = null }: { data: ShiftSettingsData; reminderRuns?: ReminderRun[]; checkIn?: CheckInPolicy | null }) {
   const router = useRouter();
   const [policy, setPolicy] = useState<AttendancePolicy | null>(data.source === "api" ? data.policy : null);
   const [isSaving, startSaving] = useTransition();
   const [feedback, setFeedback] = useState<{ message: string; error: boolean } | null>(null);
+  // GPS / Wifi check-in rules (DV-06, AT-14) live in the device policy; 1Office shows them here.
+  const [rules, setRules] = useState<CheckInPolicy | null>(checkIn);
 
   if (data.source === "unavailable" || !policy) {
     return (
@@ -163,8 +167,15 @@ export function AttendancePolicyBoard({ data, reminderRuns = [] }: { data: Shift
   const save = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     startSaving(async () => {
+      if (rules && checkIn && JSON.stringify(rules) !== JSON.stringify(checkIn)) {
+        const saved = await updateCheckInPolicyAction(rules);
+        if (!saved.ok) {
+          setFeedback({ message: saved.error, error: true });
+          return;
+        }
+      }
       const result = await updateAttendancePolicyAction(policy);
-      setFeedback(result.ok ? { message: "Đã lưu. Nếu quy tắc tính công thay đổi, công từ đầu tháng trước đến hôm nay được tính lại (theo dõi ở mục Tính lại công).", error: false } : { message: result.error, error: true });
+      setFeedback(result.ok ? { message: "Đã lưu. Nếu quy tắc tính công thay đổi, công từ đầu tháng trước đến hôm nay được tính lại (theo dõi ở Bảng chấm công → Lịch sử).", error: false } : { message: result.error, error: true });
       if (result.ok) router.refresh();
     });
   };
@@ -330,6 +341,24 @@ export function AttendancePolicyBoard({ data, reminderRuns = [] }: { data: Shift
             />
           </Row>
         </section>
+
+        {rules ? (
+          <section className="system-settings-card" aria-labelledby="policy-check-in">
+            <header><h2 id="policy-check-in">Chấm công GPS / Wifi</h2></header>
+            <Row label="Chấm công GPS" hint="Chấm công trên web / app phải ở trong phạm vi một điểm GPS (Cài đặt chung → Chấm công GPS/Wifi).">
+              <FormSwitch checked={rules.requireGpsForAttendance} className="system-settings-switch" label={<span className="sr-only">Chấm công GPS</span>} onChange={(event) => setRules({ ...rules, requireGpsForAttendance: event.target.checked })} />
+            </Row>
+            <Row label="Chấm công Wifi" hint="Ở trong mạng văn phòng: wifi trên app, dải IP trên trình duyệt. Bật cả GPS và Wifi thì đạt một trong hai là được; tắt cả hai thì chấm ở đâu cũng được.">
+              <FormSwitch checked={rules.requireWifiForOffice} className="system-settings-switch" label={<span className="sr-only">Chấm công Wifi</span>} onChange={(event) => setRules({ ...rules, requireWifiForOffice: event.target.checked })} />
+            </Row>
+            <Row label="Không cho chấm công trên thiết bị chưa xác thực" hint="Nhân viên phải đăng ký thiết bị và được duyệt ở Xác thực thiết bị.">
+              <FormSwitch checked={rules.requireApprovedDevice} className="system-settings-switch" label={<span className="sr-only">Bắt buộc thiết bị đã xác thực</span>} onChange={(event) => setRules({ ...rules, requireApprovedDevice: event.target.checked })} />
+            </Row>
+            <Row label="Bắt buộc chụp ảnh khi chấm công">
+              <FormSwitch checked={rules.requirePhoto} className="system-settings-switch" label={<span className="sr-only">Bắt buộc chụp ảnh</span>} onChange={(event) => setRules({ ...rules, requirePhoto: event.target.checked })} />
+            </Row>
+          </section>
+        ) : null}
 
         <section className="system-settings-card" aria-labelledby="policy-general-1office">
           <header><h2 id="policy-general-1office">Cài đặt chung</h2></header>

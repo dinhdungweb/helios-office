@@ -369,7 +369,7 @@ modules:
       - id: DV-07
         title: Điểm chấm công hợp lệ (GPS + bán kính, wifi SSID/BSSID, dải IP)
         api: ["GET /attendance-locations", "POST /attendance-locations", "PATCH /attendance-locations/:id", "DELETE /attendance-locations/:id"]
-        ui: /admin/settings/attendance-locations
+        ui: /user/attendance/settings/locations
         status: done
         note: Cài đặt → Chấm công GPS/Wifi như 1Office. Ba kiểu điểm - GPS (bấm bản đồ OpenStreetMap qua Leaflet hoặc lấy vị trí hiện tại, bán kính mặc định 100 m), mạng văn phòng theo IP / dải CIDR (IPv4, IPv6; nút thêm IP hiện tại), wifi SSID / BSSID (chỉ app di động đọc được). Gắn nơi làm việc, bật / tắt, quyền attendance.device.manage, có nhật ký. Hàm so khớp vị trí (khoảng cách, độ chính xác GPS tối đa cộng 100 m, dải IP) dùng lại ở AT-13
 
@@ -668,13 +668,13 @@ modules:
       - id: AT-05
         title: Danh mục ca làm việc
         api: ["GET /shifts", "POST /shifts", "PATCH /shifts/:id", "DELETE /shifts/:id", "POST /shifts/:id/archive", "POST /shifts/:id/restore"]
-        ui: /admin/settings/shifts
+        ui: /user/attendance/settings/shifts
         status: done
         note: Ca cố định / linh hoạt / qua đêm, nghỉ giữa ca, số công, quy tắc riêng ghi đè chính sách. Ca đang là ca mặc định không lưu trữ / xoá được. Seed ca HC 08:00-17:00. Thử trình duyệt 2026-10-22 — ca đêm, ca linh hoạt, ca sai giờ nghỉ bị từ chối, sửa ngưỡng riêng, lưu trữ / khôi phục / xoá
       - id: AT-06
         title: Ca qua đêm, ca linh hoạt, nghỉ giữa ca, ngưỡng đi muộn cho phép
         api: ["GET /attendance-policy", "PATCH /attendance-policy"]
-        ui: /admin/settings/attendance-policy
+        ui: /user/attendance/settings/timekeeping
         status: done
         note: Chính sách chấm công chung (docs/design/attendance-engine.md mục 4) + quy tắc riêng từng ca. Thử trình duyệt 2026-10-22 — đổi ngày làm, ngưỡng muộn, cách tính công, lưu và tải lại giữ nguyên
         depends: [AT-05]
@@ -701,7 +701,7 @@ modules:
       - id: AT-10
         title: Ngày lễ, ngày làm bù
         api: ["GET /holidays", "POST /holidays", "PATCH /holidays/:id", "DELETE /holidays/:id", "POST /holidays/fixed"]
-        ui: /admin/settings/holidays
+        ui: /user/attendance/settings/holidays
         status: done
         note: Nghỉ lễ / ngày làm bù / công ty nghỉ, có hoặc không hưởng công, mỗi ngày một dòng. Seed ngày lễ dương lịch cố định 2026-2027, nút thêm cho năm khác; lễ âm lịch HR nhập theo lịch Chính phủ. Thử trình duyệt 2026-10-22 (thêm, trùng ngày bị từ chối, làm bù, sửa, thêm lễ cố định 2028)
       - id: AT-11
@@ -712,7 +712,7 @@ modules:
       - id: AT-12
         title: Tính lại công cho khoảng ngày
         api: ["POST /attendance/recalculate", "GET /attendance/recalculations", "GET /attendance/recalculations/:id"]
-        ui: /admin/settings/attendance-recalc
+        ui: /user/attendance/timesheet/history
         status: done
         note: Job ghi lại từng lần tính lại; nhỏ chạy ngay, lớn vào hàng đợi attendance-recalc; tự tính lại khi đổi lịch ca, ngày lễ, chính sách, ca đang dùng, ca mặc định phòng ban; không tính ngày chưa tới. Thử trình duyệt 2026-10-22 (ngưỡng muộn 15 phút làm ngày vào 08:10 hết muộn, trả về 0 thì muộn 10 phút lại). Bỏ qua kỳ đã chốt làm cùng AT-17
         depends: [AT-11]
@@ -782,7 +782,7 @@ modules:
       - id: AT-23
         title: Nhắc quên chấm công
         api: ["GET /attendance/reminders", "POST /attendance/reminders/run"]
-        ui: /admin/settings/attendance-policy
+        ui: /user/attendance/settings/timekeeping
         status: done
         note: Worker kiểm tra 5 phút một lần, quá giờ nhắc trong chính sách (mặc định 08.30, bật / tắt được) thì gửi thông báo attendance.missing_punch cho người ngày hôm qua thiếu giờ vào hoặc giờ ra; mỗi ngày gửi một lần (khoá theo ngày trong AttendanceReminderRun). Không nhắc ngày nghỉ, ngày lễ, tháng đã chốt. HR gửi tay và xem lần gần nhất ở Chính sách chấm công. Lưu chính sách chỉ tính lại công khi quy tắc tính công đổi giá trị
         depends: [NT-05]
@@ -796,7 +796,7 @@ modules:
       - id: AT-25
         title: Công chuẩn theo phòng ban / vị trí
         api: ["GET /standard-workday-rules", "POST /standard-workday-rules", "PATCH /standard-workday-rules/:id", "DELETE /standard-workday-rules/:id"]
-        ui: /admin/settings/standard-workdays
+        ui: /user/attendance/timesheet/standard-workdays
         status: done
         note: "Như 1Office (docs/design/1office-attendance-reference.md mục 4.1). Cài đặt → Công chuẩn, mỗi nhóm phòng ban × vị trí (để trống là tất cả) chọn số ngày trong tháng trừ Chủ nhật (cộng / trừ điều chỉnh, tương đương TOTAL_DAY-TOTAL_SUNDAY-1), số cố định, hoặc theo lịch ca (mặc định khi không có nhóm). Nhóm cụ thể hơn thắng, cùng mức thì tháng áp dụng mới hơn thắng; trùng nhóm cùng tháng bị chặn; không sửa / xoá được quy tắc ảnh hưởng kỳ đã chốt. Dùng ở cột Công chuẩn bảng chấm công, file Excel và bảng công cá nhân. Ô công chuẩn trong hồ sơ nhân sự (standardWorkdays) chưa dùng cho chấm công. Dạng công thức làm ở AT-27"
         depends: [AT-16]
@@ -814,13 +814,13 @@ modules:
         depends: [AT-11, PY-05]
       - id: AT-28
         title: Cài đặt chấm công kiểu 1Office (giới hạn sửa/tạo phân ca, muộn theo giây, tách giờ qua ngày, ngày liên tiếp không cần chốt)
-        ui: /admin/settings/attendance-policy
+        ui: /user/attendance/settings/timekeeping
         status: done
         note: "Mục Cài đặt chung trong Chính sách chấm công (docs/design/attendance-engine.md mục 9b). Muộn / sớm theo phút (mặc định, bỏ qua giây) hoặc theo giây. Tách giờ qua ngày - không tách / tách tại 0h theo giờ làm thực tế / tách theo giờ của ca. Ca trực nhiều ngày - tối đa N ngày liên tiếp có ca, chấm vào ngày đầu và ra ngày cuối thì cả chuỗi đủ công (mặc định 0 = tắt). Giới hạn sửa phân ca N ngày kể từ lúc tạo và xếp ca trước tối đa N ngày (để trống = không giới hạn), áp cho xếp từng ô, hàng loạt, xoá. Tính lại mở rộng dải ngày theo các cài đặt này. Chưa làm - làm thêm qua ngày tính ngày trước (cần đơn làm thêm, Phase 3)"
         depends: [AT-06]
       - id: AT-29
         title: Tự động nhận ca theo log trong các ca áp dụng cho phòng ban / vị trí
-        ui: /admin/settings/shifts
+        ui: /user/attendance/settings/shifts
         status: done
         note: "Form ca thêm Tự động nhận biết theo phòng ban, vị trí và đối tượng áp dụng (phòng ban, vị trí; để trống = tất cả), như 1Office. Ngày không có ô phân ca và không phải ngày lễ, engine chọn trong các ca tự nhận áp dụng cho người đó cùng ca mặc định của ngày - ca có khung giờ chứa nhiều lượt chấm nhất, rồi ca có giờ vào / ra gần nhất; cần ít nhất một lượt chấm đúng ngày đó. Ngày được nhận ca mang cờ auto_shift, ô bảng công hiện ca đã nhận. Sửa ca tự nhận thì tính lại cho mọi người. Thử 2026-10-26 - ngày 05/10 HC vắng thành ca sáng 06-14 từ log 06.02 / 14.01"
         depends: [AT-05, AT-11]

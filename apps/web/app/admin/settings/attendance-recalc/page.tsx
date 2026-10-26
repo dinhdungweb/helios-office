@@ -1,13 +1,7 @@
-import { AttendanceRecalcBoard } from "@/components/admin/attendance-recalc-board";
-import { PersonnelSettingsWorkspaceShell } from "@/components/admin/personnel-settings-workspace-shell";
-import { getRecalcData } from "@/lib/shift-api";
+import type { Route } from "next";
+import { redirect } from "next/navigation";
 
-export default async function AttendanceRecalcPage() {
-  const data = await getRecalcData();
-
-  return (
-    <PersonnelSettingsWorkspaceShell activeItem="attendance-recalc" searchAction="/admin/settings/attendance-recalc">
-      <AttendanceRecalcBoard data={data} />
-    </PersonnelSettingsWorkspaceShell>
-  );
+// Attendance settings live in the "Công" module now, like 1Office.
+export default function MovedAttendanceSettingsPage() {
+  redirect("/user/attendance/timesheet/history" as Route);
 }

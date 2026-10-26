@@ -32,8 +32,8 @@ async function request<T = unknown>(path: string, method: "POST" | "PATCH" | "PU
       return { ok: false, error: response.status >= 500 || !message ? "Không lưu được. Vui lòng thử lại sau." : message };
     }
 
-    revalidatePath("/admin/settings/shifts");
-    revalidatePath("/admin/settings/attendance-policy");
+    revalidatePath("/user/attendance/settings/shifts");
+    revalidatePath("/user/attendance/settings/timekeeping");
     return { ok: true, data: (await response.json().catch(() => null)) as T };
   } catch {
     return { ok: false, error: "Không kết nối được máy chủ. Vui lòng thử lại sau." };
@@ -116,20 +116,20 @@ export async function deleteShiftAction(shiftId: string) {
 // AT-25: an empty id creates the rule.
 export async function saveStandardRuleAction(ruleId: string, payload: StandardRulePayload) {
   const result = ruleId ? await send(`/standard-workday-rules/${encodeURIComponent(ruleId)}`, "PATCH", payload) : await send("/standard-workday-rules", "POST", payload);
-  if (result.ok) revalidatePath("/admin/settings/standard-workdays");
+  if (result.ok) revalidatePath("/user/attendance/timesheet/standard-workdays");
   return result;
 }
 
 export async function deleteStandardRuleAction(ruleId: string) {
   const result = await send(`/standard-workday-rules/${encodeURIComponent(ruleId)}`, "DELETE");
-  if (result.ok) revalidatePath("/admin/settings/standard-workdays");
+  if (result.ok) revalidatePath("/user/attendance/timesheet/standard-workdays");
   return result;
 }
 
 // AT-23: send missing-punch reminders now (yesterday by default).
 export async function runMissingPunchReminderAction(date?: string) {
   const result = await request<{ workDate: string; notified: number; skipped?: string }>("/attendance/reminders/run", "POST", date ? { date } : {});
-  if (result.ok) revalidatePath("/admin/settings/attendance-policy");
+  if (result.ok) revalidatePath("/user/attendance/settings/timekeeping");
   return result;
 }
 
@@ -152,19 +152,19 @@ export async function saveHolidayAction(_state: ShiftActionResult | null, formDa
   };
   const holidayId = text(formData, "holidayId");
   const result = holidayId ? await send(`/holidays/${encodeURIComponent(holidayId)}`, "PATCH", payload) : await send("/holidays", "POST", payload);
-  if (result.ok) revalidatePath("/admin/settings/holidays");
+  if (result.ok) revalidatePath("/user/attendance/settings/holidays");
   return result;
 }
 
 export async function deleteHolidayAction(holidayId: string) {
   const result = await send(`/holidays/${encodeURIComponent(holidayId)}`, "DELETE");
-  if (result.ok) revalidatePath("/admin/settings/holidays");
+  if (result.ok) revalidatePath("/user/attendance/settings/holidays");
   return result;
 }
 
 export async function addFixedHolidaysAction(year: number) {
   const result = await send("/holidays/fixed", "POST", { year });
-  if (result.ok) revalidatePath("/admin/settings/holidays");
+  if (result.ok) revalidatePath("/user/attendance/settings/holidays");
   return result;
 }
 
@@ -205,6 +205,9 @@ export async function bulkAssignAction(input: BulkAssignInput, preview: boolean)
 // AT-12: HR asks for a recalculation; small ones finish before this returns.
 export async function recalculateAttendanceAction(input: { from: string; to: string; departmentIds: string[] }) {
   const result = await request<RecalcJob>("/attendance/recalculate", "POST", input);
-  if (result.ok) revalidatePath("/admin/settings/attendance-recalc");
+  if (result.ok) {
+    revalidatePath("/user/attendance/timesheet/history");
+    revalidatePath("/user/attendance/timesheet");
+  }
   return result;
 }

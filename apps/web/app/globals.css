@@ -27413,3 +27413,37 @@ small {
   color: #7c3aed;
   background: #ede9fe;
 }
+
+/* Attendance settings moved into the Công module (like 1Office) */
+.attendance-subpage-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--space-6);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.attendance-subpage-back:hover {
+  color: var(--color-text-primary);
+}
+
+.timesheet-toolbar a.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.device-policy-moved {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  color: var(--color-text-secondary);
+  background: var(--color-surface-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.device-policy-moved a {
+  color: var(--color-info);
+}

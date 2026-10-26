@@ -19,7 +19,6 @@ import {
   Lock,
   PencilSimple,
   Phone,
-  UserCircle,
   ShieldCheck,
   SlidersHorizontal,
   Trash,
@@ -692,65 +691,10 @@ function DevicePolicyDialog({
                 />
               </article>
 
-              <article>
-                <span>
-                  <GlobeHemisphereWest size={17} weight="duotone" aria-hidden="true" />
-                </span>
-                <div>
-                  <h3>GPS chấm công</h3>
-                  <p>{draft.requireGpsForAttendance ? "Bắt buộc định vị" : "Không bắt buộc"}</p>
-                </div>
-                <FormSwitch
-                  checked={draft.requireGpsForAttendance}
-                  label={draft.requireGpsForAttendance ? "Bật" : "Tắt"}
-                  onChange={(event) => updateDraft({ requireGpsForAttendance: event.target.checked })}
-                />
-              </article>
-
-              <article>
-                <span>
-                  <ShieldCheck size={17} weight="duotone" aria-hidden="true" />
-                </span>
-                <div>
-                  <h3>Wifi / mạng văn phòng</h3>
-                  <p>{draft.requireWifiForOffice ? "Wifi trên app, dải IP trên web" : "Không kiểm tra"}</p>
-                </div>
-                <FormSwitch
-                  checked={draft.requireWifiForOffice}
-                  label={draft.requireWifiForOffice ? "Bật" : "Tắt"}
-                  onChange={(event) => updateDraft({ requireWifiForOffice: event.target.checked })}
-                />
-              </article>
-
-              <article>
-                <span>
-                  <Phone size={17} weight="duotone" aria-hidden="true" />
-                </span>
-                <div>
-                  <h3>Thiết bị đã duyệt</h3>
-                  <p>{draft.requireApprovedDevice ? "Chỉ chấm công trên thiết bị HR đã duyệt" : "Thiết bị nào cũng chấm được"}</p>
-                </div>
-                <FormSwitch
-                  checked={draft.requireApprovedDevice}
-                  label={draft.requireApprovedDevice ? "Bật" : "Tắt"}
-                  onChange={(event) => updateDraft({ requireApprovedDevice: event.target.checked })}
-                />
-              </article>
-
-              <article>
-                <span>
-                  <UserCircle size={17} weight="duotone" aria-hidden="true" />
-                </span>
-                <div>
-                  <h3>Chụp ảnh khi chấm công</h3>
-                  <p>{draft.requirePhoto ? "Bắt buộc chụp ảnh khuôn mặt" : "Không cần ảnh"}</p>
-                </div>
-                <FormSwitch
-                  checked={draft.requirePhoto}
-                  label={draft.requirePhoto ? "Bật" : "Tắt"}
-                  onChange={(event) => updateDraft({ requirePhoto: event.target.checked })}
-                />
-              </article>
+              <p className="device-policy-moved">
+                Chấm công GPS / Wifi, bắt buộc thiết bị đã xác thực và chụp ảnh nằm ở{" "}
+                <a href="/user/attendance/settings/timekeeping">Công → Cài đặt → Chấm công</a>, như 1Office.
+              </p>
             </div>
           </fieldset>
 
@@ -800,24 +744,9 @@ function DevicePolicyPanel({
       icon: Bell
     },
     {
-      label: "GPS chấm công",
-      value: policy.requireGpsForAttendance ? "Bắt buộc định vị" : "Không bắt buộc",
+      label: "Quy tắc chấm công GPS / Wifi",
+      value: "Ở Công → Cài đặt → Chấm công",
       icon: GlobeHemisphereWest
-    },
-    {
-      label: "Wifi / mạng văn phòng",
-      value: policy.requireWifiForOffice ? "Wifi trên app, dải IP trên web" : "Không kiểm tra",
-      icon: ShieldCheck
-    },
-    {
-      label: "Thiết bị đã duyệt",
-      value: policy.requireApprovedDevice ? "Bắt buộc" : "Không bắt buộc",
-      icon: Phone
-    },
-    {
-      label: "Chụp ảnh khi chấm công",
-      value: policy.requirePhoto ? "Bắt buộc" : "Không cần",
-      icon: UserCircle
     }
   ];
 

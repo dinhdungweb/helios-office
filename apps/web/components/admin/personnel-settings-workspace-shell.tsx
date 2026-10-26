@@ -24,12 +24,6 @@ export type PersonnelSettingsItem =
   | "workplace"
   | "internal-penalty"
   | "benefits"
-  | "shift"
-  | "attendance-policy"
-  | "standard-workday"
-  | "attendance-location"
-  | "holiday"
-  | "attendance-recalc"
   | "approval";
 
 type PersonnelSettingsWorkspaceShellProps = {
@@ -46,12 +40,6 @@ const generalItems = [
   { key: "internal-penalty", href: "/admin/settings/internal-penalties", label: "Phạt nội bộ" },
   { key: "benefits", href: "/admin/settings/welfare-benefits", label: "Chế độ phúc lợi" },
   { key: "career-path", label: "Lộ trình thăng tiến" },
-  { key: "shift", href: "/admin/settings/shifts", label: "Cài đặt ca" },
-  { key: "attendance-policy", href: "/admin/settings/attendance-policy", label: "Chính sách chấm công" },
-  { key: "standard-workday", href: "/admin/settings/standard-workdays", label: "Công chuẩn" },
-  { key: "attendance-location", href: "/admin/settings/attendance-locations", label: "Chấm công GPS/Wifi" },
-  { key: "holiday", href: "/admin/settings/holidays", label: "Ngày lễ" },
-  { key: "attendance-recalc", href: "/admin/settings/attendance-recalc", label: "Tính lại công" },
   { key: "approval", href: "/admin/settings/approval-workflows", label: "Quy trình duyệt" }
 ] as const;
 

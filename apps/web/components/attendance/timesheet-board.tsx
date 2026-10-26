@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties } from "react";
 import type { Route } from "next";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ModalDialog, StateBlock } from "@/components/ui/primitives";
 import { ExportStatus, useServerExport } from "@/components/ui/use-server-export";
 import { AttendanceDayDrawer, STATUS_LABELS } from "@/components/attendance/attendance-day-drawer";
 import { lockPeriodAction, resolveFeedbackAction, setConfirmationWindowAction, unlockPeriodAction } from "@/lib/attendance-actions";
+import { recalculateAttendanceAction } from "@/lib/shift-actions";
 import type { AttendancePeriod, TimesheetCell, TimesheetData, TimesheetRow } from "@/lib/timesheet-api";
 import { CaretLeft, CaretRight } from "@/lib/icons";
 
@@ -227,6 +229,8 @@ export function TimesheetBoard({ data, canConfirm, canEdit, canLock, departmentI
   const [feedbackRow, setFeedbackRow] = useState<TimesheetRow | null>(null);
   const [windowError, setWindowError] = useState<string | null>(null);
   const [isTogglingWindow, setIsTogglingWindow] = useState(false);
+  // AT-12, like 1Office's "Tính toán" on the timesheet: recalculate the month on screen.
+  const [calculation, setCalculation] = useState<{ running: boolean; message: string | null; error: boolean }>({ running: false, message: null, error: false });
   const [isNavigating, startNavigation] = useTransition();
 
   const navigate = useCallback(
@@ -255,6 +259,27 @@ export function TimesheetBoard({ data, canConfirm, canEdit, canLock, departmentI
     else setWindowError(result.error);
   };
   const [year, monthNumber] = sheet.month.split("-").map(Number);
+  const calculate = async () => {
+    const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+    const label = departmentId ? (data.departments.find((item) => item.id === departmentId)?.name ?? "phòng ban đã chọn") : "mọi người trong phạm vi";
+    if (!window.confirm(`Tính lại công tháng ${monthNumber}/${year} cho ${label}? Ngày chưa tới và tháng đã chốt được bỏ qua.`)) return;
+    setCalculation({ running: true, message: null, error: false });
+    const result = await recalculateAttendanceAction({ from: `${sheet.month}-01`, to: `${sheet.month}-${String(lastDay).padStart(2, "0")}`, departmentIds: departmentId ? [departmentId] : [] });
+    if (!result.ok) {
+      setCalculation({ running: false, message: result.error, error: true });
+      return;
+    }
+    const job = result.data;
+    setCalculation({
+      running: false,
+      error: false,
+      message:
+        job.status === "done"
+          ? `Đã tính lại ${job.result?.days ?? 0} ngày công, ${job.result?.changed ?? 0} ngày thay đổi.`
+          : "Đã đưa vào hàng chờ tính lại; xem tiến độ ở Lịch sử."
+    });
+    refresh();
+  };
   const first = (sheet.page - 1) * sheet.limit + 1;
   const last = Math.min(sheet.total, sheet.page * sheet.limit);
 
@@ -314,6 +339,19 @@ export function TimesheetBoard({ data, canConfirm, canEdit, canLock, departmentI
         >
           {serverExport.running ? "Đang xuất..." : "Xuất Excel"}
         </button>
+        {canConfirm ? (
+          <>
+            <button className="secondary-button" disabled={calculation.running || sheet.period.status === "locked"} title={sheet.period.status === "locked" ? "Kỳ công đã chốt" : undefined} type="button" onClick={calculate}>
+              {calculation.running ? "Đang tính..." : "Tính toán"}
+            </button>
+            <Link className="secondary-button" href={"/user/attendance/timesheet/history" as Route}>
+              Lịch sử
+            </Link>
+            <Link className="secondary-button" href={"/user/attendance/timesheet/standard-workdays" as Route}>
+              Công chuẩn
+            </Link>
+          </>
+        ) : null}
         <div className="timesheet-display" role="group" aria-label="Hiển thị ô ngày">
           <button aria-pressed={display === "hours"} className={display === "hours" ? "is-active" : undefined} type="button" onClick={() => setDisplay("hours")}>
             Giờ
@@ -332,6 +370,11 @@ export function TimesheetBoard({ data, canConfirm, canEdit, canLock, departmentI
         </p>
       ) : null}
       <ExportStatus state={serverExport.state} onDismiss={serverExport.dismiss} />
+      {calculation.message ? (
+        <p className={calculation.error ? "account-dialog-error" : "timesheet-confirm-summary"} role={calculation.error ? "alert" : "status"}>
+          {calculation.message}
+        </p>
+      ) : null}
       {windowError ? <p className="account-dialog-error" role="alert">{windowError}</p> : null}
       {sheet.period.status === "locked" ? (
         <p className="timesheet-period-banner" role="status">

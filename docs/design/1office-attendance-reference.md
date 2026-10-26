@@ -14,6 +14,15 @@ Cài đặt chia hai nhóm:
 - **Cài đặt chung:** Ca làm việc · Chấm công GPS/Wifi · Quy trình duyệt.
 - **Cài đặt đối tượng:** Chấm công · Nghỉ phép · Nghỉ bù.
 
+Đọc lại ngày 2026-10-26 (giao diện tiếng Anh, chỉ xem):
+- Menu phân hệ: Dashboard · Timekeeping (Bảng chấm công: tab Timesheet / Timesheet details) · Shift Assignment (Phân ca) · Attendance Device (Máy chấm) · Allow, compensation (Nghỉ phép, nghỉ bù) · Report · Customize; nút **Settings** mở trang cài đặt riêng của phân hệ, có "Back to module".
+- Trang cài đặt của phân hệ là nơi duy nhất chứa cài đặt chấm công. Menu cài đặt của phân hệ Nhân sự (Vị trí, Chức vụ, Nơi làm việc, Nội quy, Phúc lợi, Lộ trình thăng tiến, Thẻ, Quy trình duyệt) **không** có mục chấm công nào.
+- "Timekeeping settings" (đối tượng Chấm công) trên một trang: cài đặt chung (mã chấm công, thời gian sửa phân ca, số ngày tạo phân ca tối đa, thời gian rỗi giữa ca, hiển thị bảng công, thời gian xem công đã chốt, mã API), **GPS** (dùng GPS; cho chấm khi không có ca; không cho chấm trên điện thoại chưa xác thực; bắt buộc chụp ảnh; kiểm tra theo đối tượng áp dụng), **Wifi** (các tuỳ chọn tương tự), cài đặt khác (tách dòng, làm tròn, ứng công, quản lý sửa công, chốt đơn, định dạng giờ, số ngày liên tiếp không cần chấm — mặc định 2, tách giờ qua ngày, giờ ra ngoài, làm thêm qua ngày, muộn / sớm theo giây, ưu tiên đơn nghỉ).
+- Thanh công cụ bảng chấm công: Month · Close timesheet · Close application · Import · Export · Add personnel · **Calculate** · **History**.
+- Chưa thấy ngày lễ trong phân hệ Chấm công hay Nhân sự.
+
+Helios làm theo bố cục này từ 2026-10-26: Công → Cài đặt (`/user/attendance/settings/*`): Ca làm việc, Chấm công GPS/Wifi, Ngày nghỉ lễ, Quy trình duyệt; Cài đặt đối tượng → Chấm công (chính sách, GPS / Wifi, cài đặt chung, nhắc quên chấm). Tính toán, Lịch sử, Công chuẩn là nút trên Bảng chấm công. Đường dẫn cũ `/admin/settings/...` tự chuyển sang.
+
 ## 2. Ca làm việc
 
 ### 2.1 Danh sách ca (cột)
