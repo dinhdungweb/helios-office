@@ -21,6 +21,9 @@ const storedShift = (overrides: Record<string, unknown> = {}) => ({
   punchWindowBeforeMinutes: null,
   punchWindowAfterMinutes: null,
   description: null,
+  autoDetect: false,
+  applyDepartmentIds: [],
+  applyPositionIds: [],
   status: "active",
   archivedAt: null,
   _count: { departmentsDefault: 0, policiesDefault: 0, shiftAssignments: 0 },
@@ -40,6 +43,8 @@ function setup(shift = storedShift()) {
       upsert: jest.fn().mockResolvedValue({ id: "default", defaultShiftId: "shift-1" }),
       update: jest.fn(async ({ data }) => ({ id: "default", ...data }))
     },
+    department: { count: jest.fn(async ({ where }) => where.id.in.filter((id: string) => id.startsWith("d-")).length) },
+    jobPosition: { count: jest.fn(async ({ where }) => where.id.in.length) },
     auditLog: { create: jest.fn() }
   };
   const recalc = { scheduleChanged: jest.fn(), holidaysChanged: jest.fn(), rulesChanged: jest.fn() };
@@ -128,5 +133,27 @@ describe("ShiftsService (AT-05, AT-06)", () => {
     used.prisma.attendancePolicy.upsert.mockResolvedValueOnce({ id: "default", lateGraceMinutes: 3, workWeekdays: [1, 2, 3, 4, 5] });
     await used.service.updatePolicy({ lateGraceMinutes: 3, workWeekdays: [5, 4, 3, 2, 1], missingPunchReminderTime: "07:45" }, "emp-hr");
     expect(used.recalc.rulesChanged).not.toHaveBeenCalled();
+  });
+});
+
+describe("ShiftsService detected shifts (AT-29)", () => {
+  it("stores who a detected shift applies to and checks those groups exist", async () => {
+    const { service, prisma } = setup();
+    await service.create({ code: "sang", name: "Ca sáng", startMinute: 360, endMinute: 840, autoDetect: true, applyDepartmentIds: ["d-shop", "d-shop"], applyPositionIds: ["p-sales"] });
+    expect(prisma.shift.create.mock.calls[0][0].data).toMatchObject({ autoDetect: true, applyDepartmentIds: ["d-shop"], applyPositionIds: ["p-sales"] });
+    await expect(service.create({ code: "chieu", name: "Ca chiều", startMinute: 840, endMinute: 1320, applyDepartmentIds: ["missing"] })).rejects.toThrow("phòng ban áp dụng không tồn tại");
+  });
+
+  it("recalculates when a detected shift changes, even with nobody scheduled on it", async () => {
+    const unused = setup();
+    await unused.service.update("shift-1", { name: "Đổi tên" });
+    expect(unused.recalc.rulesChanged).not.toHaveBeenCalled();
+
+    await unused.service.update("shift-1", { autoDetect: true });
+    expect(unused.recalc.rulesChanged).toHaveBeenCalledWith("shift", undefined);
+
+    const detected = setup(storedShift({ autoDetect: true }));
+    await detected.service.update("shift-1", { endMinute: 1050 });
+    expect(detected.recalc.rulesChanged).toHaveBeenCalled();
   });
 });

@@ -72,7 +72,7 @@ export class AttendanceCalculationService {
         startDate: { lt: rangeEnd },
         OR: [{ endDate: null }, { endDate: { gte: rangeStart } }]
       },
-      select: { id: true, startDate: true, endDate: true, department: { select: { defaultShiftId: true } } },
+      select: { id: true, startDate: true, endDate: true, departmentId: true, positionId: true, department: { select: { defaultShiftId: true } } },
       orderBy: { id: "asc" }
     });
 
@@ -132,6 +132,8 @@ export class AttendanceCalculationService {
             assignmentRows.filter((row) => row.employeeId === employee.id).map((row) => [isoDate(row.date), row.shiftId])
           ),
           departmentDefaultShiftId: employee.department.defaultShiftId,
+          departmentId: employee.departmentId,
+          positionId: employee.positionId,
           employment: {
             startDate: localDate(employee.startDate.getTime(), timeZone),
             endDate: employee.endDate ? localDate(employee.endDate.getTime(), timeZone) : null

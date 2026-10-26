@@ -460,6 +460,12 @@ model Shift {
   missingPunchMode         MissingPunchMode?
   punchWindowBeforeMinutes Int?
   punchWindowAfterMinutes  Int?
+  // AT-29, like 1Office's "Tự động nhận biết theo phòng ban, vị trí": on a day without an assignment,
+  // the shift that best fits the punches is taken among these, for people in the groups below
+  // (empty lists mean everyone).
+  autoDetect               Boolean            @default(false)
+  applyDepartmentIds       String[]           @default([])
+  applyPositionIds         String[]           @default([])
   description              String?
   status                   JobCatalogStatus   @default(active)
   archivedAt               DateTime?

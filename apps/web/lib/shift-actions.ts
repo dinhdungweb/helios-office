@@ -87,7 +87,11 @@ export async function saveShiftAction(_state: ShiftActionResult | null, formData
       earlyGraceMinutes: optionalInt(formData, "earlyGraceMinutes"),
       lateCountMode: optionalChoice(formData, "lateCountMode"),
       missingPunchMode: optionalChoice(formData, "missingPunchMode"),
-      description: text(formData, "description") || null
+      description: text(formData, "description") || null,
+      // AT-29: detect from punches, for the ticked groups (none ticked = everyone).
+      autoDetect: formData.get("autoDetect") === "on",
+      applyDepartmentIds: formData.getAll("applyDepartmentIds").map(String),
+      applyPositionIds: formData.getAll("applyPositionIds").map(String)
     };
     const shiftId = text(formData, "shiftId");
 

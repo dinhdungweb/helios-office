@@ -19,7 +19,29 @@ function timeRange(shift: ShiftRecord) {
   return `${minuteToTime(shift.startMinute)}–${minuteToTime(shift.endMinute)}`;
 }
 
-function ShiftDialog({ onClose, policy, shift }: { onClose: () => void; policy: AttendancePolicy; shift: ShiftRecord | null }) {
+type Target = { id: string; name: string };
+
+// AT-29: ticked groups the detected shift applies to; none ticked means everyone.
+function TargetList({ name, label, options, selected }: { name: string; label: string; options: Target[]; selected: string[] }) {
+  return (
+    <fieldset className="recalc-departments shift-targets">
+      <legend>
+        {label} <small>(không chọn = tất cả)</small>
+      </legend>
+      <div>
+        {options.map((option) => (
+          <label key={option.id}>
+            <input defaultChecked={selected.includes(option.id)} name={name} type="checkbox" value={option.id} />
+            {option.name}
+          </label>
+        ))}
+        {options.length === 0 ? <span className="shift-tag is-muted">Chưa có dữ liệu</span> : null}
+      </div>
+    </fieldset>
+  );
+}
+
+function ShiftDialog({ onClose, policy, shift, departments, positions }: { onClose: () => void; policy: AttendancePolicy; shift: ShiftRecord | null; departments: Target[]; positions: Target[] }) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const [state, formAction, isPending] = useActionState(saveShiftAction, null);
@@ -123,6 +145,21 @@ function ShiftDialog({ onClose, policy, shift }: { onClose: () => void; policy: 
           </div>
         </details>
 
+        <details className="shift-dialog-overrides" open={Boolean(shift?.autoDetect)}>
+          <summary>Tự động nhận ca theo giờ chấm</summary>
+          <label className="shift-auto-toggle">
+            <input defaultChecked={shift?.autoDetect ?? false} name="autoDetect" type="checkbox" />
+            <span>
+              <strong>Tự động nhận biết theo phòng ban, vị trí</strong>
+              <small>Ngày chưa được xếp ca, nếu giờ chấm khớp ca này hơn ca mặc định thì người thuộc nhóm dưới đây được tính theo ca này.</small>
+            </span>
+          </label>
+          <div className="shift-dialog-grid">
+            <TargetList label="Phòng ban áp dụng" name="applyDepartmentIds" options={departments} selected={shift?.applyDepartmentIds ?? []} />
+            <TargetList label="Vị trí áp dụng" name="applyPositionIds" options={positions} selected={shift?.applyPositionIds ?? []} />
+          </div>
+        </details>
+
         <label className="account-dialog-field">
           <span>Ghi chú</span>
           <input defaultValue={shift?.description ?? ""} maxLength={500} name="description" />
@@ -211,6 +248,7 @@ export function ShiftSettingsBoard({ data }: { data: ShiftSettingsData }) {
                     {shift.usage.companyDefault ? <small className="shift-tag">Mặc định công ty</small> : null}
                     {shift.usage.departmentDefaults > 0 ? <small className="shift-tag">Mặc định {shift.usage.departmentDefaults} phòng ban</small> : null}
                     {shift.status === "archived" ? <small className="shift-tag is-muted">Đã lưu trữ</small> : null}
+                    {shift.autoDetect ? <small className="shift-tag is-auto" title="Nhận ca theo giờ chấm ở ngày chưa xếp ca">Tự nhận ca</small> : null}
                   </td>
                   <td>
                     {shift.type === "flexible" ? `Linh hoạt trong ${timeRange(shift)}` : timeRange(shift)}
@@ -250,7 +288,7 @@ export function ShiftSettingsBoard({ data }: { data: ShiftSettingsData }) {
         </table>
       </div>
 
-      {editing ? <ShiftDialog policy={data.policy} shift={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}
+      {editing ? <ShiftDialog departments={data.departments} policy={data.policy} positions={data.positions} shift={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}
     </section>
   );
 }

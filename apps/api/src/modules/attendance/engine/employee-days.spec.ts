@@ -43,6 +43,9 @@ const shift = (id: string, startMinute: number, endMinute: number, extra: Partia
   missingPunchMode: null,
   punchWindowBeforeMinutes: null,
   punchWindowAfterMinutes: null,
+  autoDetect: false,
+  applyDepartmentIds: [],
+  applyPositionIds: [],
   ...extra
 });
 
@@ -240,5 +243,49 @@ describe("calculateEmployeeDays with 1Office general settings (AT-28)", () => {
     const days = byDate(run({ from: "2026-10-20", to: "2026-10-20", punches, policy: { ...policy, continuousShiftMaxDays: 2 } }));
     expect(days.size).toBe(1);
     expect(days.get("2026-10-20")!.result!.status).toBe("on_time");
+  });
+});
+
+describe("calculateEmployeeDays detecting shifts from punches (AT-29)", () => {
+  // Two shop shifts the punches may pick on days without an assignment.
+  const detected = new Map([
+    ...shifts,
+    ["morning", shift("morning", 6 * 60, 14 * 60, { autoDetect: true, applyDepartmentIds: ["shop"] })],
+    ["evening", shift("evening", 14 * 60, 22 * 60, { autoDetect: true, applyDepartmentIds: ["shop"] })]
+  ]);
+  const shop = { shifts: detected, departmentId: "shop", positionId: null };
+
+  it("takes the shift whose hours fit the punches, instead of the default", () => {
+    const days = byDate(run({ ...shop, from: "2026-10-21", to: "2026-10-22", punches: [vn("2026-10-21", "13:55"), vn("2026-10-21", "22:02"), vn("2026-10-22", "05:58"), vn("2026-10-22", "14:01")] }));
+    const evening = days.get("2026-10-21")!;
+    expect([evening.shiftCode, evening.result!.status, evening.result!.workUnits]).toEqual(["EVENING", "on_time", 1]);
+    expect(evening.result!.flags).toContain("auto_shift");
+    expect(days.get("2026-10-22")!.shiftCode).toBe("MORNING");
+  });
+
+  it("keeps the default when it fits best, and detects on a free day too", () => {
+    const days = byDate(run({ ...shop, from: "2026-10-23", to: "2026-10-24", punches: [vn("2026-10-23", "07:58"), vn("2026-10-23", "17:02"), vn("2026-10-24", "06:00"), vn("2026-10-24", "14:00")] }));
+    expect(days.get("2026-10-23")!.shiftCode).toBe("HC");
+    expect(days.get("2026-10-23")!.result!.flags).not.toContain("auto_shift");
+    // Saturday has no default shift: the punches make it a morning shift instead of work on a day off.
+    expect([days.get("2026-10-24")!.shiftCode, days.get("2026-10-24")!.result!.status]).toEqual(["MORNING", "on_time"]);
+  });
+
+  it("leaves assigned days, holidays, days without punches and other departments alone", () => {
+    const punches = [vn("2026-10-21", "14:00"), vn("2026-10-21", "22:00")];
+    const assigned = byDate(run({ ...shop, from: "2026-10-21", to: "2026-10-21", punches, assignments: new Map([["2026-10-21", "hc"]]) }));
+    expect(assigned.get("2026-10-21")!.shiftCode).toBe("HC");
+
+    const holiday = byDate(run({ ...shop, from: "2026-10-21", to: "2026-10-21", punches, holidays: new Map([["2026-10-21", { type: "holiday", paid: true }]]) }));
+    // Worked on a holiday: counted on the scheduled shift as before, never a detected one.
+    expect(holiday.get("2026-10-21")!.shiftCode).toBe("HC");
+    expect(holiday.get("2026-10-21")!.result!.flags).toEqual(expect.arrayContaining(["worked_on_holiday"]));
+    expect(holiday.get("2026-10-21")!.result!.flags).not.toContain("auto_shift");
+
+    const empty = byDate(run({ ...shop, from: "2026-10-21", to: "2026-10-21" }));
+    expect([empty.get("2026-10-21")!.shiftCode, empty.get("2026-10-21")!.result!.status]).toEqual(["HC", "absent"]);
+
+    const office = byDate(run({ ...shop, departmentId: "office", from: "2026-10-21", to: "2026-10-21", punches }));
+    expect(office.get("2026-10-21")!.shiftCode).toBe("HC");
   });
 });

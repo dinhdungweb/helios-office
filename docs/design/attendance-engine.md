@@ -224,6 +224,15 @@ Cách hiểu đã chốt với người dùng ngày 2026-10-23 (chưa xem lại 
 - **Giới hạn phân ca:** ô phân ca chỉ đổi / xoá trong N ngày kể từ lúc tạo; chỉ xếp ca trước tối đa N ngày. Để trống là không giới hạn. Ghi lại cùng ca thì không tính là đổi.
 - Chưa làm: "giờ làm thêm qua ngày tính vào ngày hôm trước" (cần đơn làm thêm, Phase 3).
 
+## 9c. Tự động nhận ca theo giờ chấm (AT-29)
+
+- Như 1Office, mỗi ca có công tắc "Tự động nhận biết theo phòng ban, vị trí" và đối tượng áp dụng (phòng ban, vị trí; để trống là tất cả).
+- Chỉ áp dụng cho ngày không có ô phân ca (kể cả ô "nghỉ") và không phải ngày lễ. Ứng viên là các ca tự nhận áp dụng cho người đó cùng ca mặc định của ngày (nếu có).
+- Chọn ca có khung nhận log (giờ ca ± cửa sổ trước / sau) chứa nhiều lượt chấm nhất, hoà thì ca có giờ vào gần lượt đầu và giờ ra gần lượt cuối nhất. Phải có ít nhất một lượt chấm thuộc chính ngày đó, để không lấy ca chỉ từ log của ngày bên cạnh. Ngày không có log giữ ca mặc định như cũ.
+- Ngày được nhận ca mang cờ `auto_shift`; công chuẩn vẫn tính theo lịch (ca mặc định / phân ca), không theo ca nhận được.
+- Sửa một ca tự nhận (hoặc bật tự nhận) thì tính lại cho mọi người, vì ca đó có thể áp cho bất kỳ ai.
+- Cách chọn giữa nhiều ca khớp là thiết kế của Helios: chưa xem được 1Office chọn thế nào.
+
 ## 9a. Đối chiếu với 1Office
 
 Hành vi 1Office đang dùng ghi ở [1office-attendance-reference.md](1office-attendance-reference.md). Chủ dự án chốt ngày 2026-10-22:

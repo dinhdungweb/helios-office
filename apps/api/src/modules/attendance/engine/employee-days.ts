@@ -47,6 +47,9 @@ export type CalcShift = Pick<
   | "missingPunchMode"
   | "punchWindowBeforeMinutes"
   | "punchWindowAfterMinutes"
+  | "autoDetect"
+  | "applyDepartmentIds"
+  | "applyPositionIds"
 > & { workUnits: number };
 
 export type EmployeeDaysInput = {
@@ -58,6 +61,9 @@ export type EmployeeDaysInput = {
   // Dates with an assignment; shiftId null = assigned a day off.
   assignments: Map<string, string | null>;
   departmentDefaultShiftId: string | null;
+  // AT-29: who the person is, for shifts detected from punches.
+  departmentId?: string | null;
+  positionId?: string | null;
   employment: { startDate: string | null; endDate: string | null };
   punches: Date[];
   manual: Map<string, ManualOverride>;
@@ -108,6 +114,12 @@ export function calculateEmployeeDays(input: EmployeeDaysInput): EmployeeDay[] {
   const context = 1 + 2 * dependencyReach(policy);
   const dates = datesBetween(addDays(input.from, -context), addDays(input.to, context));
 
+  const detectable = [...input.shifts.values()].filter(
+    (shift) =>
+      shift.autoDetect &&
+      (shift.applyDepartmentIds.length === 0 || (input.departmentId != null && shift.applyDepartmentIds.includes(input.departmentId))) &&
+      (shift.applyPositionIds.length === 0 || (input.positionId != null && shift.applyPositionIds.includes(input.positionId)))
+  );
   const plan = dates.map((date) => {
     const holiday = input.holidays.get(date) ?? null;
     const resolved = resolveDayShift({
@@ -119,8 +131,18 @@ export function calculateEmployeeDays(input: EmployeeDaysInput): EmployeeDay[] {
       holiday
     });
     // An archived or deleted shift still on the schedule counts as no shift.
-    const shift = resolved.shiftId ? input.shifts.get(resolved.shiftId) ?? null : null;
-    return { date, holiday, shift, enginePolicy: enginePolicyFor(policy, shift) };
+    let shift = resolved.shiftId ? input.shifts.get(resolved.shiftId) ?? null : null;
+    let autoDetected = false;
+    // AT-29: without an assignment (and outside holidays) the punches may pick a detected shift.
+    const offForHoliday = holiday !== null && holiday.type !== "compensatory_workday";
+    if (detectable.length > 0 && !input.assignments.has(date) && !offForHoliday) {
+      const picked = detectShift(date, shift ? [shift, ...detectable.filter((item) => item.id !== shift!.id)] : detectable, input.punches, policy);
+      if (picked && picked.id !== shift?.id) {
+        shift = picked;
+        autoDetected = true;
+      }
+    }
+    return { date, holiday, shift, autoDetected, enginePolicy: enginePolicyFor(policy, shift) };
   });
 
   const scheduled = plan
@@ -158,7 +180,9 @@ export function calculateEmployeeDays(input: EmployeeDaysInput): EmployeeDay[] {
       employment: input.employment,
       manual: input.manual.get(day.date) ?? null
     };
-    return { ...day, input: input_, punches, result: calculateDay(input_) };
+    const result = calculateDay(input_);
+    if (result && day.autoDetected) result.flags.push("auto_shift");
+    return { ...day, input: input_, punches, result };
   });
 
   if (policy.continuousShiftMaxDays >= 2) joinContinuousShifts(days, policy.continuousShiftMaxDays);
@@ -174,6 +198,24 @@ export function calculateEmployeeDays(input: EmployeeDaysInput): EmployeeDay[] {
       punchCount: day.punches.length,
       policy: day.result ? day.enginePolicy : null
     }));
+}
+
+// AT-29: the candidate whose punch window holds the most punches, then the one whose start and end
+// are closest to the first and last of them. A punch on the date itself is needed, so a shift is
+// never taken from the neighbouring day's punches alone.
+function detectShift(date: string, candidates: CalcShift[], punches: Date[], policy: CalcPolicy) {
+  let best: { shift: CalcShift; count: number; distance: number } | null = null;
+  for (const candidate of candidates) {
+    const enginePolicy = enginePolicyFor(policy, candidate);
+    const schedule = scheduleFor(date, engineShiftFor(candidate), enginePolicy);
+    const from = schedule.start - enginePolicy.punchWindowBeforeMinutes * 60_000;
+    const to = schedule.end + enginePolicy.punchWindowAfterMinutes * 60_000;
+    const inside = punches.map((punch) => punch.getTime()).filter((time) => time >= from && time <= to).sort((a, b) => a - b);
+    if (!inside.some((time) => localDate(time, policy.timezone) === date)) continue;
+    const distance = Math.abs(inside[0] - schedule.start) + (inside.length > 1 ? Math.abs(inside[inside.length - 1] - schedule.end) : 0);
+    if (!best || inside.length > best.count || (inside.length === best.count && distance < best.distance)) best = { shift: candidate, count: inside.length, distance };
+  }
+  return best?.shift ?? null;
 }
 
 type PlannedDay = {

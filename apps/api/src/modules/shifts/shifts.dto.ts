@@ -148,6 +148,26 @@ export class CreateShiftDto {
   @IsString()
   @MaxLength(500)
   description?: string | null;
+
+  // AT-29: detect this shift from the punches on days without an assignment.
+  @ApiPropertyOptional({ description: "Detect this shift from the punches on days without an assignment" })
+  @IsOptional()
+  @IsBoolean()
+  autoDetect?: boolean;
+
+  @ApiPropertyOptional({ type: [String], description: "Departments the detection applies to; empty = all" })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsString({ each: true })
+  applyDepartmentIds?: string[];
+
+  @ApiPropertyOptional({ type: [String], description: "Positions the detection applies to; empty = all" })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsString({ each: true })
+  applyPositionIds?: string[];
 }
 
 export class UpdateShiftDto extends PartialType(CreateShiftDto) {}

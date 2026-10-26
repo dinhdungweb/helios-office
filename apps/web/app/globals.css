@@ -27380,3 +27380,36 @@ small {
 .policy-optional-days input {
   width: 222px;
 }
+
+/* AT-29: shifts detected from punches */
+.shift-auto-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.shift-auto-toggle input {
+  margin-top: 3px;
+}
+
+.shift-auto-toggle strong,
+.shift-auto-toggle small {
+  display: block;
+}
+
+.shift-auto-toggle small {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.shift-targets > div {
+  max-height: 160px;
+  overflow: auto;
+}
+
+.shift-tag.is-auto {
+  color: #7c3aed;
+  background: #ede9fe;
+}

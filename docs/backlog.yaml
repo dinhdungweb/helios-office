@@ -820,7 +820,9 @@ modules:
         depends: [AT-06]
       - id: AT-29
         title: Tự động nhận ca theo log trong các ca áp dụng cho phòng ban / vị trí
-        status: todo
+        ui: /admin/settings/shifts
+        status: done
+        note: "Form ca thêm Tự động nhận biết theo phòng ban, vị trí và đối tượng áp dụng (phòng ban, vị trí; để trống = tất cả), như 1Office. Ngày không có ô phân ca và không phải ngày lễ, engine chọn trong các ca tự nhận áp dụng cho người đó cùng ca mặc định của ngày - ca có khung giờ chứa nhiều lượt chấm nhất, rồi ca có giờ vào / ra gần nhất; cần ít nhất một lượt chấm đúng ngày đó. Ngày được nhận ca mang cờ auto_shift, ô bảng công hiện ca đã nhận. Sửa ca tự nhận thì tính lại cho mọi người. Thử 2026-10-26 - ngày 05/10 HC vắng thành ca sáng 06-14 từ log 06.02 / 14.01"
         depends: [AT-05, AT-11]
       - id: AT-30
         title: Ca nhiều khoảng làm việc, ca làm thêm cố định, cài đặt giữa ca

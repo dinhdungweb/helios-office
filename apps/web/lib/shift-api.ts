@@ -33,11 +33,21 @@ async function requestJson<T>(path: string) {
 
 export async function getShiftSettingsData(): Promise<ShiftSettingsData> {
   try {
-    const [shifts, policy] = await Promise.all([
+    const [shifts, policy, departments, positions] = await Promise.all([
       requestJson<ShiftRecord[]>("/shifts?includeArchived=true"),
-      requestJson<AttendancePolicy>("/attendance-policy")
+      requestJson<AttendancePolicy>("/attendance-policy"),
+      // For "who a detected shift applies to" (AT-29); the page still works without them.
+      requestJson<Array<{ id: string; name: string }>>("/departments").catch(() => []),
+      requestJson<Array<{ id: string; name: string; status?: string }>>("/job-positions").catch(() => [])
     ]);
-    return { source: "api", shifts, policy };
+    const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, "vi");
+    return {
+      source: "api",
+      shifts,
+      policy,
+      departments: departments.map(({ id, name }) => ({ id, name })).sort(byName),
+      positions: positions.filter((item) => item.status !== "archived").map(({ id, name }) => ({ id, name })).sort(byName)
+    };
   } catch (error) {
     return { source: "unavailable", error: error instanceof Error ? error.message : "Không tải được dữ liệu ca." };
   }

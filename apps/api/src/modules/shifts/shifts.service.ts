@@ -48,6 +48,7 @@ export class ShiftsService {
 
   async create(dto: CreateShiftDto, actorId?: string) {
     const data = this.shiftData(dto);
+    await this.assertTargets(data);
 
     try {
       const shift = await this.prisma.shift.create({ data, include: SHIFT_USAGE });
@@ -66,11 +67,12 @@ export class ShiftsService {
     }
 
     const data = this.shiftData({ ...this.asDto(before), ...dto });
+    await this.assertTargets(data);
 
     try {
       const shift = await this.prisma.shift.update({ where: { id }, data, include: SHIFT_USAGE });
       await this.writeAudit("shift.update", "Shift", id, before, shift, actorId);
-      await this.recalcIfUsed(before, actorId);
+      await this.recalcIfUsed(before, actorId, shift.autoDetect);
       return toView(shift);
     } catch (error) {
       throw this.uniqueCode(error);
@@ -171,8 +173,10 @@ export class ShiftsService {
   }
 
   // A shift nobody works or defaults to cannot move any result.
-  private async recalcIfUsed(shift: ShiftWithUsage, actorId?: string) {
-    const used = shift._count.shiftAssignments > 0 || shift._count.departmentsDefault > 0 || shift._count.policiesDefault > 0;
+  // A detected shift (AT-29) may apply to anyone on any day without an assignment, so changing one,
+  // or turning detection on, recalculates as if it were in use.
+  private async recalcIfUsed(shift: ShiftWithUsage, actorId?: string, detectedNow = false) {
+    const used = shift._count.shiftAssignments > 0 || shift._count.departmentsDefault > 0 || shift._count.policiesDefault > 0 || shift.autoDetect || detectedNow;
     if (used) await this.recalc.rulesChanged("shift", actorId);
   }
 
@@ -206,8 +210,20 @@ export class ShiftsService {
       missingPunchMode: dto.missingPunchMode ?? null,
       punchWindowBeforeMinutes: dto.punchWindowBeforeMinutes ?? null,
       punchWindowAfterMinutes: dto.punchWindowAfterMinutes ?? null,
-      description: dto.description?.trim() || null
+      description: dto.description?.trim() || null,
+      autoDetect: dto.autoDetect ?? false,
+      applyDepartmentIds: [...new Set(dto.applyDepartmentIds ?? [])],
+      applyPositionIds: [...new Set(dto.applyPositionIds ?? [])]
     } satisfies Prisma.ShiftCreateInput;
+  }
+
+  private async assertTargets(data: { applyDepartmentIds: string[]; applyPositionIds: string[] }) {
+    const [departments, positions] = await Promise.all([
+      data.applyDepartmentIds.length ? this.prisma.department.count({ where: { id: { in: data.applyDepartmentIds } } }) : 0,
+      data.applyPositionIds.length ? this.prisma.jobPosition.count({ where: { id: { in: data.applyPositionIds } } }) : 0
+    ]);
+    if (departments !== data.applyDepartmentIds.length) throw new BadRequestException("Có phòng ban áp dụng không tồn tại.");
+    if (positions !== data.applyPositionIds.length) throw new BadRequestException("Có vị trí áp dụng không tồn tại.");
   }
 
   private asDto(shift: Shift): CreateShiftDto {
@@ -228,6 +244,9 @@ export class ShiftsService {
       missingPunchMode: shift.missingPunchMode,
       punchWindowBeforeMinutes: shift.punchWindowBeforeMinutes,
       punchWindowAfterMinutes: shift.punchWindowAfterMinutes,
+      autoDetect: shift.autoDetect,
+      applyDepartmentIds: shift.applyDepartmentIds,
+      applyPositionIds: shift.applyPositionIds,
       description: shift.description
     };
   }

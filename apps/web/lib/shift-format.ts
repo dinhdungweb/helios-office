@@ -24,6 +24,10 @@ export type ShiftRecord = {
   punchWindowBeforeMinutes: number | null;
   punchWindowAfterMinutes: number | null;
   description: string | null;
+  // AT-29: detected from punches on days without an assignment, for these groups (empty = all).
+  autoDetect: boolean;
+  applyDepartmentIds: string[];
+  applyPositionIds: string[];
   status: "active" | "archived";
   usage: { departmentDefaults: number; companyDefault: boolean; assignments: number };
 };
@@ -72,7 +76,7 @@ export type ReminderRun = {
 };
 
 export type ShiftSettingsData =
-  | { source: "api"; shifts: ShiftRecord[]; policy: AttendancePolicy }
+  | { source: "api"; shifts: ShiftRecord[]; policy: AttendancePolicy; departments: Array<{ id: string; name: string }>; positions: Array<{ id: string; name: string }> }
   | { source: "unavailable"; error: string };
 
 export function minuteToTime(minute: number | null | undefined) {
