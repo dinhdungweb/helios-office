@@ -843,30 +843,36 @@ modules:
         note: Đọc DB, đã có guard; UI chưa dùng
       - id: LV-02
         title: Tạo đơn (API chung cho mọi loại đơn)
-        api: ["POST /requests"]
-        status: todo
+        api: ["POST /requests", "POST /requests/:id/submit", "GET /requests/types"]
+        status: partial
         depends: [AP-10]
+        note: "API + engine xong (RequestsService, handler theo loại đơn). UI ở task 7 của docs/plans/phase-3.md"
       - id: LV-03
         title: Danh sách đơn của tôi / cần tôi duyệt / tôi theo dõi
         api: ["GET /requests"]
-        status: todo
+        status: partial
+        note: "API xong (hộp mine, to_approve, processed, following, all theo phạm vi dữ liệu). UI ở task 7"
       - id: LV-04
         title: Chi tiết đơn
         api: ["GET /requests/:id"]
         ui: /user/requests/detail
-        status: todo
+        status: partial
+        note: "API xong, kèm các bước và quyền hành động của người xem. UI ở task 7"
       - id: LV-05
         title: Sửa đơn nháp / bị trả lại
         api: ["PATCH /requests/:id"]
-        status: todo
+        status: partial
+        note: "API xong (khoá lạc quan theo version). UI ở task 7"
       - id: LV-06
         title: Huỷ / rút lại đơn
         api: ["POST /requests/:id/cancel", "POST /requests/:id/recall"]
-        status: todo
+        status: partial
+        note: "API xong (rút khi chưa ai xử lý, đơn đã duyệt chỉ HR huỷ). UI ở task 7"
       - id: LV-07
         title: Bình luận trên đơn
         api: ["GET /requests/:id/comments", "POST /requests/:id/comments"]
-        status: todo
+        status: partial
+        note: "API xong. UI ở task 7"
       - id: LV-08
         title: Đính kèm file vào đơn
         api: ["POST /requests/:id/attachments"]
@@ -996,33 +1002,38 @@ modules:
         note: Chỉ là cấu hình trên sơ đồ; việc gửi thật thuộc AP-23. Đính kèm file tách sang AP-26.
       - id: AP-10
         title: "Engine: chọn quy trình theo loại đối tượng + điều kiện, sinh các bước duyệt"
-        status: todo
+        status: done
+        note: "ApprovalEngineService.submit + pickWorkflow, quy trình mặc định quản lý trực tiếp khi không khớp. Test approval-engine.service.spec.ts, runner.spec.ts"
       - id: AP-11
         title: "Engine: xác định người duyệt (quản lý trực tiếp, trưởng phòng, vị trí, người chỉ định)"
-        status: todo
+        status: done
         depends: [AP-10]
+        note: "engine/approvers.ts, test bảng trường hợp approvers.spec.ts"
       - id: AP-12
         title: "Engine: duyệt tuần tự / song song / một người đủ"
-        status: todo
+        status: done
         depends: [AP-10]
+        note: "Tuần tự theo sơ đồ, approvalMode any hoặc all trên từng bước. Nhánh song song không hỗ trợ (thiết kế mục 5.4)"
       - id: AP-13
         title: Lưu bước và hành động duyệt (ApprovalStep / ApprovalAction)
-        status: todo
+        status: done
+        note: "ApprovalStep, ApprovalAssignee, ApprovalAction; khoá lạc quan Request.version"
       - id: AP-14
         title: Hộp duyệt của tôi
         api: ["GET /approvals"]
         status: partial
-        note: Đang trả mock-data
+        note: "GET /approvals đọc DB (bước đang chờ tôi, kể cả uỷ quyền), bỏ mock. UI ở task 7"
       - id: AP-15
         title: Duyệt / từ chối
         api: ["POST /approvals/:id/decision"]
         status: partial
-        note: Mock, không lưu DB
+        note: "POST /approvals/:id/decision lưu DB, :id là bước duyệt. UI ở task 7"
         depends: [AP-13]
       - id: AP-16
         title: Trả lại để bổ sung
         api: ["POST /approvals/:id/return"]
-        status: todo
+        status: partial
+        note: "API xong, bắt buộc lý do. UI ở task 7"
       - id: AP-17
         title: Chuyển tiếp người duyệt
         api: ["POST /approvals/:id/forward"]
@@ -1034,8 +1045,9 @@ modules:
       - id: AP-19
         title: Timeline lịch sử duyệt
         api: ["GET /approvals/:id/timeline"]
-        status: todo
+        status: partial
         depends: [AP-13]
+        note: "API xong (hành động + bình luận theo thời gian). UI ở task 7"
       - id: AP-20
         title: Người theo dõi đơn
         status: todo

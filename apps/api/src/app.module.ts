@@ -23,6 +23,7 @@ import { DeviceAuthModule } from "./modules/device-auth/device-auth.module";
 import { EmployeesModule } from "./modules/employees/employees.module";
 import { EmployeeTransferModule } from "./modules/employees/employee-transfer.module";
 import { LeaveRequestsModule } from "./modules/leave-requests/leave-requests.module";
+import { RequestsModule } from "./modules/requests/requests.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { TwoFactorModule } from "./modules/two-factor/two-factor.module";
 import { ShiftsModule } from "./modules/shifts/shifts.module";
@@ -63,6 +64,7 @@ import { UserPreferencesModule } from "./modules/user-preferences/user-preferenc
     AnnouncementsModule,
     ApprovalsModule,
     LeaveRequestsModule,
+    RequestsModule,
     AttendanceModule,
     DeviceAuthModule,
     PayrollModule,

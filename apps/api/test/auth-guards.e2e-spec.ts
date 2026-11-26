@@ -190,7 +190,7 @@ describe("API authentication and permissions (e2e)", () => {
   });
 
   describe("permission rules for routes guarded in Phase 0", () => {
-    const cases: Array<{ method: "get" | "post"; path: string; allowed: string[]; denied: string[] }> = [
+    const cases: Array<{ method: "get" | "post"; path: string; body?: Record<string, unknown>; allowed: string[]; denied: string[] }> = [
       {
         method: "get",
         path: "/api/v1/payroll-cycles",
@@ -203,17 +203,33 @@ describe("API authentication and permissions (e2e)", () => {
         allowed: ["token-payroll-viewer"],
         denied: ["token-no-permissions"]
       },
+      // Phase 3: anyone signed in has an inbox; being an assignee of the step is the permission to
+      // decide, so accounts without an employee profile (all test accounts) are refused by the engine.
       {
         method: "get",
         path: "/api/v1/approvals",
-        allowed: ["token-approval-viewer", "token-approval-manager"],
-        denied: ["token-no-permissions", "token-payroll-viewer"]
+        allowed: ["token-no-permissions", "token-approval-viewer", "token-payroll-viewer"],
+        denied: []
       },
       {
         method: "post",
         path: "/api/v1/approvals/e2e-id/decision",
-        allowed: ["token-approval-manager", "token-system-admin"],
-        denied: ["token-approval-viewer", "token-no-permissions"]
+        body: { action: "approve" },
+        allowed: [],
+        denied: ["token-approval-manager", "token-system-admin", "token-approval-viewer", "token-no-permissions"]
+      },
+      {
+        method: "get",
+        path: "/api/v1/requests",
+        allowed: ["token-no-permissions", "token-system-admin"],
+        denied: []
+      },
+      {
+        method: "post",
+        path: "/api/v1/requests",
+        body: { type: "leave", payload: {} },
+        allowed: [],
+        denied: ["token-no-permissions", "token-system-admin"]
       },
       {
         method: "get",
@@ -250,7 +266,7 @@ describe("API authentication and permissions (e2e)", () => {
     for (const testCase of cases) {
       it(`${testCase.method.toUpperCase()} ${testCase.path}`, async () => {
         const server = app.getHttpServer();
-        const body = testCase.method === "post" ? { decision: "approved" } : undefined;
+        const body = testCase.body ?? (testCase.method === "post" ? { decision: "approved" } : undefined);
 
         for (const token of testCase.denied) {
           const response = await request(server)[testCase.method](testCase.path).set("Authorization", `Bearer ${token}`).send(body);
