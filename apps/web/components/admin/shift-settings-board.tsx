@@ -22,11 +22,11 @@ function timeRange(shift: ShiftRecord) {
 type Target = { id: string; name: string };
 
 // AT-29: ticked groups the detected shift applies to; none ticked means everyone.
-function TargetList({ name, label, options, selected }: { name: string; label: string; options: Target[]; selected: string[] }) {
+function TargetList({ name, label, note = "không chọn = tất cả", options, selected }: { name: string; label: string; note?: string; options: Target[]; selected: string[] }) {
   return (
     <fieldset className="recalc-departments shift-targets">
       <legend>
-        {label} <small>(không chọn = tất cả)</small>
+        {label} <small>({note})</small>
       </legend>
       <div>
         {options.map((option) => (
@@ -41,7 +41,21 @@ function TargetList({ name, label, options, selected }: { name: string; label: s
   );
 }
 
-function ShiftDialog({ onClose, policy, shift, departments, positions }: { onClose: () => void; policy: AttendancePolicy; shift: ShiftRecord | null; departments: Target[]; positions: Target[] }) {
+function ShiftDialog({
+  onClose,
+  policy,
+  shift,
+  departments,
+  positions,
+  locations
+}: {
+  onClose: () => void;
+  policy: AttendancePolicy;
+  shift: ShiftRecord | null;
+  departments: Target[];
+  positions: Target[];
+  locations: Array<Target & { kind: "gps" | "wifi" }>;
+}) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const [state, formAction, isPending] = useActionState(saveShiftAction, null);
@@ -157,6 +171,15 @@ function ShiftDialog({ onClose, policy, shift, departments, positions }: { onClo
           <div className="shift-dialog-grid">
             <TargetList label="Phòng ban áp dụng" name="applyDepartmentIds" options={departments} selected={shift?.applyDepartmentIds ?? []} />
             <TargetList label="Vị trí áp dụng" name="applyPositionIds" options={positions} selected={shift?.applyPositionIds ?? []} />
+          </div>
+        </details>
+
+        <details className="shift-dialog-overrides" open={(shift?.locationIds.length ?? 0) > 0}>
+          <summary>Địa điểm chấm công</summary>
+          <p className="shift-dialog-note">Dùng khi Cài đặt → Chấm công bật &ldquo;Kiểm tra theo đối tượng áp dụng&rdquo;: người làm ca này chỉ chấm được ở các điểm được chọn.</p>
+          <div className="shift-dialog-grid">
+            <TargetList label="Vị trí định vị GPS" name="locationIds" note="không chọn = không nhận" options={locations.filter((item) => item.kind === "gps")} selected={shift?.locationIds ?? []} />
+            <TargetList label="Địa chỉ chấm công Wifi" name="locationIds" note="không chọn = không nhận" options={locations.filter((item) => item.kind === "wifi")} selected={shift?.locationIds ?? []} />
           </div>
         </details>
 
@@ -288,7 +311,7 @@ export function ShiftSettingsBoard({ data }: { data: ShiftSettingsData }) {
         </table>
       </div>
 
-      {editing ? <ShiftDialog departments={data.departments} policy={data.policy} positions={data.positions} shift={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}
+      {editing ? <ShiftDialog departments={data.departments} locations={data.locations} policy={data.policy} positions={data.positions} shift={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}
     </section>
   );
 }

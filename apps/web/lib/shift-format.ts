@@ -28,6 +28,8 @@ export type ShiftRecord = {
   autoDetect: boolean;
   applyDepartmentIds: string[];
   applyPositionIds: string[];
+  // Check-in places of the shift, used when GPS / Wifi check applicable entities (as 1Office).
+  locationIds: string[];
   status: "active" | "archived";
   usage: { departmentDefaults: number; companyDefault: boolean; assignments: number };
 };
@@ -76,7 +78,14 @@ export type ReminderRun = {
 };
 
 export type ShiftSettingsData =
-  | { source: "api"; shifts: ShiftRecord[]; policy: AttendancePolicy; departments: Array<{ id: string; name: string }>; positions: Array<{ id: string; name: string }> }
+  | {
+      source: "api";
+      shifts: ShiftRecord[];
+      policy: AttendancePolicy;
+      departments: Array<{ id: string; name: string }>;
+      positions: Array<{ id: string; name: string }>;
+      locations: Array<{ id: string; name: string; kind: "gps" | "wifi" }>;
+    }
   | { source: "unavailable"; error: string };
 
 export function minuteToTime(minute: number | null | undefined) {

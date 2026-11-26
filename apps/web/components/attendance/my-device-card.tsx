@@ -137,12 +137,21 @@ export function MyDeviceCard({ data }: { data: MyDeviceData }) {
   const [dialog, setDialog] = useState<"register" | "list" | null>(null);
   if (data.source === "unavailable") return null;
   const current = data.current;
-  const canCheckIn = current?.status === "approved" || !data.rules.requireApprovedDevice;
+  const canCheckIn = data.rules.enabled && (current?.status === "approved" || !data.rules.requireApprovedDevice);
 
   let message: ReactNode;
   let action: ReactNode = null;
-  if (!current && !data.rules.requireApprovedDevice) {
+  if (!data.rules.enabled) {
+    message = "Công ty chưa bật chấm công GPS / Wifi, bạn chấm công trên máy chấm công.";
+  } else if (!current && !data.rules.deviceMayBeRequired) {
     message = "Công ty không yêu cầu duyệt thiết bị, bạn chấm công được ngay trên trình duyệt này.";
+  } else if (!current && !data.rules.requireApprovedDevice) {
+    message = "Chấm công bằng một số cách cần thiết bị đã duyệt. Bạn vẫn chấm được các cách còn lại, hoặc gửi yêu cầu để HR duyệt.";
+    action = (
+      <button className="primary-button" type="button" onClick={() => setDialog("register")}>
+        Đăng ký thiết bị này
+      </button>
+    );
   } else if (!current) {
     message = "Trình duyệt này chưa được đăng ký chấm công. Gửi yêu cầu để HR duyệt.";
     action = (

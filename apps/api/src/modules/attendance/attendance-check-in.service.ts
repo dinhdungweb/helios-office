@@ -6,7 +6,10 @@ import type { AuthenticatedUser } from "../auth/auth.types";
 import type { CheckInDto } from "./attendance-check-in.dto";
 import { AttendanceCalculationService } from "./attendance-calculation.service";
 import { AttendancePeriodService } from "./attendance-period.service";
-import { matchLocations, normalizeIp } from "./engine/location-check";
+import { resolveDayShift } from "../shifts/shift-resolver";
+import { requiredMinutesFor } from "../shifts/shift-rules";
+import { scheduleFor } from "./engine/attendance-engine";
+import { matchLocations, normalizeIp, type LocationRule } from "./engine/location-check";
 import { addDays, localDate, zonedInstant } from "./engine/zoned-time";
 
 // Check-in and check-out on the web or the app (AT-13), with the device and place rules of the
@@ -19,7 +22,42 @@ export type CheckInContext = { source: CheckInSource; ip: string | null; userAge
 // Two taps within a minute are one punch.
 const DOUBLE_TAP_MS = 60_000;
 
-const POLICY_DEFAULTS = { requireApprovedDevice: true, requireGpsForAttendance: true, requireWifiForOffice: true, requirePhoto: false };
+// Like 1Office's Timekeeping settings: GPS and Wifi are turned on separately and each has its own
+// rules. With both off there is no web/app check-in (machines only).
+type MethodRules = { allowWithoutShift: boolean; requireApprovedDevice: boolean; requirePhoto: boolean; checkEntities: boolean };
+type CheckInPolicy = {
+  requireGpsForAttendance: boolean;
+  requireWifiForOffice: boolean;
+  gpsAllowWithoutShift: boolean;
+  gpsRequireApprovedDevice: boolean;
+  gpsRequirePhoto: boolean;
+  gpsCheckEntities: boolean;
+  wifiAllowWithoutShift: boolean;
+  wifiRequireApprovedDevice: boolean;
+  wifiRequirePhoto: boolean;
+  wifiCheckEntities: boolean;
+};
+
+const POLICY_DEFAULTS: CheckInPolicy = {
+  requireGpsForAttendance: true,
+  requireWifiForOffice: true,
+  gpsAllowWithoutShift: false,
+  gpsRequireApprovedDevice: false,
+  gpsRequirePhoto: false,
+  gpsCheckEntities: false,
+  wifiAllowWithoutShift: false,
+  wifiRequireApprovedDevice: false,
+  wifiRequirePhoto: false,
+  wifiCheckEntities: false
+};
+
+export function rulesFor(policy: CheckInPolicy, method: "gps" | "wifi"): MethodRules {
+  return method === "gps"
+    ? { allowWithoutShift: policy.gpsAllowWithoutShift, requireApprovedDevice: policy.gpsRequireApprovedDevice, requirePhoto: policy.gpsRequirePhoto, checkEntities: policy.gpsCheckEntities }
+    : { allowWithoutShift: policy.wifiAllowWithoutShift, requireApprovedDevice: policy.wifiRequireApprovedDevice, requirePhoto: policy.wifiRequirePhoto, checkEntities: policy.wifiCheckEntities };
+}
+
+type CurrentShift = { id: string; name: string; locationIds: string[]; appliesToMe: boolean } | null;
 
 // The reason travels with the message so the screen can offer the right fix.
 function refuse(reason: string, message: string): never {
@@ -37,7 +75,10 @@ export class AttendanceCheckInService {
   async punch(user: AuthenticatedUser, direction: "in" | "out", dto: CheckInDto, context: CheckInContext) {
     const employeeId = user.account?.employeeId;
     if (!employeeId) throw new NotFoundException("Tài khoản của bạn chưa gắn với hồ sơ nhân sự.");
-    const employee = await this.prisma.employee.findUnique({ where: { id: employeeId }, select: { id: true, code: true, attendanceCode: true, status: true } });
+    const employee = await this.prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { id: true, code: true, attendanceCode: true, status: true, departmentId: true, positionId: true, department: { select: { defaultShiftId: true } } }
+    });
     if (!employee || employee.status === "resigned") throw new ForbiddenException("Hồ sơ nhân sự của bạn không còn hoạt động.");
 
     const timeZone = await this.calculation.timezone();
@@ -45,10 +86,18 @@ export class AttendanceCheckInService {
     const today = localDate(now.getTime(), timeZone);
     await this.periods.assertOpen([today]);
 
-    const policy = (await this.prisma.deviceAuthPolicy.findUnique({ where: { id: "default" } })) ?? POLICY_DEFAULTS;
-    const device = policy.requireApprovedDevice ? await this.approvedDevice(employeeId, dto.deviceId) : null;
-    const place = await this.checkPlace(policy, dto, context);
-    const photoFileId = await this.checkPhoto(employeeId, policy.requirePhoto, dto.photoFileId);
+    const policy: CheckInPolicy = (await this.prisma.deviceAuthPolicy.findUnique({ where: { id: "default" } })) ?? POLICY_DEFAULTS;
+    if (!policy.requireGpsForAttendance && !policy.requireWifiForOffice) {
+      refuse("not_enabled", "Công ty không dùng chấm công GPS / Wifi; hãy chấm công bằng máy chấm công.");
+    }
+    const shift = await this.currentShift(employee, now.getTime(), timeZone);
+    const place = await this.checkPlace(policy, dto, context, shift);
+    const rules = rulesFor(policy, place.method);
+    if (!rules.allowWithoutShift && !shift) {
+      refuse("no_shift", `Hôm nay bạn chưa được xếp ca, không chấm công ${place.method === "gps" ? "GPS" : "Wifi"} được. Liên hệ HR nếu cần chấm.`);
+    }
+    const device = rules.requireApprovedDevice ? await this.approvedDevice(employeeId, dto.deviceId) : null;
+    const photoFileId = await this.checkPhoto(employeeId, rules.requirePhoto, dto.photoFileId);
 
     const last = await this.prisma.attendanceRawLog.findFirst({
       where: { employeeId, source: { in: ["web", "app"] }, punchTime: { gte: new Date(now.getTime() - DOUBLE_TAP_MS) } },
@@ -61,7 +110,7 @@ export class AttendanceCheckInService {
         employeeId,
         employeeCode: employee.attendanceCode ?? employee.code,
         punchTime: now,
-        verifyType: place?.kind ?? "none",
+        verifyType: place.kind,
         source: context.source,
         direction,
         latitude: dto.latitude ?? null,
@@ -72,10 +121,10 @@ export class AttendanceCheckInService {
         ipAddress: context.ip,
         clientDeviceId: device?.deviceId ?? dto.deviceId ?? null,
         clientDeviceName: device?.deviceName ?? null,
-        locationId: place?.id ?? null,
-        locationName: place?.name ?? null,
+        locationId: place.id,
+        locationName: place.name,
         photoFileId,
-        rawPayload: { userAgent: context.userAgent, distanceMeters: place?.distance ?? null } as Prisma.InputJsonValue
+        rawPayload: { userAgent: context.userAgent, distanceMeters: place.distance, shift: shift?.name ?? null } as Prisma.InputJsonValue
       }
     });
     if (device) await this.prisma.deviceAuthRequest.update({ where: { id: device.id }, data: { lastUsedAt: now } });
@@ -115,28 +164,91 @@ export class AttendanceCheckInService {
     return device;
   }
 
-  // Each method the policy turns on is a way in: GPS within a place's radius, or the office
-  // network (wifi for the app, IP ranges for the browser). With both off, anywhere is fine.
-  private async checkPlace(policy: { requireGpsForAttendance: boolean; requireWifiForOffice: boolean }, dto: CheckInDto, context: CheckInContext) {
-    if (!policy.requireGpsForAttendance && !policy.requireWifiForOffice) return null;
-    const locations = await this.prisma.attendanceLocation.findMany({ where: { status: "active" } });
-    const usable = locations.filter((location) => (location.type === "gps" ? policy.requireGpsForAttendance : policy.requireWifiForOffice));
-    if (usable.length === 0) refuse("no_places", "Chưa có điểm chấm công nào được cài đặt. Liên hệ HR.");
-
-    const match = matchLocations(usable, { ...dto, ip: context.ip });
-    if (policy.requireGpsForAttendance && match.gps) return { id: match.gps.location.id, name: match.gps.location.name, kind: "gps", distance: Math.round(match.gps.distance) };
-    if (policy.requireWifiForOffice && match.wifi) return { id: match.wifi.id, name: match.wifi.name, kind: "wifi", distance: null };
-    if (policy.requireWifiForOffice && match.network) return { id: match.network.id, name: match.network.name, kind: "ip", distance: null };
-
+  // GPS first, then Wifi / the office network (wifi for the app, IP ranges for the browser), each
+  // only when turned on. With "check applicable entities", only places of the current shift count,
+  // and only when that shift applies to the person.
+  private async checkPlace(policy: CheckInPolicy, dto: CheckInDto, context: CheckInContext, shift: CurrentShift) {
+    const locations = (await this.prisma.attendanceLocation.findMany({ where: { status: "active" } })) as LocationRule[];
+    const methods: Array<"gps" | "wifi"> = [...(policy.requireGpsForAttendance ? ["gps" as const] : []), ...(policy.requireWifiForOffice ? ["wifi" as const] : [])];
     const reasons: string[] = [];
-    if (policy.requireGpsForAttendance) {
-      if (typeof dto.latitude !== "number" || typeof dto.longitude !== "number") reasons.push("không lấy được vị trí GPS (hãy cho phép trình duyệt truy cập vị trí)");
-      else if (match.nearest) reasons.push(`bạn đang cách ${match.nearest.location.name} khoảng ${Math.round(match.nearest.distance)} m, cho phép ${match.nearest.location.radiusMeters} m`);
-      else reasons.push("chưa có điểm GPS nào");
+    let anyPlace = false;
+    let noPosition = false;
+
+    for (const method of methods) {
+      const rules = rulesFor(policy, method);
+      let candidates = locations.filter((location) => (method === "gps" ? location.type === "gps" : location.type !== "gps"));
+      if (candidates.length > 0) anyPlace = true;
+      if (rules.checkEntities) {
+        if (!shift || !shift.appliesToMe) {
+          reasons.push(`chấm ${method === "gps" ? "GPS" : "Wifi"} chỉ được tại điểm của ca được xếp, hôm nay bạn không có ca áp dụng`);
+          continue;
+        }
+        candidates = candidates.filter((location) => shift.locationIds.includes(location.id));
+      }
+      const match = matchLocations(candidates, { ...dto, ip: context.ip });
+      if (method === "gps") {
+        if (match.gps) return { method, id: match.gps.location.id, name: match.gps.location.name, kind: "gps", distance: Math.round(match.gps.distance) };
+        if (typeof dto.latitude !== "number" || typeof dto.longitude !== "number") {
+          noPosition = true;
+          reasons.push("không lấy được vị trí GPS (hãy cho phép trình duyệt truy cập vị trí)");
+        } else if (match.nearest) {
+          reasons.push(`bạn đang cách ${match.nearest.location.name} khoảng ${Math.round(match.nearest.distance)} m, cho phép ${match.nearest.location.radiusMeters} m`);
+        } else {
+          reasons.push(rules.checkEntities ? `ca ${shift?.name} chưa có điểm GPS` : "chưa có điểm GPS nào");
+        }
+      } else {
+        if (match.wifi) return { method, id: match.wifi.id, name: match.wifi.name, kind: "wifi", distance: null };
+        if (match.network) return { method, id: match.network.id, name: match.network.name, kind: "ip", distance: null };
+        reasons.push(context.source === "web" ? "không ở trong mạng văn phòng" : "không kết nối wifi văn phòng");
+      }
     }
-    if (policy.requireWifiForOffice) reasons.push(context.source === "web" ? "không ở trong mạng văn phòng" : "không kết nối wifi văn phòng");
-    const noGps = policy.requireGpsForAttendance && (typeof dto.latitude !== "number" || typeof dto.longitude !== "number");
-    refuse(noGps ? "no_position" : "outside_places", `Không ở trong điểm chấm công hợp lệ: ${reasons.join("; ")}.`);
+    if (!anyPlace) refuse("no_places", "Chưa có điểm chấm công nào được cài đặt. Liên hệ HR.");
+    refuse(noPosition ? "no_position" : "outside_places", `Không ở trong điểm chấm công hợp lệ: ${reasons.join("; ")}.`);
+  }
+
+  // The shift the person is on now: today's, or yesterday's night shift still running. Detected
+  // shifts (AT-29) that apply to the person count, since punches may pick one.
+  private async currentShift(
+    employee: { id: string; departmentId: string; positionId: string | null; department: { defaultShiftId: string | null } },
+    now: number,
+    timeZone: string
+  ): Promise<CurrentShift> {
+    const today = localDate(now, timeZone);
+    const yesterday = addDays(today, -1);
+    const [policy, assignments, holidays, shifts] = await Promise.all([
+      this.calculation.getPolicy(),
+      this.prisma.shiftAssignment.findMany({ where: { employeeId: employee.id, date: { in: [new Date(`${yesterday}T00:00:00.000Z`), new Date(`${today}T00:00:00.000Z`)] } } }),
+      this.prisma.holiday.findMany({ where: { date: { in: [new Date(`${yesterday}T00:00:00.000Z`), new Date(`${today}T00:00:00.000Z`)] } } }),
+      this.prisma.shift.findMany({ where: { status: "active" } })
+    ]);
+    const byId = new Map(shifts.map((item) => [item.id, item]));
+    const applies = (item: { applyDepartmentIds: string[]; applyPositionIds: string[] }) =>
+      (item.applyDepartmentIds.length === 0 || item.applyDepartmentIds.includes(employee.departmentId)) &&
+      (item.applyPositionIds.length === 0 || (employee.positionId !== null && item.applyPositionIds.includes(employee.positionId)));
+    const resolve = (date: string) => {
+      const assignment = assignments.find((row) => row.date.toISOString().slice(0, 10) === date);
+      const holiday = holidays.find((row) => row.date.toISOString().slice(0, 10) === date) ?? null;
+      const resolved = resolveDayShift({
+        date,
+        assignment: assignment ? { shiftId: assignment.shiftId } : undefined,
+        departmentDefaultShiftId: employee.department.defaultShiftId,
+        companyDefaultShiftId: policy.defaultShiftId,
+        workWeekdays: policy.workWeekdays,
+        holiday
+      });
+      return resolved.shiftId ? byId.get(resolved.shiftId) ?? null : null;
+    };
+    const view = (item: (typeof shifts)[number]) => ({ id: item.id, name: item.name, locationIds: item.locationIds, appliesToMe: applies(item) });
+
+    const night = resolve(yesterday);
+    if (night && night.endMinute <= night.startMinute) {
+      const schedule = scheduleFor(yesterday, { ...night, requiredMinutes: requiredMinutesFor(night), workUnits: Number(night.workUnits) }, { timezone: timeZone, overnightAttribution: "shift_start" });
+      if (now <= schedule.end + (night.punchWindowAfterMinutes ?? policy.punchWindowAfterMinutes) * 60_000) return view(night);
+    }
+    const current = resolve(today);
+    if (current) return view(current);
+    const detected = shifts.find((item) => item.autoDetect && applies(item));
+    return detected ? view(detected) : null;
   }
 
   private async myPunches(employeeId: string, date: string, timeZone: string) {

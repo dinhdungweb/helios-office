@@ -428,10 +428,15 @@ export type DeviceAuthPolicy = {
   requireNotificationEnabled: boolean;
   requireGpsForAttendance: boolean;
   requireWifiForOffice: boolean;
-  // DV-06: web/app check-ins only from an approved device.
-  requireApprovedDevice: boolean;
-  // AT-14: a photo with every web/app check-in.
-  requirePhoto: boolean;
+  // GPS and Wifi each have their own rules, as 1Office (DV-06, AT-14, AT-13).
+  gpsAllowWithoutShift: boolean;
+  gpsRequireApprovedDevice: boolean;
+  gpsRequirePhoto: boolean;
+  gpsCheckEntities: boolean;
+  wifiAllowWithoutShift: boolean;
+  wifiRequireApprovedDevice: boolean;
+  wifiRequirePhoto: boolean;
+  wifiCheckEntities: boolean;
   approvalRefreshHint: string;
 };
 
@@ -1963,8 +1968,14 @@ export const deviceAuthPolicy: DeviceAuthPolicy = {
   requireNotificationEnabled: true,
   requireGpsForAttendance: true,
   requireWifiForOffice: true,
-  requireApprovedDevice: true,
-  requirePhoto: false,
+  gpsAllowWithoutShift: false,
+  gpsRequireApprovedDevice: true,
+  gpsRequirePhoto: false,
+  gpsCheckEntities: false,
+  wifiAllowWithoutShift: false,
+  wifiRequireApprovedDevice: true,
+  wifiRequirePhoto: false,
+  wifiCheckEntities: false,
   approvalRefreshHint: "Sau khi được xác thực, nhân viên nên đăng xuất và đăng nhập lại App hoặc tải lại trang GPS."
 };
 

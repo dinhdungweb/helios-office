@@ -27409,6 +27409,12 @@ small {
   overflow: auto;
 }
 
+.shift-dialog-note {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
 .shift-tag.is-auto {
   color: #7c3aed;
   background: #ede9fe;

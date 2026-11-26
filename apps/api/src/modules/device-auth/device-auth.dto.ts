@@ -35,15 +35,46 @@ export class UpdateDeviceAuthPolicyDto {
   @IsBoolean()
   requireWifiForOffice?: boolean;
 
-  @ApiPropertyOptional({ description: "DV-06: web/app check-ins only from an approved device" })
+  // Like 1Office's Timekeeping settings: GPS and Wifi check-ins each have their own rules.
+  @ApiPropertyOptional({ description: "GPS check-in on a day without a shift" })
   @IsOptional()
   @IsBoolean()
-  requireApprovedDevice?: boolean;
+  gpsAllowWithoutShift?: boolean;
 
-  @ApiPropertyOptional({ description: "AT-14: a photo with every web/app check-in" })
+  @ApiPropertyOptional({ description: "GPS check-in only from an approved device" })
   @IsOptional()
   @IsBoolean()
-  requirePhoto?: boolean;
+  gpsRequireApprovedDevice?: boolean;
+
+  @ApiPropertyOptional({ description: "GPS check-in needs a photo" })
+  @IsOptional()
+  @IsBoolean()
+  gpsRequirePhoto?: boolean;
+
+  @ApiPropertyOptional({ description: "GPS check-in only at places of the person's shift" })
+  @IsOptional()
+  @IsBoolean()
+  gpsCheckEntities?: boolean;
+
+  @ApiPropertyOptional({ description: "Wifi / office network check-in on a day without a shift" })
+  @IsOptional()
+  @IsBoolean()
+  wifiAllowWithoutShift?: boolean;
+
+  @ApiPropertyOptional({ description: "Wifi check-in only from an approved device" })
+  @IsOptional()
+  @IsBoolean()
+  wifiRequireApprovedDevice?: boolean;
+
+  @ApiPropertyOptional({ description: "Wifi check-in needs a photo" })
+  @IsOptional()
+  @IsBoolean()
+  wifiRequirePhoto?: boolean;
+
+  @ApiPropertyOptional({ description: "Wifi check-in only at places of the person's shift" })
+  @IsOptional()
+  @IsBoolean()
+  wifiCheckEntities?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()

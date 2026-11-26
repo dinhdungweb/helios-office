@@ -24,6 +24,7 @@ const storedShift = (overrides: Record<string, unknown> = {}) => ({
   autoDetect: false,
   applyDepartmentIds: [],
   applyPositionIds: [],
+  locationIds: [],
   status: "active",
   archivedAt: null,
   _count: { departmentsDefault: 0, policiesDefault: 0, shiftAssignments: 0 },
@@ -45,6 +46,7 @@ function setup(shift = storedShift()) {
     },
     department: { count: jest.fn(async ({ where }) => where.id.in.filter((id: string) => id.startsWith("d-")).length) },
     jobPosition: { count: jest.fn(async ({ where }) => where.id.in.length) },
+    attendanceLocation: { count: jest.fn(async ({ where }) => where.id.in.filter((id: string) => id.startsWith("loc-")).length) },
     auditLog: { create: jest.fn() }
   };
   const recalc = { scheduleChanged: jest.fn(), holidaysChanged: jest.fn(), rulesChanged: jest.fn() };
@@ -142,6 +144,14 @@ describe("ShiftsService detected shifts (AT-29)", () => {
     await service.create({ code: "sang", name: "Ca sáng", startMinute: 360, endMinute: 840, autoDetect: true, applyDepartmentIds: ["d-shop", "d-shop"], applyPositionIds: ["p-sales"] });
     expect(prisma.shift.create.mock.calls[0][0].data).toMatchObject({ autoDetect: true, applyDepartmentIds: ["d-shop"], applyPositionIds: ["p-sales"] });
     await expect(service.create({ code: "chieu", name: "Ca chiều", startMinute: 840, endMinute: 1320, applyDepartmentIds: ["missing"] })).rejects.toThrow("phòng ban áp dụng không tồn tại");
+  });
+
+  it("stores the shift's check-in places and checks they exist", async () => {
+    const { service, prisma } = setup();
+    const view = await service.create({ code: "ca1", name: "Ca 1", startMinute: 480, endMinute: 1020, locationIds: ["loc-office", "loc-office", "loc-wifi"] });
+    expect(prisma.shift.create.mock.calls[0][0].data).toMatchObject({ locationIds: ["loc-office", "loc-wifi"] });
+    expect(view.locationIds).toEqual(["loc-office", "loc-wifi"]);
+    await expect(service.create({ code: "ca2", name: "Ca 2", startMinute: 480, endMinute: 1020, locationIds: ["gone"] })).rejects.toThrow("Có điểm chấm công không tồn tại.");
   });
 
   it("recalculates when a detected shift changes, even with nobody scheduled on it", async () => {

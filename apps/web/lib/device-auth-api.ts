@@ -24,10 +24,15 @@ export type DeviceAuthPolicy = {
   requireNotificationEnabled: boolean;
   requireGpsForAttendance: boolean;
   requireWifiForOffice: boolean;
-  // DV-06: web/app check-ins only from an approved device.
-  requireApprovedDevice: boolean;
-  // AT-14: a photo with every web/app check-in.
-  requirePhoto: boolean;
+  // GPS and Wifi each have their own rules, as 1Office (DV-06, AT-14, AT-13).
+  gpsAllowWithoutShift: boolean;
+  gpsRequireApprovedDevice: boolean;
+  gpsRequirePhoto: boolean;
+  gpsCheckEntities: boolean;
+  wifiAllowWithoutShift: boolean;
+  wifiRequireApprovedDevice: boolean;
+  wifiRequirePhoto: boolean;
+  wifiCheckEntities: boolean;
   approvalRefreshHint: string;
 };
 
@@ -129,17 +134,25 @@ export async function deleteDeviceAuthRequest(requestId: string) {
 
 // The check-in part of the device policy (DV-06, AT-14), shown on Công → Cài đặt → Chấm công like
 // 1Office's "Timekeeping settings". null when the viewer may not read it.
-export type CheckInPolicy = Pick<DeviceAuthPolicy, "requireGpsForAttendance" | "requireWifiForOffice" | "requireApprovedDevice" | "requirePhoto">;
+const CHECK_IN_FIELDS = [
+  "requireGpsForAttendance",
+  "requireWifiForOffice",
+  "gpsAllowWithoutShift",
+  "gpsRequireApprovedDevice",
+  "gpsRequirePhoto",
+  "gpsCheckEntities",
+  "wifiAllowWithoutShift",
+  "wifiRequireApprovedDevice",
+  "wifiRequirePhoto",
+  "wifiCheckEntities"
+] as const;
+
+export type CheckInPolicy = Pick<DeviceAuthPolicy, (typeof CHECK_IN_FIELDS)[number]>;
 
 export async function getCheckInPolicy(): Promise<CheckInPolicy | null> {
   try {
     const policy = await requestJson<DeviceAuthPolicy>("/device-auth/policy");
-    return {
-      requireGpsForAttendance: policy.requireGpsForAttendance,
-      requireWifiForOffice: policy.requireWifiForOffice,
-      requireApprovedDevice: policy.requireApprovedDevice,
-      requirePhoto: policy.requirePhoto
-    };
+    return Object.fromEntries(CHECK_IN_FIELDS.map((field) => [field, policy[field]])) as CheckInPolicy;
   } catch {
     return null;
   }

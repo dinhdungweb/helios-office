@@ -31,6 +31,53 @@ function Row({ children, hint, label }: { children: ReactNode; hint?: string; la
   );
 }
 
+// 1Office's "Chấm công GPS" / "Chấm công Wifi" blocks: each method is turned on and ruled on its own.
+const METHOD = {
+  gps: {
+    title: "Chấm công GPS",
+    on: "requireGpsForAttendance",
+    hint: "Chấm trên web / app khi ở trong phạm vi một điểm GPS (Cài đặt chung → Chấm công GPS/Wifi).",
+    place: "vị trí được phép"
+  },
+  wifi: {
+    title: "Chấm công Wifi",
+    on: "requireWifiForOffice",
+    hint: "Chấm khi ở trong mạng văn phòng: wifi trên app, dải IP trên trình duyệt. Bật cả GPS và Wifi thì đạt một trong hai là được.",
+    place: "địa chỉ wifi được phép"
+  }
+} as const;
+
+function CheckInMethodCard({ method, onChange, rules }: { method: "gps" | "wifi"; onChange: (rules: CheckInPolicy) => void; rules: CheckInPolicy }) {
+  const info = METHOD[method];
+  const on = rules[info.on];
+  const option = (key: "AllowWithoutShift" | "RequireApprovedDevice" | "RequirePhoto" | "CheckEntities", label: string, hint?: string) => {
+    const field = `${method}${key}` as const;
+    return (
+      <Row label={label} hint={hint}>
+        <FormSwitch
+          checked={rules[field]}
+          className="system-settings-switch"
+          disabled={!on}
+          label={<span className="sr-only">{`${info.title}: ${label}`}</span>}
+          onChange={(event) => onChange({ ...rules, [field]: event.target.checked })}
+        />
+      </Row>
+    );
+  };
+  return (
+    <section className="system-settings-card" aria-labelledby={`policy-check-in-${method}`}>
+      <header><h2 id={`policy-check-in-${method}`}>{info.title}</h2></header>
+      <Row label={`Sử dụng ${info.title.toLowerCase()}`} hint={info.hint}>
+        <FormSwitch checked={on} className="system-settings-switch" label={<span className="sr-only">{info.title}</span>} onChange={(event) => onChange({ ...rules, [info.on]: event.target.checked })} />
+      </Row>
+      {option("AllowWithoutShift", `Cho phép chấm công tại ${info.place} khi không có ca / làm thêm`, "Tắt thì hôm chưa được xếp ca (và không nhận diện được ca) sẽ không chấm được.")}
+      {option("RequireApprovedDevice", "Không cho chấm công trên thiết bị chưa xác thực", "Nhân viên phải đăng ký thiết bị và được duyệt ở Xác thực thiết bị.")}
+      {option("RequirePhoto", "Bắt buộc chụp ảnh khi chấm công")}
+      {option("CheckEntities", "Kiểm tra theo đối tượng áp dụng", `Chỉ nhận ${info.place} gắn với ca của người đó trong ngày, và ca phải áp dụng cho phòng ban / vị trí của họ.`)}
+    </section>
+  );
+}
+
 function Choice<T extends string | number>({
   label,
   onChange,
@@ -343,21 +390,10 @@ export function AttendancePolicyBoard({ data, reminderRuns = [], checkIn = null 
         </section>
 
         {rules ? (
-          <section className="system-settings-card" aria-labelledby="policy-check-in">
-            <header><h2 id="policy-check-in">Chấm công GPS / Wifi</h2></header>
-            <Row label="Chấm công GPS" hint="Chấm công trên web / app phải ở trong phạm vi một điểm GPS (Cài đặt chung → Chấm công GPS/Wifi).">
-              <FormSwitch checked={rules.requireGpsForAttendance} className="system-settings-switch" label={<span className="sr-only">Chấm công GPS</span>} onChange={(event) => setRules({ ...rules, requireGpsForAttendance: event.target.checked })} />
-            </Row>
-            <Row label="Chấm công Wifi" hint="Ở trong mạng văn phòng: wifi trên app, dải IP trên trình duyệt. Bật cả GPS và Wifi thì đạt một trong hai là được; tắt cả hai thì chấm ở đâu cũng được.">
-              <FormSwitch checked={rules.requireWifiForOffice} className="system-settings-switch" label={<span className="sr-only">Chấm công Wifi</span>} onChange={(event) => setRules({ ...rules, requireWifiForOffice: event.target.checked })} />
-            </Row>
-            <Row label="Không cho chấm công trên thiết bị chưa xác thực" hint="Nhân viên phải đăng ký thiết bị và được duyệt ở Xác thực thiết bị.">
-              <FormSwitch checked={rules.requireApprovedDevice} className="system-settings-switch" label={<span className="sr-only">Bắt buộc thiết bị đã xác thực</span>} onChange={(event) => setRules({ ...rules, requireApprovedDevice: event.target.checked })} />
-            </Row>
-            <Row label="Bắt buộc chụp ảnh khi chấm công">
-              <FormSwitch checked={rules.requirePhoto} className="system-settings-switch" label={<span className="sr-only">Bắt buộc chụp ảnh</span>} onChange={(event) => setRules({ ...rules, requirePhoto: event.target.checked })} />
-            </Row>
-          </section>
+          <>
+            <CheckInMethodCard method="gps" rules={rules} onChange={setRules} />
+            <CheckInMethodCard method="wifi" rules={rules} onChange={setRules} />
+          </>
         ) : null}
 
         <section className="system-settings-card" aria-labelledby="policy-general-1office">
@@ -382,13 +418,13 @@ export function AttendancePolicyBoard({ data, reminderRuns = [], checkIn = null 
               onChange={(value) => set("overnightSplit", value)}
             />
           </Row>
-          <Row label="Số ngày liên tiếp không cần check-in / out" hint="Ca trực nhiều ngày: chấm vào ngày đầu và chấm ra ngày cuối thì cả chuỗi (tối đa số ngày này) được đủ công. 0 là tắt.">
-            <NumberInput label="Số ngày liên tiếp không cần check-in / out" max={30} min={0} value={policy.continuousShiftMaxDays} onChange={(value) => set("continuousShiftMaxDays", value)} />
+          <Row label="Số ngày liên tiếp không cần check-in / out" hint="Ca trực nhiều ngày: chấm vào ngày đầu và chấm ra ngày cuối thì cả chuỗi (tối đa số ngày này) được đủ công. Mặc định 2, tối đa 30; 1 là ngày nào cũng phải chấm vào / ra.">
+            <NumberInput label="Số ngày liên tiếp không cần check-in / out" max={30} min={1} value={policy.continuousShiftMaxDays} onChange={(value) => set("continuousShiftMaxDays", value)} />
           </Row>
           <Row label="Thời gian được sửa phân ca (kể từ lúc tạo)" hint="Quá số ngày này thì ô phân ca không đổi, không xoá được nữa. Để trống là không giới hạn.">
             <OptionalDays label="Thời gian được sửa phân ca" max={365} value={policy.shiftEditWindowDays} onChange={(value) => set("shiftEditWindowDays", value)} />
           </Row>
-          <Row label="Số ngày tối đa được xếp ca trước" hint="Không xếp được ca cho ngày xa hơn hôm nay quá số ngày này. Để trống là không giới hạn.">
+          <Row label="Số ngày tối đa được xếp ca trước" hint="Tính từ ngày sớm nhất trong phân ca: đặt 5, phân ca từ 07/04 thì xếp được đến hết 12/04. Để trống là không giới hạn.">
             <OptionalDays label="Số ngày tối đa được xếp ca trước" max={366} value={policy.shiftCreateAheadDays} onChange={(value) => set("shiftCreateAheadDays", value)} />
           </Row>
         </section>

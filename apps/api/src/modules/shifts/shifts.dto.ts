@@ -168,6 +168,15 @@ export class CreateShiftDto {
   @ArrayMaxSize(200)
   @IsString({ each: true })
   applyPositionIds?: string[];
+
+  // Like 1Office's "Vị trí định vị GPS" / "Địa chỉ chấm Wifi" on a shift: the places its check-ins
+  // are accepted at when the policy checks applicable entities.
+  @ApiPropertyOptional({ type: [String], description: "Check-in places (AttendanceLocation ids) of this shift" })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsString({ each: true })
+  locationIds?: string[];
 }
 
 export class UpdateShiftDto extends PartialType(CreateShiftDto) {}
@@ -324,10 +333,10 @@ export class UpdateAttendancePolicyDto {
   @IsIn(["none", "split", "split_full"])
   overnightSplit?: "none" | "split" | "split_full";
 
-  @ApiPropertyOptional({ example: 2, description: "0 = off; longest run of shift days needing only a first check-in and a last check-out" })
+  @ApiPropertyOptional({ example: 2, description: "As 1Office: default 2, at most 30; 1 means every day needs its own check-in/out" })
   @IsOptional()
   @IsInt()
-  @Min(0)
+  @Min(1)
   @Max(30)
   continuousShiftMaxDays?: number;
 
@@ -339,7 +348,7 @@ export class UpdateAttendancePolicyDto {
   @Max(365)
   shiftEditWindowDays?: number | null;
 
-  @ApiPropertyOptional({ example: 30, description: "null = no limit; how many days ahead shifts may be scheduled" })
+  @ApiPropertyOptional({ example: 30, description: "null = no limit; latest scheduled date = earliest date of the assignment + N (as 1Office)" })
   @IsOptional()
   @ValidateIf((_dto, value) => value !== null)
   @IsInt()

@@ -213,15 +213,18 @@ export class ShiftsService {
       description: dto.description?.trim() || null,
       autoDetect: dto.autoDetect ?? false,
       applyDepartmentIds: [...new Set(dto.applyDepartmentIds ?? [])],
-      applyPositionIds: [...new Set(dto.applyPositionIds ?? [])]
+      applyPositionIds: [...new Set(dto.applyPositionIds ?? [])],
+      locationIds: [...new Set(dto.locationIds ?? [])]
     } satisfies Prisma.ShiftCreateInput;
   }
 
-  private async assertTargets(data: { applyDepartmentIds: string[]; applyPositionIds: string[] }) {
-    const [departments, positions] = await Promise.all([
+  private async assertTargets(data: { applyDepartmentIds: string[]; applyPositionIds: string[]; locationIds: string[] }) {
+    const [departments, positions, locations] = await Promise.all([
       data.applyDepartmentIds.length ? this.prisma.department.count({ where: { id: { in: data.applyDepartmentIds } } }) : 0,
-      data.applyPositionIds.length ? this.prisma.jobPosition.count({ where: { id: { in: data.applyPositionIds } } }) : 0
+      data.applyPositionIds.length ? this.prisma.jobPosition.count({ where: { id: { in: data.applyPositionIds } } }) : 0,
+      data.locationIds.length ? this.prisma.attendanceLocation.count({ where: { id: { in: data.locationIds } } }) : 0
     ]);
+    if (locations !== data.locationIds.length) throw new BadRequestException("Có điểm chấm công không tồn tại.");
     if (departments !== data.applyDepartmentIds.length) throw new BadRequestException("Có phòng ban áp dụng không tồn tại.");
     if (positions !== data.applyPositionIds.length) throw new BadRequestException("Có vị trí áp dụng không tồn tại.");
   }
@@ -247,6 +250,7 @@ export class ShiftsService {
       autoDetect: shift.autoDetect,
       applyDepartmentIds: shift.applyDepartmentIds,
       applyPositionIds: shift.applyPositionIds,
+      locationIds: shift.locationIds,
       description: shift.description
     };
   }

@@ -71,6 +71,12 @@ export function CheckInPanel({ rules, punches: initial }: { rules: CheckInRules;
     setMessage(null);
     setBusy(null);
     if (!result.ok) {
+      // GPS and Wifi have their own photo rule: the server says when this punch's method needs one.
+      if (result.reason === "photo_required" && !photo) {
+        setMessage({ tone: "info", text: "Cách chấm công này cần ảnh, hãy chụp ảnh để tiếp tục." });
+        setCamera(direction);
+        return;
+      }
       setMessage({ tone: "error", text: result.error, hint: result.reason === "no_position" || result.reason === "outside_places" ? located.problem ?? undefined : undefined });
       return;
     }
@@ -139,8 +145,8 @@ export function CheckInPanel({ rules, punches: initial }: { rules: CheckInRules;
       ) : null}
       <p className="check-in-rules">
         {[
-          rules.requireApprovedDevice ? "thiết bị đã duyệt" : null,
-          rules.requirePhoto ? "chụp ảnh" : null,
+          rules.requireApprovedDevice ? "thiết bị đã duyệt" : rules.deviceMayBeRequired ? "thiết bị đã duyệt (với một số cách chấm)" : null,
+          rules.requirePhoto ? "chụp ảnh" : rules.photoMayBeRequired ? "chụp ảnh (với một số cách chấm)" : null,
           rules.requireGps && rules.requireOfficeNetwork ? "trong phạm vi GPS hoặc mạng văn phòng" : rules.requireGps ? "trong phạm vi GPS" : rules.requireOfficeNetwork ? "trong mạng văn phòng" : null
         ]
           .filter(Boolean)

@@ -33,12 +33,14 @@ async function requestJson<T>(path: string) {
 
 export async function getShiftSettingsData(): Promise<ShiftSettingsData> {
   try {
-    const [shifts, policy, departments, positions] = await Promise.all([
+    const [shifts, policy, departments, positions, locations] = await Promise.all([
       requestJson<ShiftRecord[]>("/shifts?includeArchived=true"),
       requestJson<AttendancePolicy>("/attendance-policy"),
       // For "who a detected shift applies to" (AT-29); the page still works without them.
       requestJson<Array<{ id: string; name: string }>>("/departments").catch(() => []),
-      requestJson<Array<{ id: string; name: string; status?: string }>>("/job-positions").catch(() => [])
+      requestJson<Array<{ id: string; name: string; status?: string }>>("/job-positions").catch(() => []),
+      // The shift's check-in places; only managers of attendance settings can read them.
+      requestJson<Array<{ id: string; name: string; type: "gps" | "wifi" | "ip"; status: string }>>("/attendance-locations").catch(() => [])
     ]);
     const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, "vi");
     return {
@@ -46,7 +48,11 @@ export async function getShiftSettingsData(): Promise<ShiftSettingsData> {
       shifts,
       policy,
       departments: departments.map(({ id, name }) => ({ id, name })).sort(byName),
-      positions: positions.filter((item) => item.status !== "archived").map(({ id, name }) => ({ id, name })).sort(byName)
+      positions: positions.filter((item) => item.status !== "archived").map(({ id, name }) => ({ id, name })).sort(byName),
+      locations: locations
+        .filter((item) => item.status === "active")
+        .map(({ id, name, type }) => ({ id, name, kind: type === "gps" ? ("gps" as const) : ("wifi" as const) }))
+        .sort(byName)
     };
   } catch (error) {
     return { source: "unavailable", error: error instanceof Error ? error.message : "Không tải được dữ liệu ca." };
@@ -91,7 +97,9 @@ export async function getStandardWorkdayData(): Promise<StandardWorkdayData> {
     const [rules, departments, positions] = await Promise.all([
       requestJson<{ items: StandardRuleRecord[]; lockedThrough: string | null }>("/standard-workday-rules"),
       requestJson<Array<{ id: string; name: string; status?: string }>>("/departments"),
-      requestJson<Array<{ id: string; name: string; status?: string }>>("/job-positions").catch(() => [])
+      requestJson<Array<{ id: string; name: string; status?: string }>>("/job-positions").catch(() => []),
+      // The shift's check-in places; only managers of attendance settings can read them.
+      requestJson<Array<{ id: string; name: string; type: "gps" | "wifi" | "ip"; status: string }>>("/attendance-locations").catch(() => [])
     ]);
     const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, "vi");
     return {

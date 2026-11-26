@@ -11,10 +11,34 @@ const defaultPolicy = {
   requireNotificationEnabled: true,
   requireGpsForAttendance: true,
   requireWifiForOffice: true,
-  requireApprovedDevice: true,
-  requirePhoto: false,
   approvalRefreshHint: "Sau khi được xác thực, nhân viên nên đăng xuất và đăng nhập lại App hoặc tải lại trang GPS."
 };
+
+// What the check-in card needs to know (AT-13): GPS and Wifi each have their own rules like
+// 1Office. A device or photo is asked for up front when every method turned on needs it; when only
+// some do, the server says so on the punch (device_unregistered, photo_required).
+export function checkInRules(policy: {
+  requireGpsForAttendance: boolean;
+  requireWifiForOffice: boolean;
+  gpsRequireApprovedDevice: boolean;
+  wifiRequireApprovedDevice: boolean;
+  gpsRequirePhoto: boolean;
+  wifiRequirePhoto: boolean;
+}) {
+  const methods = [
+    ...(policy.requireGpsForAttendance ? [{ device: policy.gpsRequireApprovedDevice, photo: policy.gpsRequirePhoto }] : []),
+    ...(policy.requireWifiForOffice ? [{ device: policy.wifiRequireApprovedDevice, photo: policy.wifiRequirePhoto }] : [])
+  ];
+  return {
+    enabled: methods.length > 0,
+    requireApprovedDevice: methods.length > 0 && methods.every((method) => method.device),
+    deviceMayBeRequired: methods.some((method) => method.device),
+    requireGps: policy.requireGpsForAttendance,
+    requireOfficeNetwork: policy.requireWifiForOffice,
+    requirePhoto: methods.length > 0 && methods.every((method) => method.photo),
+    photoMayBeRequired: methods.some((method) => method.photo)
+  };
+}
 
 @Injectable()
 export class DeviceAuthService {
@@ -102,7 +126,7 @@ export class DeviceAuthService {
     return {
       maxDevices: policy.maxDevicesPerUser,
       // What check-in needs (DV-06), so the screen asks for location only when it counts.
-      rules: { requireApprovedDevice: policy.requireApprovedDevice, requireGps: policy.requireGpsForAttendance, requireOfficeNetwork: policy.requireWifiForOffice, requirePhoto: policy.requirePhoto },
+      rules: checkInRules(policy),
       devices: requests.map((request) => ({
         id: request.id,
         deviceId: request.deviceId,

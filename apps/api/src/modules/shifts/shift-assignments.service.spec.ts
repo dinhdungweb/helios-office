@@ -138,11 +138,14 @@ describe("ShiftAssignmentsService schedule limits (AT-28)", () => {
     return context;
   }
 
-  it("refuses new shifts further ahead than allowed", async () => {
+  it("refuses an assignment spanning more days than allowed, counted from its earliest date (as 1Office)", async () => {
     const { service, prisma } = limited({ shiftCreateAheadDays: 7 });
-    await expect(service.assign(user, { employeeIds: ["e2"], dates: ["2026-10-30", "2026-11-05"], shiftId: "hc" })).rejects.toThrow("tối đa 7 ngày (đến 30/10/2026); ngày 05/11/2026");
+    await expect(service.assign(user, { employeeIds: ["e2"], dates: ["2026-11-07", "2026-10-30"], shiftId: "hc" })).rejects.toThrow(
+      "tối đa 7 ngày tính từ ngày sớm nhất (30/10/2026 → 06/11/2026); ngày 07/11/2026 quá xa"
+    );
     expect(prisma.shiftAssignment.upsert).not.toHaveBeenCalled();
-    await expect(service.assign(user, { employeeIds: ["e2"], dates: ["2026-10-30"], shiftId: "hc" })).resolves.toEqual({ assigned: 1 });
+    // Far from today is fine: only the span of the assignment counts.
+    await expect(service.assign(user, { employeeIds: ["e2"], dates: ["2026-12-01", "2026-12-08"], shiftId: "hc" })).resolves.toEqual({ assigned: 2 });
   });
 
   it("refuses to change or remove an assignment older than the edit window", async () => {

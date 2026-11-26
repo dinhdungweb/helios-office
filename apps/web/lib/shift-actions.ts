@@ -91,7 +91,8 @@ export async function saveShiftAction(_state: ShiftActionResult | null, formData
       // AT-29: detect from punches, for the ticked groups (none ticked = everyone).
       autoDetect: formData.get("autoDetect") === "on",
       applyDepartmentIds: formData.getAll("applyDepartmentIds").map(String),
-      applyPositionIds: formData.getAll("applyPositionIds").map(String)
+      applyPositionIds: formData.getAll("applyPositionIds").map(String),
+      locationIds: formData.getAll("locationIds").map(String)
     };
     const shiftId = text(formData, "shiftId");
 

@@ -417,15 +417,20 @@ export class ShiftAssignmentsService {
   private async assertScheduleLimits(newDates: string[], changed: Array<{ date: Date; createdAt: Date }>) {
     const policy = await this.prisma.attendancePolicy.findUnique({
       where: { id: "default" },
-      select: { timezone: true, shiftCreateAheadDays: true, shiftEditWindowDays: true }
+      select: { shiftCreateAheadDays: true, shiftEditWindowDays: true }
     });
     if (!policy) return;
     const label = (date: string) => date.split("-").reverse().join("/");
+    // As 1Office: "tính từ ngày sớm nhất trong phân ca" — one assignment may span at most N days
+    // after its earliest date.
     if (typeof policy.shiftCreateAheadDays === "number" && newDates.length > 0) {
-      const last = addDays(localDate(Date.now(), policy.timezone), policy.shiftCreateAheadDays);
-      const tooFar = newDates.filter((date) => date > last).sort();
+      const sorted = [...newDates].sort();
+      const last = addDays(sorted[0], policy.shiftCreateAheadDays);
+      const tooFar = sorted.filter((date) => date > last);
       if (tooFar.length > 0) {
-        throw new BadRequestException(`Chỉ xếp ca trước tối đa ${policy.shiftCreateAheadDays} ngày (đến ${label(last)}); ngày ${label(tooFar[0])} quá xa.`);
+        throw new BadRequestException(
+          `Mỗi lần chỉ xếp ca tối đa ${policy.shiftCreateAheadDays} ngày tính từ ngày sớm nhất (${label(sorted[0])} → ${label(last)}); ngày ${label(tooFar[0])} quá xa.`
+        );
       }
     }
     if (typeof policy.shiftEditWindowDays === "number" && changed.length > 0) {

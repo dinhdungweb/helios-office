@@ -287,10 +287,17 @@ model DeviceAuthPolicy {
   requireNotificationEnabled Boolean  @default(true)
   requireGpsForAttendance    Boolean  @default(true)
   requireWifiForOffice       Boolean  @default(true)
-  // DV-06: web/app check-ins only from a device HR approved.
-  requireApprovedDevice      Boolean  @default(true)
-  // AT-14: a photo with every web/app check-in.
-  requirePhoto               Boolean  @default(false)
+  // Like 1Office's Timekeeping settings, GPS and Wifi check-ins each have their own rules (DV-06,
+  // AT-14): check in on a day without a shift; only from an approved device; with a photo; only at
+  // a place of the day's shift that applies to the person. requireGps / requireWifi turn the method on.
+  gpsAllowWithoutShift       Boolean  @default(false)
+  gpsRequireApprovedDevice   Boolean  @default(false)
+  gpsRequirePhoto            Boolean  @default(false)
+  gpsCheckEntities           Boolean  @default(false)
+  wifiAllowWithoutShift      Boolean  @default(false)
+  wifiRequireApprovedDevice  Boolean  @default(false)
+  wifiRequirePhoto           Boolean  @default(false)
+  wifiCheckEntities          Boolean  @default(false)
   approvalRefreshHint        String
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
@@ -466,6 +473,8 @@ model Shift {
   autoDetect               Boolean            @default(false)
   applyDepartmentIds       String[]           @default([])
   applyPositionIds         String[]           @default([])
+  // Places check-ins of this shift are accepted at when the policy checks applicable entities.
+  locationIds              String[]           @default([])
   description              String?
   status                   JobCatalogStatus   @default(active)
   archivedAt               DateTime?
@@ -566,9 +575,9 @@ model AttendancePolicy {
   // none · split: hours after midnight go to the next day · split_full: split by the shift's own
   // hours before/after midnight, so a full shift always gives each day its share.
   overnightSplit               String               @default("none")
-  // 0 = off. Up to N consecutive shift days with a check-in on the first and a check-out on the
+  // 1 = off (1Office default 2, max 30). Up to N consecutive shift days with a check-in on the first and a check-out on the
   // last count in full, though nothing was punched in between.
-  continuousShiftMaxDays       Int                  @default(0)
+  continuousShiftMaxDays       Int                  @default(2)
   // null = no limit. An assignment may be changed only within N days of being created; shifts
   // may be scheduled at most N days ahead.
   shiftEditWindowDays          Int?

@@ -593,8 +593,6 @@ function DevicePolicyDialog({
     draft.requireNotificationEnabled !== policy.requireNotificationEnabled ||
     draft.requireGpsForAttendance !== policy.requireGpsForAttendance ||
     draft.requireWifiForOffice !== policy.requireWifiForOffice ||
-    draft.requireApprovedDevice !== policy.requireApprovedDevice ||
-    draft.requirePhoto !== policy.requirePhoto ||
     draft.approvalRefreshHint !== policy.approvalRefreshHint;
 
   useEffect(() => {

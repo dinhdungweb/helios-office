@@ -21,7 +21,17 @@ export type MyDevice = {
 };
 
 // AT-13: what check-in needs (DV-06) and my punches today.
-export type CheckInRules = { requireApprovedDevice: boolean; requireGps: boolean; requireOfficeNetwork: boolean; requirePhoto: boolean };
+// GPS and Wifi have their own rules (as 1Office): require* holds for every method turned on,
+// *MayBeRequired for some of them.
+export type CheckInRules = {
+  enabled: boolean;
+  requireApprovedDevice: boolean;
+  deviceMayBeRequired: boolean;
+  requireGps: boolean;
+  requireOfficeNetwork: boolean;
+  requirePhoto: boolean;
+  photoMayBeRequired: boolean;
+};
 
 export type MyPunch = { id: string; punchTime: string; source: "machine" | "web" | "app"; direction: "in" | "out" | null; place: string | null; device: string | null; photoFileId: string | null };
 
