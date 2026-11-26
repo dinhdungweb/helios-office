@@ -1,6 +1,6 @@
 # Thiết kế: Engine phê duyệt và đơn từ
 
-Backlog: `AP-04` → `AP-26`, `LV-01` → `LV-25`, `AT-22`, `AU-21` · Phase 3 · Trạng thái: **Bản nháp 2026-11-26, chờ duyệt**. Mục 13 là các điểm cần HR / người phụ trách chốt trước khi code.
+Backlog: `AP-04` → `AP-26`, `LV-01` → `LV-25`, `AT-22`, `AU-21` · Phase 3 · Trạng thái: **Đã duyệt 2026-11-26** (chủ dự án đồng ý toàn bộ đề xuất ở mục 13).
 
 ## 1. Vấn đề
 

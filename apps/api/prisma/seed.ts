@@ -3,7 +3,6 @@ import { resolve } from "node:path";
 import {
   AccountAdminRole,
   AccountLifecycleStatus,
-  ApprovalStatus,
   DeviceAuthStatus,
   EmployeeStatus,
   PayrollStatus,
@@ -15,7 +14,6 @@ import {
   contracts,
   departments,
   employees,
-  leaveRequests,
   payrollCycles,
   permissionGroups,
   userAccounts
@@ -206,26 +204,6 @@ function toDeviceDateTime(value: string | null | undefined) {
   const [, hour, minute, day, month, year] = match;
 
   return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour) - 7, Number(minute)));
-}
-
-function normalizeApprovalStatus(status: string) {
-  if (status === "approved") {
-    return ApprovalStatus.approved;
-  }
-
-  if (status === "rejected") {
-    return ApprovalStatus.rejected;
-  }
-
-  if (status === "cancelled") {
-    return ApprovalStatus.cancelled;
-  }
-
-  if (status === "draft") {
-    return ApprovalStatus.draft;
-  }
-
-  return ApprovalStatus.pending;
 }
 
 function normalizeAdminRole(value: string) {
@@ -643,31 +621,6 @@ async function seedContracts() {
   }
 }
 
-async function seedLeaveRequests() {
-  for (const request of leaveRequests) {
-    await prisma.leaveRequest.upsert({
-      where: { id: request.id },
-      update: {
-        employeeId: request.employeeId,
-        type: request.type,
-        fromDate: toWorkDate(request.fromDate),
-        toDate: toWorkDate(request.toDate),
-        totalDays: request.totalDays,
-        status: normalizeApprovalStatus(request.status)
-      },
-      create: {
-        id: request.id,
-        employeeId: request.employeeId,
-        type: request.type,
-        fromDate: toWorkDate(request.fromDate),
-        toDate: toWorkDate(request.toDate),
-        totalDays: request.totalDays,
-        status: normalizeApprovalStatus(request.status)
-      }
-    });
-  }
-}
-
 async function seedPayroll() {
   for (const cycle of payrollCycles) {
     const { periodStart, periodEnd } = payrollPeriodFromId(cycle.id);
@@ -794,7 +747,6 @@ async function main() {
   await seedEmployees();
   await finishDepartmentTreeReset();
   await seedContracts();
-  await seedLeaveRequests();
   await seedPayroll();
   await seedDeviceAuth();
 }

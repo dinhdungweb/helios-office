@@ -13,14 +13,6 @@ enum EmployeeStatus {
   resigned
 }
 
-enum ApprovalStatus {
-  draft
-  pending
-  approved
-  rejected
-  cancelled
-}
-
 enum PostScope {
   company
   department
@@ -359,7 +351,9 @@ model Employee {
   attendanceAdjustments     AttendanceAdjustment[]
   attendanceConfirmations   AttendanceConfirmation[]
   shiftAssignments          ShiftAssignment[]
-  leaveRequests             LeaveRequest[]
+  requests                  Request[]                    @relation("RequestRequester")
+  approvalAssignments       ApprovalAssignee[]
+  leaveBalances             LeaveBalance[]
   payrollItems              PayrollItem[]
   assetAssignments          AssetAssignment[]
   deviceAuthRequests        DeviceAuthRequest[]
@@ -904,19 +898,6 @@ model Announcement {
   updatedAt   DateTime  @updatedAt
 }
 
-model ApprovalRequest {
-  id          String         @id @default(uuid())
-  type        String
-  requesterId String
-  assigneeId  String?
-  status      ApprovalStatus @default(pending)
-  priority    String         @default("normal")
-  payload     Json
-  decidedAt   DateTime?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-}
-
 enum AttendanceDayStatus {
   on_time
   late
@@ -1116,56 +1097,69 @@ model AttendanceRecalcJob {
 
 enum AttendanceAdjustmentType {
   manual
+  // Written when a request is approved (AT-22, docs/design/approval-engine.md §8).
+  leave
+  absence
+  overtime
+  explanation
+  shift_swap
+  business_trip
 }
 
 // A change to one work date that the engine applies last (AT-15; Phase 3 adds approved requests).
 // The latest adjustment not revoked wins.
 model AttendanceAdjustment {
-  id          String                   @id @default(uuid())
-  employeeId  String
-  employee    Employee                 @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  workDate    DateTime                 @db.Date
-  type        AttendanceAdjustmentType @default(manual)
-  checkIn     DateTime?
-  checkOut    DateTime?
+  id              String                   @id @default(uuid())
+  employeeId      String
+  employee        Employee                 @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  workDate        DateTime                 @db.Date
+  type            AttendanceAdjustmentType @default(manual)
+  checkIn         DateTime?
+  checkOut        DateTime?
   // Whether checkIn / checkOut were set by HR, as opposed to left to the recorded punches.
-  punchesSet  Boolean                  @default(false)
-  workUnits   Decimal?                 @db.Decimal(5, 2)
-  status      AttendanceDayStatus?
-  reason      String
-  before      Json?
+  punchesSet      Boolean                  @default(false)
+  workUnits       Decimal?                 @db.Decimal(5, 2)
+  status          AttendanceDayStatus?
+  reason          String
+  before          Json?
   // Employee id of who made / revoked it, or the account id when the account has no employee profile.
-  createdById String?
-  createdAt   DateTime                 @default(now())
-  revokedAt   DateTime?
-  revokedById String?
+  createdById     String?
+  createdAt       DateTime                 @default(now())
+  revokedAt       DateTime?
+  revokedById     String?
+  // The approved request that wrote it; cancelling the request revokes it.
+  sourceRequestId String?
 
   @@index([employeeId, workDate])
+  @@index([sourceRequestId])
 }
 
 model ApprovalWorkflowDefinition {
-  id                                String                 @id @default(uuid())
-  code                              String?                @unique
+  id                                String                    @id @default(uuid())
+  code                              String?                   @unique
   name                              String
-  status                            ApprovalWorkflowStatus @default(active)
+  status                            ApprovalWorkflowStatus    @default(active)
   objectType                        String
-  subObject                         String                 @default("all")
-  versionMode                       Boolean                @default(true)
-  approvalType                      String                 @default("workflow")
+  subObject                         String                    @default("all")
+  versionMode                       Boolean                   @default(true)
+  approvalType                      String                    @default("workflow")
   followerId                        String?
-  showFlowInObject                  Boolean                @default(false)
-  allowAttachmentsAfterApproved     Boolean                @default(false)
-  allowDocumentChangesAfterApproved Boolean                @default(false)
-  allowDiscussionAfterApproved      Boolean                @default(true)
-  overdueAction                     String                 @default("none")
+  showFlowInObject                  Boolean                   @default(false)
+  allowAttachmentsAfterApproved     Boolean                   @default(false)
+  allowDocumentChangesAfterApproved Boolean                   @default(false)
+  allowDiscussionAfterApproved      Boolean                   @default(true)
+  overdueAction                     String                    @default("none")
   flowDefinition                    Json
-  follower                          Employee?              @relation("ApprovalWorkflowFollower", fields: [followerId], references: [id], onDelete: SetNull)
+  // Bumped on every saved change; requests run a frozen ApprovalWorkflowVersion.
+  currentVersion                    Int                       @default(1)
+  versions                          ApprovalWorkflowVersion[]
+  follower                          Employee?                 @relation("ApprovalWorkflowFollower", fields: [followerId], references: [id], onDelete: SetNull)
   createdById                       String?
-  createdBy                         Employee?              @relation("ApprovalWorkflowCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy                         Employee?                 @relation("ApprovalWorkflowCreator", fields: [createdById], references: [id], onDelete: SetNull)
   updatedById                       String?
-  updatedBy                         Employee?              @relation("ApprovalWorkflowUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
-  createdAt                         DateTime               @default(now())
-  updatedAt                         DateTime               @updatedAt
+  updatedBy                         Employee?                 @relation("ApprovalWorkflowUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt                         DateTime                  @default(now())
+  updatedAt                         DateTime                  @updatedAt
 
   @@index([status])
   @@index([objectType])
@@ -1252,18 +1246,256 @@ model AttendanceSyncError {
   @@index([employeeCode, createdAt])
 }
 
-model LeaveRequest {
-  id         String         @id @default(uuid())
+// ---------------------------------------------------------------------------------------------
+// Requests and the approval engine (Phase 3, docs/design/approval-engine.md §11).
+
+enum RequestStatus {
+  draft
+  pending
+  returned
+  approved
+  rejected
+  cancelled
+}
+
+enum ApprovalStepStatus {
+  active
+  approved
+  rejected
+  returned
+  skipped
+  cancelled
+}
+
+enum ApprovalAssigneeStatus {
+  pending
+  approved
+  rejected
+  returned
+  forwarded
+  superseded
+  cancelled
+}
+
+// One request of any type (leave, overtime, shift change...). Type-specific data is in `payload`,
+// validated by the type's handler; fromDate / toDate / quantity summarise it for lists and calendars.
+model Request {
+  id                  String                   @id @default(uuid())
+  code                String                   @unique
+  type                String
+  // Type-specific sub-kind used to pick a workflow (leave type code for leave requests).
+  subType             String?
+  requesterId         String
+  requester           Employee                 @relation("RequestRequester", fields: [requesterId], references: [id])
+  status              RequestStatus            @default(draft)
+  title               String
+  payload             Json
+  fromDate            DateTime?                @db.Date
+  toDate              DateTime?                @db.Date
+  quantity            Decimal?                 @db.Decimal(8, 2)
+  // "day" or "hour": what quantity counts.
+  unit                String?
+  workflowVersionId   String?
+  workflowVersion     ApprovalWorkflowVersion? @relation(fields: [workflowVersionId], references: [id], onDelete: SetNull)
+  usedDefaultWorkflow Boolean                  @default(false)
+  needsAttention      Boolean                  @default(false)
+  // How many times it was submitted; steps of a resubmission get the next round.
+  round               Int                      @default(0)
+  // Optimistic lock: bumped on every state change (§5.7).
+  version             Int                      @default(1)
+  submittedAt         DateTime?
+  decidedAt           DateTime?
+  cancelReason        String?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  steps               ApprovalStep[]
+  actions             ApprovalAction[]
+  followers           RequestFollower[]
+  comments            RequestComment[]
+
+  @@index([requesterId, status])
+  @@index([type, status])
+  @@index([fromDate, toDate])
+}
+
+// A frozen copy of a workflow's diagram and settings; requests point here so editing a workflow
+// never changes requests already running.
+model ApprovalWorkflowVersion {
+  id             String                     @id @default(uuid())
+  workflowId     String
+  workflow       ApprovalWorkflowDefinition @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  version        Int
+  flowDefinition Json
+  settings       Json
+  createdById    String?
+  createdAt      DateTime                   @default(now())
+  requests       Request[]
+
+  @@unique([workflowId, version])
+}
+
+// One pass of a request through one approval node of the diagram.
+model ApprovalStep {
+  id        String             @id @default(uuid())
+  requestId String
+  request   Request            @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  nodeId    String
+  name      String
+  // any: the first decision counts · all: everyone must approve.
+  mode      String             @default("any")
+  status    ApprovalStepStatus @default(active)
+  round     Int
+  dueAt     DateTime?
+  openedAt  DateTime           @default(now())
+  closedAt  DateTime?
+  assignees ApprovalAssignee[]
+  actions   ApprovalAction[]
+
+  @@index([requestId])
+  @@index([status, dueAt])
+}
+
+model ApprovalAssignee {
+  id           String                 @id @default(uuid())
+  stepId       String
+  step         ApprovalStep           @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  employeeId   String
+  employee     Employee               @relation(fields: [employeeId], references: [id])
+  // employee | direct_manager | supervisor | department_head | position | title | delegation |
+  // substitute | fallback_admin | forward
+  resolvedFrom String
+  onBehalfOfId String?
+  status       ApprovalAssigneeStatus @default(pending)
+  actedAt      DateTime?
+
+  @@unique([stepId, employeeId])
+  @@index([employeeId, status])
+}
+
+// The business timeline of a request. Audit log is still written separately.
+model ApprovalAction {
+  id        String        @id @default(uuid())
+  requestId String
+  request   Request       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  stepId    String?
+  step      ApprovalStep? @relation(fields: [stepId], references: [id], onDelete: SetNull)
+  // Employee id; null for the system.
+  actorId   String?
+  actorType String        @default("user")
+  // submit | resubmit | approve | reject | return | forward | recall | cancel | auto_skipped |
+  // auto_approve | auto_reject | reminder | notify
+  action    String
+  reason    String?
+  data      Json?
+  createdAt DateTime      @default(now())
+
+  @@index([requestId, createdAt])
+}
+
+model RequestFollower {
+  requestId  String
+  request    Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
   employeeId String
-  type       String
-  fromDate   DateTime
-  toDate     DateTime
-  totalDays  Decimal
-  reason     String?
-  status     ApprovalStatus @default(pending)
-  employee   Employee       @relation(fields: [employeeId], references: [id])
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  // requester_choice | workflow | node
+  source     String
+  createdAt  DateTime @default(now())
+
+  @@id([requestId, employeeId])
+  @@index([employeeId])
+}
+
+model RequestComment {
+  id        String   @id @default(uuid())
+  requestId String
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([requestId, createdAt])
+}
+
+// AU-21: someone approves in place of an absent approver (§5.8).
+model ApprovalDelegation {
+  id           String   @id @default(uuid())
+  delegatorId  String
+  delegateId   String
+  fromDate     DateTime @db.Date
+  toDate       DateTime @db.Date
+  // Empty = every request type.
+  requestTypes String[] @default([])
+  status       String   @default("active")
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([delegatorId, fromDate, toDate])
+}
+
+// LV-09. Seeded from the Labour Code; HR edits them.
+model LeaveType {
+  id                   String           @id @default(uuid())
+  code                 String           @unique
+  name                 String
+  paid                 Boolean          @default(true)
+  deductsBalance       Boolean          @default(false)
+  // day | half_day | hour: the smallest amount a request may take.
+  minUnit              String           @default("half_day")
+  maxDaysPerRequest    Decimal?         @db.Decimal(6, 2)
+  requiresDocument     Boolean          @default(false)
+  // all | male | female
+  gender               String           @default("all")
+  // Probation staff accrue this type but may not use it yet (§7.2).
+  allowDuringProbation Boolean          @default(true)
+  status               JobCatalogStatus @default(active)
+  sortOrder            Int              @default(0)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  balances             LeaveBalance[]
+}
+
+// One employee × leave type × year. Never written directly: every change is a transaction row and
+// these totals are kept in step with them (§7.2).
+model LeaveBalance {
+  id                 String                    @id @default(uuid())
+  employeeId         String
+  employee           Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId        String
+  leaveType          LeaveType                 @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  year               Int
+  entitled           Decimal                   @default(0) @db.Decimal(6, 2)
+  carriedOver        Decimal                   @default(0) @db.Decimal(6, 2)
+  adjusted           Decimal                   @default(0) @db.Decimal(6, 2)
+  used               Decimal                   @default(0) @db.Decimal(6, 2)
+  pending            Decimal                   @default(0) @db.Decimal(6, 2)
+  expired            Decimal                   @default(0) @db.Decimal(6, 2)
+  // Last day carried-over days may be used.
+  carryOverExpiresAt DateTime?                 @db.Date
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  transactions       LeaveBalanceTransaction[]
+
+  @@unique([employeeId, leaveTypeId, year])
+}
+
+model LeaveBalanceTransaction {
+  id        String       @id @default(uuid())
+  balanceId String
+  balance   LeaveBalance @relation(fields: [balanceId], references: [id], onDelete: Cascade)
+  // accrual | seniority | carry_over | expire | adjust | reserve | release | use | refund | import
+  kind      String
+  // Which total it changed: entitled | carriedOver | adjusted | used | pending | expired
+  field     String
+  amount    Decimal      @db.Decimal(6, 2)
+  reason    String?
+  requestId String?
+  // Idempotency key for jobs, e.g. accrual:2026-11.
+  sourceKey String?
+  actorId   String?
+  createdAt DateTime     @default(now())
+
+  @@unique([balanceId, sourceKey])
+  @@index([requestId])
 }
 
 model PayrollCycle {
