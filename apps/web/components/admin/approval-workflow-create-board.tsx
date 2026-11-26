@@ -29,6 +29,30 @@ const workflowObjectGroups: WorkflowPickerGroup[] = [{
     { value: "personnel_profile", label: "Cập nhật thông tin" },
     { value: "decision", label: "Quyết định" }
   ]
+}, {
+  // Request types run by the approval engine (docs/design/approval-engine.md §5.1).
+  label: "Đơn từ",
+  options: [
+    { value: "leave", label: "Đơn xin nghỉ" },
+    { value: "absence", label: "Đơn vắng mặt" },
+    { value: "overtime", label: "Đơn làm thêm" },
+    { value: "checkin_out", label: "Đơn giải trình chấm công" },
+    { value: "shift_change", label: "Đơn đổi ca" },
+    { value: "resignation", label: "Đơn xin thôi việc" }
+  ]
+}];
+
+// Leave types seeded by migration 20261126010000_approval_engine; "Tất cả" when left empty.
+const leaveSubObjectGroups: WorkflowPickerGroup[] = [{
+  options: [
+    { value: "annual", label: "Nghỉ phép năm" },
+    { value: "sick", label: "Nghỉ ốm (BHXH)" },
+    { value: "unpaid", label: "Nghỉ không lương" },
+    { value: "marriage", label: "Nghỉ kết hôn" },
+    { value: "child_marriage", label: "Nghỉ con kết hôn" },
+    { value: "bereavement", label: "Nghỉ tang" },
+    { value: "maternity", label: "Nghỉ thai sản (BHXH)" }
+  ]
 }];
 
 const decisionSubObjectGroups: WorkflowPickerGroup[] = [{
@@ -2458,7 +2482,7 @@ export function ApprovalWorkflowCreateBoard({
             {objectType !== "personnel_profile" ? (
               <ApprovalWorkflowPicker
                 emptyMessage="Hãy chọn đối tượng trước"
-                groups={objectType === "decision" ? decisionSubObjectGroups : []}
+                groups={objectType === "decision" ? decisionSubObjectGroups : objectType === "leave" ? leaveSubObjectGroups : []}
                 id="approval-workflow-sub-object"
                 label="Đối tượng con"
                 name="subObject"

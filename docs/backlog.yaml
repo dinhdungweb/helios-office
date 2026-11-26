@@ -967,23 +967,28 @@ modules:
       - id: AP-04
         title: Sửa quy trình duyệt
         api: ["PATCH /approval-workflows/:id"]
-        status: todo
+        status: partial
+        note: "API xong (PATCH sinh phiên bản mới khi đổi sơ đồ hoặc cài đặt). UI sửa quy trình làm ở task 7 của docs/plans/phase-3.md"
       - id: AP-05
         title: Chi tiết quy trình duyệt
         api: ["GET /approval-workflows/:id"]
-        status: todo
+        status: partial
+        note: "API xong, kèm danh sách lỗi chặn kích hoạt. UI ở task 7"
       - id: AP-06
         title: Phiên bản quy trình (versionMode)
         api: ["GET /approval-workflows/:id/versions"]
-        status: todo
+        status: partial
+        note: "Bảng ApprovalWorkflowVersion + API danh sách phiên bản, đơn trỏ tới phiên bản cố định. UI ở task 7"
       - id: AP-07
         title: Nhân bản quy trình
         api: ["POST /approval-workflows/:id/duplicate"]
-        status: todo
+        status: partial
+        note: "API xong (bản sao ở trạng thái nháp). UI ở task 7"
       - id: AP-08
         title: Bật / tắt quy trình
         api: ["POST /approval-workflows/:id/activate", "POST /approval-workflows/:id/deactivate"]
-        status: todo
+        status: partial
+        note: "API xong, kích hoạt kiểm tra sơ đồ (validateFlow). UI ở task 7"
       - id: AP-09
         title: Node gửi thông báo / gửi email trong sơ đồ quy trình (rich editor, người nhận theo phòng ban/vị trí/chức vụ)
         ui: /admin/settings/approval-workflows/new
@@ -1053,8 +1058,8 @@ modules:
         note: Đang fallback mock-data
       - id: AP-25
         title: Lọc HTML nội dung node thông báo/email phía server (khi lưu flowDefinition và trước khi gửi)
-        status: todo
-        note: Hiện chỉ lọc ở trình duyệt (sanitizeCommunicationContent)
+        status: done
+        note: "Lọc phía server khi lưu sơ đồ (sanitizeFlow, dựng lại thẻ theo danh sách cho phép), test bằng các mẫu XSS. Engine lọc lại trước khi gửi"
         depends: [AP-04]
       - id: AP-26
         title: Đính kèm file cho node gửi email
