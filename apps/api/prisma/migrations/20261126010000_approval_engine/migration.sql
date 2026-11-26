@@ -364,6 +364,13 @@ SELECT
   CURRENT_TIMESTAMP
 FROM "ApprovalWorkflowDefinition" w;
 
+-- Notification events of the approval engine (docs/design/approval-engine.md §5.3).
+INSERT INTO "NotificationEventType" ("key", "module", "label", "defaultEmail", "mandatory") VALUES
+  ('request.returned', 'requests', 'Đơn bị trả lại để bổ sung', true, false),
+  ('request.cancelled', 'requests', 'Đơn đã bị huỷ', true, false),
+  ('approval.workflow_notice', 'approvals', 'Thông báo từ quy trình duyệt', false, false)
+ON CONFLICT ("key") DO NOTHING;
+
 -- Request attachments were owned by the unused ApprovalRequest table.
 UPDATE "StoredFile" SET "ownerType" = 'Request' WHERE "ownerType" = 'ApprovalRequest';
 

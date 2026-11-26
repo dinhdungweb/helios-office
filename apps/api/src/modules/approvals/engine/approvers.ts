@@ -139,7 +139,9 @@ function resolveValue(org: OrgChart, value: string, requesterId: string): Resolv
   }
 }
 
-function resolveAll(org: OrgChart, value: string | undefined, requesterId: string) {
+// Everyone an audience value points at (active people only), without the approval rules. Also used
+// for the recipients of notification / email nodes.
+export function resolveAudience(org: OrgChart, value: string | undefined, requesterId: string) {
   const seen = new Set<string>();
   const result: ResolvedAssignee[] = [];
   for (const item of splitAudience(value).flatMap((part) => resolveValue(org, part, requesterId))) {
@@ -169,7 +171,7 @@ export function resolveApprovers(org: OrgChart, input: ResolveInput): ResolveRes
   const withoutRequester = (list: ResolvedAssignee[]) =>
     input.selfApproval === "skip" ? list.filter((item) => item.employeeId !== input.requesterId) : list;
 
-  const primary = withDelegates(org, resolveAll(org, input.approverValue, input.requesterId), input);
+  const primary = withDelegates(org, resolveAudience(org, input.approverValue, input.requesterId), input);
   const assignees = withoutRequester(primary);
   if (assignees.length > 0) return { assignees, skip: false, needsAttention: false };
 
@@ -184,7 +186,7 @@ export function resolveApprovers(org: OrgChart, input: ResolveInput): ResolveRes
   }
 
   const substitutes = withoutRequester(
-    withDelegates(org, resolveAll(org, input.substituteValue, input.requesterId).map((item) => ({ ...item, resolvedFrom: "substitute" as const })), input)
+    withDelegates(org, resolveAudience(org, input.substituteValue, input.requesterId).map((item) => ({ ...item, resolvedFrom: "substitute" as const })), input)
   );
   if (substitutes.length > 0) return { assignees: substitutes, skip: false, needsAttention: false };
 
