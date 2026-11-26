@@ -881,32 +881,40 @@ modules:
       - id: LV-09
         title: Danh mục loại nghỉ (có lương/không lương, trừ phép, cần giấy tờ)
         api: ["GET /leave-types", "POST /leave-types", "PATCH /leave-types/:id", "DELETE /leave-types/:id"]
-        status: todo
+        status: partial
+        note: "Bảng LeaveType + seed theo Bộ luật Lao động (migration 20261126010000), CRUD API với quyền permission.leave.manage. UI cài đặt trong phân hệ Đơn từ ở task 7"
       - id: LV-10
         title: Quỹ phép của tôi
         api: ["GET /leave-balances/me"]
-        status: todo
+        status: partial
         depends: [LV-09]
+        note: "API xong (sổ cái LeaveBalance + LeaveBalanceTransaction). UI ở task 7"
       - id: LV-11
         title: Quỹ phép toàn công ty
         api: ["GET /leave-balances"]
-        status: todo
+        status: partial
+        note: "API xong theo phạm vi dữ liệu. UI ở task 7"
       - id: LV-12
         title: Điều chỉnh quỹ phép thủ công
-        api: ["POST /leave-balances/adjust"]
-        status: todo
+        api: ["POST /leave-balances/adjust", "GET /leave-balances/:employeeId/transactions"]
+        status: partial
+        note: "API xong, bắt buộc lý do, ghi sổ cái và audit log. UI ở task 7"
       - id: LV-13
         title: Cộng phép tự động hằng tháng / theo thâm niên
-        status: todo
+        status: done
         depends: [CORE-16, LV-11]
+        note: "Worker chạy mỗi giờ (LeaveAccrualScheduler): 12 ngày/năm + 1 ngày mỗi 5 năm thâm niên, cộng dồn 1/12 mỗi tháng làm tròn 0,5, tháng vào làm tính nếu vào trước ngày 15. Khoá sourceKey nên chạy lại không cộng trùng. Test leave-rules.spec.ts, leave.spec.ts"
       - id: LV-14
         title: Chuyển phép tồn sang năm sau, hết hạn phép tồn
-        status: todo
+        status: done
         depends: [LV-13]
+        note: "Chuyển toàn bộ phép chưa dùng sang năm sau, phép tồn dùng trước và hết hạn 31/03. Cùng job với LV-13"
       - id: LV-15
         title: Kiểm tra trùng ngày, vượt quỹ phép, nghỉ nửa ngày/theo giờ theo ca
-        status: todo
+        status: done
         depends: [AT-05, LV-10]
+        api: ["POST /leave-requests/preview"]
+        note: "Tính theo lịch ca (bỏ ngày nghỉ, ngày lễ), nửa ngày theo giờ nghỉ giữa ca, theo giờ chính xác; chặn trùng ngày (cho phép hai nửa ngày), vượt quỹ, kỳ công đã chốt, thử việc. Kiểm tra phía server khi tạo và khi gửi đơn"
       - id: LV-16
         title: Form đơn nghỉ phép nối API
         ui: /user/requests/new

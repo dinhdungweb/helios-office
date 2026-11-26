@@ -12,6 +12,7 @@ import { AttendanceCalculationModule } from "../modules/attendance/attendance-ca
 import { AttendanceReminderModule } from "../modules/attendance/attendance-reminder.module";
 import { AttendanceTransferModule } from "../modules/attendance/attendance-transfer.module";
 import { EmployeeTransferModule } from "../modules/employees/employee-transfer.module";
+import { LeaveAccrualModule } from "../modules/leave/leave-accrual.module";
 import { NotificationDeliveryService } from "../modules/notifications/notification-delivery.service";
 import { AttendanceRecalcProcessor } from "./attendance-recalc.processor";
 import { AttendanceReminderScheduler } from "./attendance-reminder.scheduler";
@@ -21,6 +22,7 @@ import { NotificationsProcessor } from "./notifications.processor";
 import { RealtimeEmitter } from "./realtime-emitter.service";
 import { WorkerRuntime } from "./worker-runtime.service";
 import { FileCleanupService } from "./file-cleanup.service";
+import { LeaveAccrualScheduler } from "./leave-accrual.scheduler";
 
 // Root module of the background worker process (src/worker.ts). No HTTP server: it consumes the
 // BullMQ queues the API produces into. AdminSettingsModule provides the SMTP settings for email.
@@ -42,9 +44,10 @@ import { FileCleanupService } from "./file-cleanup.service";
     EmployeeTransferModule,
     AttendanceCalculationModule,
     AttendanceTransferModule,
-    AttendanceReminderModule
+    AttendanceReminderModule,
+    LeaveAccrualModule
   ],
-  providers: [WorkerRuntime, RealtimeEmitter, NotificationDeliveryService, NotificationsProcessor, EmailProcessor, ImportExportProcessor, AttendanceRecalcProcessor, FileCleanupService, AttendanceReminderScheduler],
+  providers: [WorkerRuntime, RealtimeEmitter, NotificationDeliveryService, NotificationsProcessor, EmailProcessor, ImportExportProcessor, AttendanceRecalcProcessor, FileCleanupService, AttendanceReminderScheduler, LeaveAccrualScheduler],
   exports: [WorkerRuntime]
 })
 export class WorkerModule {}

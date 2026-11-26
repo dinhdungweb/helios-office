@@ -70,7 +70,7 @@ export interface RequestTypeHandler<P = Record<string, unknown>> {
 export class RequestTypeRegistry {
   private readonly handlers = new Map<string, RequestTypeHandler>();
 
-  register(handler: RequestTypeHandler<never>) {
+  register<P>(handler: RequestTypeHandler<P>) {
     this.handlers.set(handler.type, handler as unknown as RequestTypeHandler);
   }
 

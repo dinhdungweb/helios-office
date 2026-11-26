@@ -30,7 +30,9 @@ export const SCOPABLE_PERMISSION_KEYS: readonly string[] = [
   "hr.dashboard.birthdays.view",
   "hr.dashboard.analytics.view",
   "hr.dashboard.organization.view",
-  "reports.company.view"
+  "reports.company.view",
+  // Phase 3: adjusting leave balances is limited to people in scope.
+  "permission.leave.manage"
 ];
 
 export function isScopablePermission(key: string) {

@@ -357,6 +357,12 @@ export const accountPermissionCatalog = [
     adminOnly: false
   },
   {
+    key: "permission.leave.manage",
+    category: "Đơn từ",
+    label: "Quản lý loại nghỉ và quỹ phép",
+    adminOnly: false
+  },
+  {
     key: "requests.personal.create",
     category: "Cá nhân",
     label: "Tạo đơn từ cá nhân",

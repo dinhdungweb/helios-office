@@ -364,6 +364,11 @@ SELECT
   CURRENT_TIMESTAMP
 FROM "ApprovalWorkflowDefinition" w;
 
+-- Leave types and balances (LV-09, LV-12); scoped like the other per-employee permissions.
+INSERT INTO "PermissionDefinition" ("key", "category", "label", "adminOnly", "scopable", "defaultScope", "sortOrder", "createdAt", "updatedAt")
+VALUES ('permission.leave.manage', 'Đơn từ', 'Quản lý loại nghỉ và quỹ phép', false, true, 'department', 60, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT ("key") DO NOTHING;
+
 -- Notification events of the approval engine (docs/design/approval-engine.md §5.3).
 INSERT INTO "NotificationEventType" ("key", "module", "label", "defaultEmail", "mandatory") VALUES
   ('request.returned', 'requests', 'Đơn bị trả lại để bổ sung', true, false),
