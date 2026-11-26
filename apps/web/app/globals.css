@@ -27453,3 +27453,374 @@ small {
 .device-policy-moved a {
   color: var(--color-info);
 }
+
+/* ---------------------------------------------------------------------------------------------
+   Đơn từ (Phase 3): request list, leave form preview, request detail actions, leave balances,
+   leave type settings. */
+
+.request-module-tabs {
+  padding: 0 var(--space-8);
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.requests-tabs {
+  justify-content: space-between;
+}
+
+.requests-tab-list a {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  gap: var(--space-4);
+  color: var(--color-text-secondary);
+  border-bottom: 2px solid transparent;
+  text-decoration: none;
+}
+
+.requests-tab-list a.is-active {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-text-primary);
+  font-weight: var(--font-weight-strong);
+}
+
+.requests-tab-count {
+  min-width: 20px;
+  padding: 0 var(--space-3);
+  color: #fff;
+  background: var(--color-danger);
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+.requests-create-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  text-decoration: none;
+}
+
+.requests-search {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 32px;
+  padding: 0 var(--space-5);
+  background: var(--color-surface-base);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.requests-search input,
+.requests-search-input {
+  min-width: 220px;
+  border: 0;
+  background: transparent;
+  outline: none;
+}
+
+.requests-search-input {
+  min-height: 32px;
+  padding: 0 var(--space-5);
+  background: var(--color-surface-base);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.requests-toolbar-right select {
+  min-height: 32px;
+  padding: 0 var(--space-5);
+  background: var(--color-surface-base);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.requests-table-row-link.is-mine-to-approve td:first-child {
+  box-shadow: inset 3px 0 0 var(--color-warning);
+}
+
+.request-person {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.request-step {
+  display: inline-block;
+  max-width: 320px;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+}
+
+.request-flag {
+  color: var(--color-danger);
+  font-weight: var(--font-weight-strong);
+}
+
+.requests-empty {
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.requests-error,
+.leave-save-error,
+.request-action-error,
+.leave-preview-error {
+  margin: var(--space-6) var(--space-8);
+  padding: var(--space-5) var(--space-7);
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border-radius: var(--radius-sm);
+}
+
+.leave-preview-error {
+  margin: 0;
+}
+
+.requests-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-6);
+  padding: 0 var(--space-8) var(--space-8);
+  color: var(--color-text-secondary);
+}
+
+.request-badge--returned,
+.request-badge--rejected,
+.request-badge--cancelled,
+.request-badge--draft {
+  white-space: nowrap;
+}
+
+/* Leave form */
+.leave-type-hint {
+  margin: var(--space-4) 0 var(--space-6);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.leave-control {
+  width: 100%;
+  min-height: 36px;
+}
+
+.leave-field input[type="date"],
+.leave-field input[type="time"] {
+  min-height: 36px;
+}
+
+.leave-preview {
+  margin: var(--space-6) 0;
+  padding: var(--space-6) var(--space-7);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.leave-preview p {
+  margin: 0;
+}
+
+.leave-preview-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-7);
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  color: var(--color-text-secondary);
+  list-style: none;
+  font-size: var(--font-size-sm);
+}
+
+/* Request detail */
+.request-detail-actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-5);
+  min-height: 32px;
+  padding: 0 var(--space-5);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.request-detail-actions .request-action-approve {
+  color: #fff;
+  background: var(--color-success);
+}
+
+.request-reason-box {
+  display: grid;
+  gap: var(--space-5);
+  margin: var(--space-6) var(--space-8) 0;
+  padding: var(--space-7);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.request-reason-box label {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.request-reason-box textarea {
+  min-height: 72px;
+}
+
+.request-reason-box > div {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.request-workflow-name {
+  margin: 0 0 var(--space-6);
+  color: var(--color-text-secondary);
+}
+
+.request-steps h3 {
+  margin: var(--space-6) 0 var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+.request-steps ol,
+.request-steps ul {
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.request-step-item {
+  padding: var(--space-6);
+  border: 1px solid var(--color-border-subtle);
+  border-left: 3px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.request-step-item.is-active {
+  border-left-color: var(--color-warning);
+}
+
+.request-step-item.is-approved {
+  border-left-color: var(--color-success);
+}
+
+.request-step-item.is-rejected,
+.request-step-item.is-returned {
+  border-left-color: var(--color-danger);
+}
+
+.request-step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-6);
+  margin-bottom: var(--space-5);
+}
+
+.request-step-status,
+.request-step-mode,
+.request-step-due {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.request-steps ul li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.request-activity-marker.is-negative {
+  color: var(--color-danger);
+}
+
+.request-activity-reason,
+.request-comment-body {
+  display: block;
+  white-space: pre-wrap;
+}
+
+.request-detail-missing {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-6);
+  padding: var(--space-8);
+}
+
+/* Leave balances and leave types */
+.leave-balances-section {
+  margin: var(--space-8);
+}
+
+.leave-balances-section h2 {
+  margin: 0 0 var(--space-6);
+  font-size: var(--font-size-md);
+}
+
+.leave-balances-section form {
+  margin-bottom: var(--space-6);
+}
+
+.leave-balances-table {
+  min-width: 0;
+  background: var(--color-surface-muted);
+}
+
+.leave-adjust-form,
+.leave-type-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.leave-adjust-form input,
+.leave-adjust-form select {
+  min-height: 32px;
+}
+
+.leave-adjust-form [role="alert"],
+.leave-type-form [role="alert"] {
+  color: var(--color-danger);
+}
+
+.leave-type-form {
+  align-items: flex-end;
+  margin: var(--space-6) var(--space-8);
+  padding: var(--space-7);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.leave-type-form label {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.leave-type-form .leave-type-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.leave-type-form-actions,
+.leave-type-actions {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.leave-types-page .requests-table {
+  min-width: 0;
+  margin: 0 var(--space-8);
+  width: calc(100% - 2 * var(--space-8));
+}
+
+.leave-types-page tr.is-archived td {
+  color: var(--color-text-secondary);
+}

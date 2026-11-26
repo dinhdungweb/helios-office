@@ -1,126 +1,61 @@
 "use client";
 
+import type { Route } from "next";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useTransition, type ReactNode } from "react";
 import { CollapseButton } from "@/components/user/collapse-button";
+import { StatusBadge } from "@/components/user/requests-board";
+import { CheckCircle, Clock, FileText, FlowArrow, PaperPlaneTilt, PencilSimple, Trash, WarningCircle, X } from "@/lib/icons";
+import { cancelRequestAction, commentRequestAction, decideRequestAction, recallRequestAction, submitRequestAction, type ActionResult } from "@/lib/request-actions";
 import {
-  CaretDown,
-  CaretLeft,
-  CaretRight,
-  Check,
-  CheckCircle,
-  Clock,
-  Export,
-  FileText,
-  FunnelSimple,
-  LinkSimple,
-  MagnifyingGlass,
-  Minus,
-  PaperPlaneTilt,
-  Paperclip,
-  PencilSimple,
-  Plus,
-  SealCheck,
-  Smiley,
-  SquaresFour,
-  UploadSimple
-} from "@/lib/icons";
-import { useState, type ReactNode } from "react";
+  ACTION_LABEL,
+  formatDate,
+  formatDateTime,
+  formatDays,
+  initials,
+  requestRange,
+  type RequestDetail,
+  type RequestStep,
+  type TimelineEntry
+} from "@/lib/request-format";
 
-const approvers = [
-  { name: "Nguyễn Đức Trung", avatar: "NT" },
-  { name: "Nguyễn Đức Trung", avatar: "NT" }
-];
-
-type Approver = (typeof approvers)[number];
-
-type DetailField = {
-  label: string;
-  value: string | Approver[];
-  badge?: "approved";
-  highlight?: boolean;
-  type?: "approvers";
+const STEP_STATUS_LABEL: Record<RequestStep["status"], string> = {
+  active: "Đang chờ duyệt",
+  approved: "Đã duyệt",
+  rejected: "Không duyệt",
+  returned: "Trả lại",
+  skipped: "Bỏ qua",
+  cancelled: "Đã huỷ"
 };
 
-const leftDetailFields: DetailField[] = [
-  { label: "Họ và tên", value: "Đặng Đình Dũng", highlight: true },
-  { label: "Phòng ban", value: "Phòng MKT" },
-  { label: "Chức vụ", value: "Nhân viên Fulltime" },
-  { label: "Tính công", value: "Có" },
-  { label: "Người duyệt", value: approvers, type: "approvers" }
-];
-
-const rightDetailFields: DetailField[] = [
-  { label: "Mã nhân viên", value: "SRG-035" },
-  { label: "Vị trí", value: "Web" },
-  { label: "Lý do", value: "Xin làm online" },
-  { label: "Trạng thái", value: "Đã duyệt", badge: "approved" },
-  { label: "Bước duyệt", value: "BGĐ ✓", badge: "approved" },
-];
-
-const descriptionField = {
-  label: "Mô tả",
-  value: "bộ phận được xin phép làm online"
+const ASSIGNEE_STATUS_LABEL: Record<string, string> = {
+  pending: "chờ duyệt",
+  approved: "đã duyệt",
+  rejected: "đã từ chối",
+  returned: "đã trả lại",
+  forwarded: "đã chuyển tiếp",
+  superseded: "không cần duyệt nữa",
+  cancelled: "đã huỷ"
 };
 
-const renderDetailValue = (field: DetailField) => {
-  if (field.type === "approvers" && Array.isArray(field.value)) {
-    return (
-      <span className="request-detail-approver-list">
-        {field.value.map((approver) => (
-          <RequestApprover approver={approver} key={approver.name} />
-        ))}
-      </span>
-    );
-  }
-
-  if (field.badge === "approved") {
-    return <span className="request-detail-status">{String(field.value)}</span>;
-  }
-
-  if (field.highlight) {
-    return <span className="request-detail-name-chip">{String(field.value)}</span>;
-  }
-
-  return String(field.value);
+const RESOLVED_FROM_LABEL: Record<string, string> = {
+  direct_manager: "quản lý trực tiếp",
+  supervisor: "cấp trên của quản lý",
+  department_head: "trưởng phòng",
+  position: "theo vị trí",
+  title: "theo chức vụ",
+  delegation: "được uỷ quyền",
+  substitute: "người duyệt thay",
+  fallback_admin: "quản trị quy trình (không tìm được người duyệt)",
+  escalation: "cấp trên (bước cuối trùng người tạo)",
+  forward: "được chuyển tiếp"
 };
 
-const activityItems = [
-  {
-    name: "Nguyễn Đức Trung",
-    action: "đã duyệt đơn",
-    time: "09:58 ng 29/06/2026",
-    meta: "Bước: BGĐ (#4)",
-    avatar: "NT",
-    type: "approved"
-  },
-  {
-    name: "Nguyễn Đức Trung",
-    action: "đã duyệt đơn",
-    time: "09:56 ng 29/06/2026",
-    meta: "Bước: Quản lý (#3)",
-    avatar: "NT",
-    type: "approved"
-  },
-  {
-    name: "Đặng Đình Dũng",
-    action: "đã tạo mới đơn",
-    time: "06:58 ng 26/06/2026",
-    meta: "ID: 10741",
-    avatar: "DD",
-    type: "created"
-  }
-];
+type PendingAction = "reject" | "return" | "cancel" | null;
 
-function RequestPanel({
-  children,
-  title,
-  action
-}: {
-  children: ReactNode;
-  title: string;
-  action?: ReactNode;
-}) {
+function Panel({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   const panelId = `request-detail-${title.toLowerCase().replace(/\s+/g, "-")}`;
-
   return (
     <section className="request-detail-panel" aria-labelledby={panelId}>
       <header className="request-detail-panel-header">
@@ -132,329 +67,349 @@ function RequestPanel({
   );
 }
 
-function RequestApprover({ approver }: { approver: (typeof approvers)[number] }) {
-  return (
-    <span className="request-detail-approver">
-      <span className="request-detail-avatar request-detail-avatar--photo">{approver.avatar}</span>
-      <CheckCircle size={14} weight="fill" aria-hidden="true" />
-      <span>{approver.name}</span>
-    </span>
-  );
+function Avatar({ name, tone = "photo" }: { name: string | null | undefined; tone?: "photo" | "blue" }) {
+  return <span className={`request-detail-avatar request-detail-avatar--${tone}`}>{initials(name)}</span>;
 }
 
-function RequestActivityItem({ item }: { item: (typeof activityItems)[number] }) {
+function TimelineItem({ entry }: { entry: TimelineEntry }) {
+  if (entry.kind === "comment") {
+    return (
+      <li className="request-activity-item request-activity-item--comment">
+        <span className="request-activity-marker">
+          <FileText size={16} weight="duotone" aria-hidden="true" />
+        </span>
+        <article>
+          <div>
+            <strong>{entry.author?.fullName ?? "Ai đó"}</strong> <span>đã thảo luận</span>
+          </div>
+          <p className="request-comment-body">{entry.body}</p>
+          <p>
+            <Clock size={13} weight="duotone" aria-hidden="true" />
+            {formatDateTime(entry.at)}
+          </p>
+        </article>
+        <Avatar name={entry.author?.fullName} tone="blue" />
+      </li>
+    );
+  }
+  const label = ACTION_LABEL[entry.action] ?? entry.action;
+  const negative = entry.action === "reject" || entry.action === "cancel" || entry.action === "error";
   return (
     <li className="request-activity-item">
-      <span className="request-activity-marker">
-        <CheckCircle size={16} weight="fill" aria-hidden="true" />
+      <span className={`request-activity-marker${negative ? " is-negative" : ""}`}>
+        {negative ? <WarningCircle size={16} weight="fill" aria-hidden="true" /> : <CheckCircle size={16} weight="fill" aria-hidden="true" />}
       </span>
       <article>
         <div>
-          <strong>{item.name}</strong> <span>{item.action}</span>
+          {entry.actor ? <strong>{entry.actor.fullName}</strong> : <strong>Hệ thống</strong>} <span>{label}</span>
         </div>
         <p>
           <Clock size={13} weight="duotone" aria-hidden="true" />
-          {item.time}
+          {formatDateTime(entry.at)}
         </p>
-        <small>{item.meta}</small>
+        {entry.step ? <small>Bước: {entry.step.name}{entry.step.round > 1 ? ` (lần gửi ${entry.step.round})` : ""}</small> : null}
+        {entry.reason ? <small className="request-activity-reason">Lý do: {entry.reason}</small> : null}
       </article>
-      <span className={item.type === "created" ? "request-detail-avatar request-detail-avatar--blue" : "request-detail-avatar request-detail-avatar--photo"}>{item.avatar}</span>
+      <Avatar name={entry.actor?.fullName ?? "Hệ thống"} tone={entry.actor ? "photo" : "blue"} />
     </li>
   );
 }
 
-function ApprovalWorkflowBoard() {
+function StepList({ steps }: { steps: RequestStep[] }) {
+  if (steps.length === 0) return <p className="request-steps-empty">Đơn chưa được gửi duyệt.</p>;
+  const rounds = [...new Set(steps.map((step) => step.round))].sort((a, b) => b - a);
   return (
-    <section className="request-workflow" aria-label="Quy trình duyệt đơn">
-      <header className="request-workflow-toolbar">
-        <div className="request-workflow-toolbar-left">
-          <button type="button" disabled aria-label="Hoàn tác">
-            <CaretLeft size={16} weight="duotone" aria-hidden="true" />
-          </button>
-          <button type="button" disabled aria-label="Làm lại">
-            <CaretRight size={16} weight="duotone" aria-hidden="true" />
-          </button>
-          <button type="button" disabled aria-label="Thêm nhóm">
-            <SquaresFour size={16} weight="duotone" aria-hidden="true" />
-          </button>
-          <button type="button" disabled aria-label="Sơ đồ">
-            <NetworkIconFallback />
-          </button>
+    <div className="request-steps">
+      {rounds.map((round) => (
+        <div key={round} className="request-steps-round">
+          {rounds.length > 1 ? <h3>Lần gửi {round}</h3> : null}
+          <ol>
+            {steps
+              .filter((step) => step.round === round)
+              .map((step) => (
+                <li key={step.id} className={`request-step-item is-${step.status}`}>
+                  <div className="request-step-head">
+                    <strong>{step.name}</strong>
+                    <span className="request-step-status">{STEP_STATUS_LABEL[step.status]}</span>
+                    {step.mode === "all" && step.assignees.length > 1 ? <span className="request-step-mode">Tất cả cùng duyệt</span> : null}
+                    {step.dueAt && step.status === "active" ? <span className="request-step-due">Hạn: {formatDateTime(step.dueAt)}</span> : null}
+                  </div>
+                  <ul>
+                    {step.assignees.map((assignee) => (
+                      <li key={assignee.id}>
+                        <Avatar name={assignee.fullName} />
+                        <span>
+                          {assignee.fullName} · {ASSIGNEE_STATUS_LABEL[assignee.status] ?? assignee.status}
+                          {RESOLVED_FROM_LABEL[assignee.resolvedFrom] ? <small> ({RESOLVED_FROM_LABEL[assignee.resolvedFrom]})</small> : null}
+                          {assignee.actedAt ? <small> · {formatDateTime(assignee.actedAt)}</small> : null}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+          </ol>
         </div>
-
-        <div className="request-workflow-toolbar-right">
-          <button type="button">Xem rút gọn</button>
-          <button type="button" aria-label="Lưu">
-            <FileText size={16} weight="duotone" aria-hidden="true" />
-          </button>
-          <button type="button" aria-label="Đảo chiều">
-            <CaretRight size={16} weight="duotone" aria-hidden="true" />
-          </button>
-          <button type="button" aria-label="Toàn màn hình">
-            <Export size={16} weight="duotone" aria-hidden="true" />
-          </button>
-          <button type="button" aria-label="Phóng to">
-            <MagnifyingGlass size={16} weight="duotone" aria-hidden="true" />
-          </button>
-          <button type="button" aria-label="Thu nhỏ">
-            <Minus size={16} weight="duotone" aria-hidden="true" />
-          </button>
-          <button type="button" aria-label="In">
-            <FileText size={16} weight="duotone" aria-hidden="true" />
-          </button>
-        </div>
-      </header>
-
-      <div className="request-workflow-canvas">
-        <div className="workflow-node workflow-start">
-          <span className="workflow-play" aria-hidden="true" />
-          <strong>Bắt đầu</strong>
-          <span className="workflow-port workflow-port--right" />
-        </div>
-
-        <div className="workflow-node workflow-condition">
-          <header>
-            <span className="workflow-expand">↗</span>
-            <div>
-              <strong>Điều kiện</strong>
-              <small>#2</small>
-            </div>
-          </header>
-          <div className="workflow-condition-row">
-            <span>Nhân viên</span>
-            <span>×</span>
-          </div>
-          <button type="button" aria-label="Thêm điều kiện">
-            <Plus size={16} weight="duotone" aria-hidden="true" />
-          </button>
-          <span className="workflow-port workflow-port--left" />
-          <span className="workflow-port workflow-port--right" />
-          <span className="workflow-port workflow-port--bottom" />
-        </div>
-
-        <div className="workflow-node workflow-approval workflow-manager">
-          <span className="workflow-check">
-            <Check size={14} weight="duotone" aria-hidden="true" />
-          </span>
-          <strong>#3 Quản lý</strong>
-          <p>
-            <span className="request-detail-avatar request-detail-avatar--photo">NT</span>
-            <Check size={13} weight="duotone" aria-hidden="true" />
-            Đã duyệt
-          </p>
-          <small>
-            <Clock size={13} weight="duotone" aria-hidden="true" />
-            2026-06-19 12:54:48
-          </small>
-          <span className="workflow-port workflow-port--left" />
-          <span className="workflow-port workflow-port--right" />
-        </div>
-
-        <div className="workflow-node workflow-approval workflow-board">
-          <span className="workflow-check">
-            <Check size={14} weight="duotone" aria-hidden="true" />
-          </span>
-          <strong>#4 BGĐ</strong>
-          <p>
-            <span className="request-detail-avatar request-detail-avatar--photo">NT</span>
-            <Check size={13} weight="duotone" aria-hidden="true" />
-            Đã duyệt
-          </p>
-          <small>
-            <Clock size={13} weight="duotone" aria-hidden="true" />
-            2026-06-19 12:55:42
-          </small>
-          <span className="workflow-port workflow-port--left" />
-          <span className="workflow-port workflow-port--right" />
-        </div>
-
-        <div className="workflow-node workflow-approval workflow-waiting">
-          <strong>#6 BGĐ</strong>
-          <p>
-            <Plus size={13} weight="duotone" aria-hidden="true" />
-            <Clock size={13} weight="duotone" aria-hidden="true" />
-            Chờ duyệt
-          </p>
-          <span className="workflow-port workflow-port--left" />
-          <span className="workflow-port workflow-port--right" />
-        </div>
-
-        <div className="workflow-end">
-          <Check size={42} weight="duotone" aria-hidden="true" />
-          <span>Đã duyệt</span>
-        </div>
-
-        <span className="workflow-line workflow-line-start" />
-        <span className="workflow-line workflow-line-condition" />
-        <span className="workflow-line workflow-line-manager" />
-        <span className="workflow-line workflow-line-board-a" />
-        <span className="workflow-line workflow-line-board-b" />
-        <span className="workflow-line workflow-line-board-c" />
-        <span className="workflow-line workflow-line-waiting-a" />
-        <span className="workflow-line workflow-line-waiting-b" />
-        <span className="workflow-label workflow-label-ok">Thỏa mãn</span>
-        <span className="workflow-label workflow-label-fail">Không thỏa mãn</span>
-      </div>
-    </section>
+      ))}
+    </div>
   );
 }
 
-function NetworkIconFallback() {
-  return (
-    <span className="workflow-mini-network" aria-hidden="true">
-      <span />
-      <span />
-      <span />
-    </span>
-  );
-}
+// LV-04 + AP-15 / AP-16 / AP-19: one request with its steps, history, discussion and the actions
+// the viewer may take.
+export function RequestDetailBoard({ request, timeline }: { request: RequestDetail; timeline: TimelineEntry[] }) {
+  const router = useRouter();
+  const [tab, setTab] = useState<"detail" | "workflow">("detail");
+  const [pending, setPending] = useState<PendingAction>(null);
+  const [reason, setReason] = useState("");
+  const [comment, setComment] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [working, startWorking] = useTransition();
+  const { permissions } = request;
+  const payload = request.payload;
 
-export function RequestDetailBoard() {
-  const [activeTab, setActiveTab] = useState<"detail" | "workflow">("detail");
+  const run = (work: () => Promise<ActionResult>) => {
+    setError(null);
+    startWorking(async () => {
+      const result = await work();
+      if (!result.ok) return setError(result.error);
+      setPending(null);
+      setReason("");
+      setComment("");
+      router.refresh();
+    });
+  };
+
+  const confirmPending = () => {
+    const text = reason.trim();
+    if (!text) return setError(pending === "cancel" ? "Hãy nhập lý do huỷ đơn." : "Hãy nhập lý do.");
+    if (pending === "cancel") return run(() => cancelRequestAction(request.id, text));
+    run(() => decideRequestAction({ stepId: permissions.myStepId!, action: pending!, reason: text, version: request.version, requestId: request.id }));
+  };
+
+  const canAct = permissions.myStepId || permissions.canEdit || permissions.canRecall || permissions.canCancel;
 
   return (
-    <main className="request-detail-page" aria-label="Chi tiết đơn xin nghỉ">
+    <main className="request-detail-page" aria-label={`Chi tiết ${request.title} ${request.code}`}>
       <header className="request-detail-tabs">
         <nav role="tablist" aria-label="Nội dung đơn">
-          <button
-            className={activeTab === "detail" ? "is-active" : undefined}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === "detail"}
-            onClick={() => setActiveTab("detail")}
-          >
+          <button className={tab === "detail" ? "is-active" : undefined} type="button" role="tab" aria-selected={tab === "detail"} onClick={() => setTab("detail")}>
             Chi tiết
           </button>
-          <button
-            className={activeTab === "workflow" ? "is-active" : undefined}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === "workflow"}
-            onClick={() => setActiveTab("workflow")}
-          >
+          <button className={tab === "workflow" ? "is-active" : undefined} type="button" role="tab" aria-selected={tab === "workflow"} onClick={() => setTab("workflow")}>
             Quy trình duyệt
           </button>
         </nav>
 
-        <div className="request-detail-actions" aria-label="Công cụ đơn">
-          <button type="button">
-            <LinkSimple size={15} weight="duotone" aria-hidden="true" />
-            Liên kết
-          </button>
-          <button type="button">
-            <SealCheck size={15} weight="duotone" aria-hidden="true" />
-            Ký số
-          </button>
-          <button type="button">
-            <FileText size={15} weight="duotone" aria-hidden="true" />
-            Biểu mẫu
-            <CaretDown size={13} weight="duotone" aria-hidden="true" />
-          </button>
-          <button type="button" disabled>
-            <UploadSimple size={15} weight="duotone" aria-hidden="true" />
-            Tải lên
-          </button>
-          <button type="button" disabled>
-            <PencilSimple size={15} weight="duotone" aria-hidden="true" />
-            Sửa
-          </button>
-          <button className="icon-button" type="button" aria-label="Thêm thao tác">
-            <CaretDown size={15} weight="duotone" aria-hidden="true" />
-          </button>
-        </div>
+        {canAct ? (
+          <div className="request-detail-actions" aria-label="Thao tác với đơn">
+            {permissions.myStepId ? (
+              <>
+                <button
+                  className="request-action-approve"
+                  type="button"
+                  disabled={working}
+                  onClick={() => run(() => decideRequestAction({ stepId: permissions.myStepId!, action: "approve", version: request.version, requestId: request.id }))}
+                >
+                  <CheckCircle size={15} weight="duotone" aria-hidden="true" />
+                  Duyệt
+                </button>
+                <button type="button" disabled={working} onClick={() => setPending("reject")}>
+                  <WarningCircle size={15} weight="duotone" aria-hidden="true" />
+                  Từ chối
+                </button>
+                {permissions.canReturn ? (
+                  <button type="button" disabled={working} onClick={() => setPending("return")}>
+                    <FlowArrow size={15} weight="duotone" aria-hidden="true" />
+                    Trả lại
+                  </button>
+                ) : null}
+              </>
+            ) : null}
+            {permissions.canEdit ? (
+              <Link href={`/user/requests/new?type=${request.type}&id=${request.id}` as Route}>
+                <PencilSimple size={15} weight="duotone" aria-hidden="true" />
+                Sửa
+              </Link>
+            ) : null}
+            {permissions.canSubmit ? (
+              <button type="button" disabled={working} onClick={() => run(() => submitRequestAction(request.id))}>
+                <PaperPlaneTilt size={15} weight="duotone" aria-hidden="true" />
+                Gửi duyệt
+              </button>
+            ) : null}
+            {permissions.canRecall ? (
+              <button type="button" disabled={working} onClick={() => run(() => recallRequestAction(request.id))}>
+                <FlowArrow size={15} weight="duotone" aria-hidden="true" />
+                Rút đơn
+              </button>
+            ) : null}
+            {permissions.canCancel ? (
+              <button type="button" disabled={working} onClick={() => setPending("cancel")}>
+                <Trash size={15} weight="duotone" aria-hidden="true" />
+                Huỷ đơn
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </header>
 
-      {activeTab === "workflow" ? <ApprovalWorkflowBoard /> : <div className="request-detail-layout">
-        <div className="request-detail-main">
-          <RequestPanel title="Thông tin chung">
-            <dl className="request-general-grid">
-              <div className="request-field-column">
-                {leftDetailFields.map((field) => (
-                  <div className="request-field" key={field.label}>
-                    <dt>{field.label}</dt>
-                    <dd>{renderDetailValue(field)}</dd>
-                  </div>
-                ))}
-              </div>
-
-              <div className="request-field-column">
-                {rightDetailFields.map((field) => (
-                  <div className="request-field" key={field.label}>
-                    <dt>{field.label}</dt>
-                    <dd>{renderDetailValue(field)}</dd>
-                  </div>
-                ))}
-              </div>
-
-              <div className="request-field request-field--full">
-                <dt>{descriptionField.label}</dt>
-                <dd>{descriptionField.value}</dd>
-              </div>
-            </dl>
-          </RequestPanel>
-
-          <RequestPanel title="Chi tiết">
-            <div className="request-detail-table" role="table" aria-label="Chi tiết thời gian đơn">
-              <div role="rowgroup">
-                <div role="row">
-                  <span role="columnheader">Bắt đầu</span>
-                  <span role="columnheader">Kết thúc</span>
-                  <span role="columnheader">Thời lượng</span>
-                  <span role="columnheader">Thời gian theo ca</span>
-                </div>
-                <div role="row">
-                  <strong role="cell">08:00 26/06/2026</strong>
-                  <strong role="cell">18:30 26/06/2026</strong>
-                  <strong role="cell">10 giờ 30 phút</strong>
-                  <strong role="cell">1 (Ngày)</strong>
-                </div>
-              </div>
-            </div>
-          </RequestPanel>
+      {pending ? (
+        <div className="request-reason-box" role="group" aria-label="Nhập lý do">
+          <label>
+            <span>{pending === "reject" ? "Lý do từ chối" : pending === "return" ? "Cần bổ sung gì? (lý do trả lại)" : "Lý do huỷ đơn"}</span>
+            <textarea autoFocus value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} />
+          </label>
+          <div>
+            <button className="primary-button" type="button" disabled={working} onClick={confirmPending}>
+              Xác nhận
+            </button>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => {
+                setPending(null);
+                setReason("");
+                setError(null);
+              }}
+            >
+              <X size={14} aria-hidden="true" />
+              Đóng
+            </button>
+          </div>
         </div>
+      ) : null}
 
-        <aside className="request-detail-side" aria-label="Lịch sử và thảo luận">
-          <RequestPanel
-            title="Lịch sử hoạt động"
-            action={
-              <div className="request-detail-panel-actions">
-                <button className="icon-button" type="button" aria-label="Lọc lịch sử">
-                  <FunnelSimple size={16} weight="duotone" aria-hidden="true" />
-                </button>
-                <CollapseButton label="lịch sử hoạt động" />
+      {error ? (
+        <p className="request-action-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      {tab === "workflow" ? (
+        <div className="request-detail-layout">
+          <div className="request-detail-main">
+            <Panel title="Các bước duyệt">
+              {request.workflow ? (
+                <p className="request-workflow-name">
+                  Quy trình: {request.workflow.name} (phiên bản {request.workflow.version})
+                </p>
+              ) : request.usedDefaultWorkflow ? (
+                <p className="request-workflow-name">Chưa có quy trình riêng cho loại đơn này: quản lý trực tiếp duyệt.</p>
+              ) : null}
+              <StepList steps={request.steps} />
+            </Panel>
+          </div>
+        </div>
+      ) : (
+        <div className="request-detail-layout">
+          <div className="request-detail-main">
+            <Panel title="Thông tin chung">
+              <dl className="request-general-grid">
+                <div className="request-field-column">
+                  <div className="request-field">
+                    <dt>Họ và tên</dt>
+                    <dd>
+                      <span className="request-detail-name-chip">{request.requester.fullName}</span>
+                    </dd>
+                  </div>
+                  <div className="request-field">
+                    <dt>Phòng ban</dt>
+                    <dd>{request.requester.department?.name ?? ""}</dd>
+                  </div>
+                  <div className="request-field">
+                    <dt>Loại đơn</dt>
+                    <dd>{request.title}</dd>
+                  </div>
+                  <div className="request-field">
+                    <dt>Tính công</dt>
+                    <dd>{payload.paid === undefined ? "" : payload.paid ? "Có lương" : "Không lương"}</dd>
+                  </div>
+                </div>
+                <div className="request-field-column">
+                  <div className="request-field">
+                    <dt>Mã đơn</dt>
+                    <dd>{request.code}</dd>
+                  </div>
+                  <div className="request-field">
+                    <dt>Trạng thái</dt>
+                    <dd>
+                      <StatusBadge status={request.status} />
+                    </dd>
+                  </div>
+                  <div className="request-field">
+                    <dt>Thời gian</dt>
+                    <dd>{requestRange(request)}</dd>
+                  </div>
+                  <div className="request-field">
+                    <dt>Số ngày</dt>
+                    <dd>{formatDays(request.quantity)}</dd>
+                  </div>
+                </div>
+                <div className="request-field request-field--full">
+                  <dt>Lý do</dt>
+                  <dd>{payload.reason || "—"}</dd>
+                </div>
+                {request.cancelReason ? (
+                  <div className="request-field request-field--full">
+                    <dt>Lý do huỷ</dt>
+                    <dd>{request.cancelReason}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            </Panel>
+
+            <Panel title="Chi tiết">
+              <div className="request-detail-table" role="table" aria-label="Các ngày nghỉ">
+                <div role="rowgroup">
+                  <div role="row">
+                    <span role="columnheader">Ngày</span>
+                    <span role="columnheader">Thời gian nghỉ</span>
+                    <span role="columnheader">Công</span>
+                  </div>
+                  {(payload.days ?? []).map((day) => (
+                    <div role="row" key={day.date}>
+                      <strong role="cell">{formatDate(day.date)}</strong>
+                      <strong role="cell">
+                        {Math.floor(day.minutes / 60)} giờ{day.minutes % 60 ? ` ${day.minutes % 60} phút` : ""}
+                      </strong>
+                      <strong role="cell">{day.units}</strong>
+                    </div>
+                  ))}
+                </div>
               </div>
-            }
-          >
-            <ol className="request-activity-list">
-              {activityItems.map((item) => (
-                <RequestActivityItem item={item} key={`${item.name}-${item.time}`} />
-              ))}
-            </ol>
-          </RequestPanel>
+            </Panel>
+          </div>
 
-          <RequestPanel title="Thảo luận">
-            <div className="request-discussion-empty">
-              <FileText size={34} weight="duotone" aria-hidden="true" />
-              <span>Không có thảo luận nào</span>
-            </div>
-            <form className="request-comment-box" aria-label="Viết thảo luận">
-              <button type="button" aria-label="Tải lên">
-                <UploadSimple size={16} weight="duotone" aria-hidden="true" />
-              </button>
-              <input placeholder="Viết thảo luận..." />
-              <button type="button" aria-label="Đính kèm">
-                <Paperclip size={17} weight="duotone" aria-hidden="true" />
-              </button>
-              <button type="button" aria-label="Biểu cảm">
-                <Smiley size={17} weight="duotone" aria-hidden="true" />
-              </button>
-              <button type="submit" aria-label="Gửi thảo luận">
-                <PaperPlaneTilt size={18} weight="duotone" aria-hidden="true" />
-              </button>
-            </form>
-          </RequestPanel>
-        </aside>
-      </div>}
+          <aside className="request-detail-side" aria-label="Lịch sử và thảo luận">
+            <Panel title="Lịch sử hoạt động">
+              <ol className="request-activity-list">
+                {[...timeline].reverse().map((entry) => (
+                  <TimelineItem entry={entry} key={`${entry.kind}-${entry.id}`} />
+                ))}
+              </ol>
+            </Panel>
+
+            {permissions.canComment ? (
+              <Panel title="Thảo luận">
+                <form
+                  className="request-comment-box"
+                  aria-label="Viết thảo luận"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (comment.trim()) run(() => commentRequestAction(request.id, comment.trim()));
+                  }}
+                >
+                  <input value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Viết thảo luận..." maxLength={5000} aria-label="Nội dung thảo luận" />
+                  <button type="submit" aria-label="Gửi thảo luận" disabled={working || !comment.trim()}>
+                    <PaperPlaneTilt size={18} weight="duotone" aria-hidden="true" />
+                  </button>
+                </form>
+              </Panel>
+            ) : null}
+          </aside>
+        </div>
+      )}
     </main>
   );
 }

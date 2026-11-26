@@ -15,12 +15,11 @@ import { AttendanceConfirmationBanner } from "@/components/attendance/attendance
 import { AttendanceModuleTabs } from "@/components/attendance/attendance-module-tabs";
 import { AttendanceBoard } from "@/components/user/attendance-board";
 import { CheckinOutRequestCreateBoard } from "@/components/user/checkin-out-request-create-board";
-import { LeaveRequestCreateBoard } from "@/components/user/leave-request-create-board";
+import { redirect } from "next/navigation";
 import { OvertimeRequestCreateBoard } from "@/components/user/overtime-request-create-board";
 import { PersonnelDirectoryBoard } from "@/components/user/personnel-directory-board";
 import { ProfileBoard, type ProfileTabKey } from "@/components/user/profile-board";
 import { ResignationRequestCreateBoard } from "@/components/user/resignation-request-create-board";
-import { RequestsBoard } from "@/components/user/requests-board";
 import { SalaryBoard } from "@/components/user/salary-board";
 import { ShiftChangeRequestCreateBoard } from "@/components/user/shift-change-request-create-board";
 import { Badge } from "@/components/ui/badge";
@@ -292,20 +291,13 @@ function UserPayroll() {
   );
 }
 
-function UserRequests() {
-  return (
-    <UserFrame activeModule="requests" showSearch title="Danh sách đơn từ năm 2026">
-      <RequestsBoard />
-    </UserFrame>
-  );
+// The request list and leave form live on their own pages since they read real data (Phase 3).
+function UserRequests(): never {
+  redirect("/user/requests");
 }
 
-function UserLeaveCreate() {
-  return (
-    <UserFrame activeModule="requests" showSearch title="Tạo mới đơn xin nghỉ">
-      <LeaveRequestCreateBoard />
-    </UserFrame>
-  );
+function UserLeaveCreate(): never {
+  redirect("/user/requests/new?type=leave");
 }
 
 function UserAbsenceCreate() {
