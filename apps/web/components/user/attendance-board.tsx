@@ -107,7 +107,8 @@ const STATUS_LABELS: Record<AttendanceDayStatus, string> = {
   missing_checkout: "Thiếu giờ ra",
   absent: "Vắng",
   holiday: "Nghỉ lễ",
-  day_off: "Ngày nghỉ"
+  day_off: "Ngày nghỉ",
+  leave: "Nghỉ phép"
 };
 
 const CHANGE_SOURCE_LABELS: Record<string, string> = {
@@ -158,6 +159,8 @@ function buildAttendanceDays(month: string, results: AttendanceDayResult[], sche
 
     if (result && result.status === "holiday") {
       days.push({ ...base, score: "L", scoreTone: "info", caption: schedule?.holiday?.name ?? "Nghỉ lễ" });
+    } else if (result && result.status === "leave") {
+      days.push({ ...base, score: "P", scoreTone: "info", caption: "Nghỉ phép (đơn đã duyệt)" });
     } else if (result && result.status === "day_off") {
       const worked = result.outsideShiftMinutes > 0;
       days.push(

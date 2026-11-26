@@ -11,7 +11,9 @@ export type AttendanceDayStatus =
   | "missing_checkout"
   | "absent"
   | "holiday"
-  | "day_off";
+  | "day_off"
+  // A full day of approved leave (AT-22).
+  | "leave";
 
 export type AttendanceDayResult = {
   id: string;

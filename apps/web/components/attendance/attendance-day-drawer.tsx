@@ -20,7 +20,8 @@ export const STATUS_LABELS: Record<AttendanceDayStatus, string> = {
   missing_checkout: "Thiếu giờ ra",
   absent: "Vắng",
   holiday: "Nghỉ lễ",
-  day_off: "Ngày nghỉ"
+  day_off: "Ngày nghỉ",
+  leave: "Nghỉ phép"
 };
 
 const SOURCE_LABELS: Record<string, string> = { punch_sync: "có lượt chấm công mới", recalculation: "tính lại", manual: "HR sửa tay" };

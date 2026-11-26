@@ -44,6 +44,8 @@ function cellContent(cell: TimesheetCell, display: Display, isFuture: boolean) {
     return { text: isFuture ? "" : "–", tone: "muted" };
   }
   if (cell.status === "holiday") return { text: "L", tone: "info" };
+  // P: a full day of approved leave (AT-22).
+  if (cell.status === "leave") return { text: "P", tone: "info" };
   if (cell.status === "day_off") {
     return cell.outsideShiftMinutes > 0 ? { text: display === "hours" ? hours(cell.outsideShiftMinutes) : "0", tone: "info" } : { text: "N", tone: "muted" };
   }

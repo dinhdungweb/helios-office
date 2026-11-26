@@ -840,40 +840,40 @@ modules:
       - id: LV-01
         title: Danh sách đơn nghỉ đọc từ DB
         api: ["GET /leave-requests"]
-        status: partial
-        note: Đọc DB, đã có guard; UI chưa dùng
+        status: done
+        note: "Đọc Request loại leave (giữ dạng cũ cho 3 dashboard), có guard. Bỏ ở Phase 9"
       - id: LV-02
         title: Tạo đơn (API chung cho mọi loại đơn)
         api: ["POST /requests", "POST /requests/:id/submit", "GET /requests/types"]
-        status: partial
+        status: done
         depends: [AP-10]
-        note: "API + engine xong (RequestsService, handler theo loại đơn). UI ở task 7 của docs/plans/phase-3.md"
+        note: "Thử trình duyệt 2026-11-26: khanglm tạo đơn nghỉ và gửi duyệt, quy trình mặc định giao quản lý trực tiếp"
       - id: LV-03
         title: Danh sách đơn của tôi / cần tôi duyệt / tôi theo dõi
         api: ["GET /requests"]
-        status: partial
-        note: "API xong (hộp mine, to_approve, processed, following, all theo phạm vi dữ liệu). UI ở task 7"
+        status: done
+        note: "Hộp Đơn của tôi / Cần tôi duyệt (có số đếm) / Tôi đã xử lý / Tôi theo dõi / Tất cả (HR theo phạm vi). Thử trình duyệt hai vai"
       - id: LV-04
         title: Chi tiết đơn
         api: ["GET /requests/:id"]
         ui: /user/requests/detail
-        status: partial
-        note: "API xong, kèm các bước và quyền hành động của người xem. UI ở task 7"
+        status: done
+        note: "Trang chi tiết: thông tin, các ngày nghỉ, các bước duyệt theo lần gửi, lịch sử, thao tác theo quyền. Thử trình duyệt"
       - id: LV-05
         title: Sửa đơn nháp / bị trả lại
         api: ["PATCH /requests/:id"]
         status: partial
-        note: "API xong (khoá lạc quan theo version). UI ở task 7"
+        note: "API + UI (nút Sửa mở form với dữ liệu đơn) xong, test service; chưa thử tay trên trình duyệt"
       - id: LV-06
         title: Huỷ / rút lại đơn
         api: ["POST /requests/:id/cancel", "POST /requests/:id/recall"]
         status: partial
-        note: "API xong (rút khi chưa ai xử lý, đơn đã duyệt chỉ HR huỷ). UI ở task 7"
+        note: "API + UI (Rút đơn, Huỷ đơn có lý do) xong, test engine; chưa thử tay trên trình duyệt"
       - id: LV-07
         title: Bình luận trên đơn
         api: ["GET /requests/:id/comments", "POST /requests/:id/comments"]
-        status: partial
-        note: "API xong. UI ở task 7"
+        status: done
+        note: "Thử trình duyệt: người duyệt bình luận, hiện trong lịch sử"
       - id: LV-08
         title: Đính kèm file vào đơn
         api: ["POST /requests/:id/attachments"]
@@ -883,23 +883,23 @@ modules:
         title: Danh mục loại nghỉ (có lương/không lương, trừ phép, cần giấy tờ)
         api: ["GET /leave-types", "POST /leave-types", "PATCH /leave-types/:id", "DELETE /leave-types/:id"]
         status: partial
-        note: "Bảng LeaveType + seed theo Bộ luật Lao động (migration 20261126010000), CRUD API với quyền permission.leave.manage. UI cài đặt trong phân hệ Đơn từ ở task 7"
+        note: "API + trang Đơn từ → Cài đặt → Loại nghỉ xong (seed theo Bộ luật Lao động); trang cài đặt chưa thử tay"
       - id: LV-10
         title: Quỹ phép của tôi
         api: ["GET /leave-balances/me"]
         status: partial
         depends: [LV-09]
-        note: "API xong (sổ cái LeaveBalance + LeaveBalanceTransaction). UI ở task 7"
+        note: "API + trang Quỹ phép xong; số dư đúng trên form nghỉ (thử trình duyệt), trang Quỹ phép chưa thử tay"
       - id: LV-11
         title: Quỹ phép toàn công ty
         api: ["GET /leave-balances"]
         status: partial
-        note: "API xong theo phạm vi dữ liệu. UI ở task 7"
+        note: "API + bảng Quỹ phép nhân sự (theo phạm vi) xong; chưa thử tay với tài khoản có quyền"
       - id: LV-12
         title: Điều chỉnh quỹ phép thủ công
         api: ["POST /leave-balances/adjust", "GET /leave-balances/:employeeId/transactions"]
         status: partial
-        note: "API xong, bắt buộc lý do, ghi sổ cái và audit log. UI ở task 7"
+        note: "API + nút Điều chỉnh trên trang Quỹ phép xong; chưa thử tay"
       - id: LV-13
         title: Cộng phép tự động hằng tháng / theo thâm niên
         status: done
@@ -919,8 +919,8 @@ modules:
       - id: LV-16
         title: Form đơn nghỉ phép nối API
         ui: /user/requests/new
-        status: partial
-        note: Có UI, chưa gửi dữ liệu
+        status: done
+        note: "Form nối API: loại nghỉ, nhiều khoảng thời gian, xem trước số ngày theo ca và quỹ phép còn lại, lưu nháp / gửi duyệt. Thử trình duyệt: chiều 02/12 + 03/12 = 1,5 ngày"
         depends: [LV-02]
       - id: LV-17
         title: Form vắng mặt / ra ngoài nối API
@@ -953,8 +953,9 @@ modules:
       - id: LV-24
         title: Trang danh sách đơn nối API (bỏ requestRows viết cứng)
         ui: /user/requests
-        status: partial
+        status: done
         depends: [LV-03]
+        note: "Bỏ requestRows viết cứng; danh sách đọc API có tìm kiếm, lọc trạng thái / loại, phân trang. Thử trình duyệt"
       - id: LV-25
         title: Lịch nghỉ của phòng ban
         api: ["GET /leave-requests/calendar"]
@@ -1030,19 +1031,19 @@ modules:
       - id: AP-14
         title: Hộp duyệt của tôi
         api: ["GET /approvals"]
-        status: partial
-        note: "GET /approvals đọc DB (bước đang chờ tôi, kể cả uỷ quyền), bỏ mock. UI ở task 7"
+        status: done
+        note: "GET /approvals đọc DB; hộp Cần tôi duyệt trên web. Thử trình duyệt với haianh"
       - id: AP-15
         title: Duyệt / từ chối
         api: ["POST /approvals/:id/decision"]
-        status: partial
-        note: "POST /approvals/:id/decision lưu DB, :id là bước duyệt. UI ở task 7"
+        status: done
+        note: "Duyệt / từ chối lưu DB theo bước, khoá lạc quan. Thử trình duyệt: duyệt → quỹ phép trừ, bảng công ghi nghỉ, người tạo nhận thông báo"
         depends: [AP-13]
       - id: AP-16
         title: Trả lại để bổ sung
         api: ["POST /approvals/:id/return"]
         status: partial
-        note: "API xong, bắt buộc lý do. UI ở task 7"
+        note: "API + UI (Trả lại, nhập lý do trên trang) xong, test engine; chưa thử tay"
       - id: AP-17
         title: Chuyển tiếp người duyệt
         api: ["POST /approvals/:id/forward"]
@@ -1054,9 +1055,9 @@ modules:
       - id: AP-19
         title: Timeline lịch sử duyệt
         api: ["GET /approvals/:id/timeline"]
-        status: partial
+        status: done
         depends: [AP-13]
-        note: "API xong (hành động + bình luận theo thời gian). UI ở task 7"
+        note: "Lịch sử hoạt động trên trang chi tiết (hành động + bình luận). Thử trình duyệt"
       - id: AP-20
         title: Người theo dõi đơn
         status: todo

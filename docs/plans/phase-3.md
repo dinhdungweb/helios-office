@@ -22,14 +22,14 @@ Chia hai đợt như thiết kế mục 12. Đóng task nào chạy `npm run typ
 
 | # | Item | Việc | Kiểm tra | Trạng thái |
 |---|---|---|---|---|
-| 1 | – | Migration: `Request`, `ApprovalWorkflowVersion`, `ApprovalStep`, `ApprovalAssignee`, `ApprovalAction`, `RequestFollower`, `RequestComment`, `ApprovalDelegation`, `LeaveType`, `LeaveBalance`, `LeaveBalanceTransaction`; loại adjustment công mới + `sourceRequestId`; chép `LeaveRequest` sang `Request`, xoá `ApprovalRequest`; phiên bản 1 cho quy trình đang có | `prisma validate`, typecheck | |
-| 2 | AP-04 → AP-08, AP-25 | Sửa (sinh phiên bản mới), chi tiết, danh sách phiên bản, nhân bản, bật / tắt quy trình; kiểm tra sơ đồ; lọc HTML node thông báo / email phía server | Unit: sơ đồ hợp lệ / thiếu kết thúc / vòng lặp / node không tới được | |
-| 3 | AP-11 | Hàm thuần: đánh giá điều kiện, xác định người duyệt (quản lý trực tiếp, trưởng phòng, vị trí / chức vụ trong đơn vị, lùi khi thiếu, bỏ người tạo, người thay, admin) | Unit bảng trường hợp | |
-| 4 | AP-10, AP-12, AP-13 | Engine: chọn quy trình (hoặc mặc định), chạy sơ đồ, `any` / `all`, lưu bước / người được giao / hành động, giới hạn 100 bước, khoá lạc quan | Unit bảng trường hợp + đồng thời | |
-| 5 | LV-02 → LV-07, AP-14 → AP-16, AP-19 | API đơn chung, hộp duyệt, duyệt / từ chối / trả lại, timeline, bình luận | Unit + E2E 401/403 | |
-| 6 | LV-09 → LV-15 | Loại nghỉ (seed theo Bộ luật Lao động), quỹ phép sổ cái, tính số ngày nghỉ theo lịch ca, cộng phép hằng tháng + thâm niên, chuyển / hết hạn phép tồn | Unit bảng trường hợp | |
-| 7 | LV-16, LV-24, LV-01 | Form đơn nghỉ, trang danh sách đơn, hộp duyệt, quỹ phép của tôi nối API thật | Trình duyệt hai vai | |
-| 8 | AT-22, AP-23 | Duyệt đơn nghỉ → adjustment `leave` + tính lại công; thông báo người duyệt / người tạo | Unit + trình duyệt đầu–cuối | |
+| 1 | – | Migration: `Request`, `ApprovalWorkflowVersion`, `ApprovalStep`, `ApprovalAssignee`, `ApprovalAction`, `RequestFollower`, `RequestComment`, `ApprovalDelegation`, `LeaveType`, `LeaveBalance`, `LeaveBalanceTransaction`; loại adjustment công mới + `sourceRequestId`; chép `LeaveRequest` sang `Request`, xoá `ApprovalRequest`; phiên bản 1 cho quy trình đang có | `prisma validate`, typecheck | ✅ Migration `20261126010000_approval_engine`, đã áp vào DB local (sao lưu trước ở `.tmp/db-backup`), `migrate diff` với schema rỗng |
+| 2 | AP-04 → AP-08, AP-25 | Sửa (sinh phiên bản mới), chi tiết, danh sách phiên bản, nhân bản, bật / tắt quy trình; kiểm tra sơ đồ; lọc HTML node thông báo / email phía server | Unit: sơ đồ hợp lệ / thiếu kết thúc / vòng lặp / node không tới được | API ✅ (19 unit sơ đồ + 22 unit lọc HTML). UI sửa / bật tắt / nhân bản / xem phiên bản quy trình còn thiếu |
+| 3 | AP-11 | Hàm thuần: đánh giá điều kiện, xác định người duyệt (quản lý trực tiếp, trưởng phòng, vị trí / chức vụ trong đơn vị, lùi khi thiếu, bỏ người tạo, người thay, admin) | Unit bảng trường hợp | ✅ 42 unit |
+| 4 | AP-10, AP-12, AP-13 | Engine: chọn quy trình (hoặc mặc định), chạy sơ đồ, `any` / `all`, lưu bước / người được giao / hành động, giới hạn 100 bước, khoá lạc quan | Unit bảng trường hợp + đồng thời | ✅ 16 unit runner + 14 unit engine (Prisma giả trong bộ nhớ) |
+| 5 | LV-02 → LV-07, AP-14 → AP-16, AP-19 | API đơn chung, hộp duyệt, duyệt / từ chối / trả lại, timeline, bình luận | Unit + E2E 401/403 | ✅ 14 unit + e2e guard. Thử trình duyệt hai vai |
+| 6 | LV-09 → LV-15 | Loại nghỉ (seed theo Bộ luật Lao động), quỹ phép sổ cái, tính số ngày nghỉ theo lịch ca, cộng phép hằng tháng + thâm niên, chuyển / hết hạn phép tồn | Unit bảng trường hợp | ✅ 41 unit; worker tự cộng phép tháng 11 trên DB thật (11 ngày) |
+| 7 | LV-16, LV-24, LV-01 | Form đơn nghỉ, trang danh sách đơn, hộp duyệt, quỹ phép của tôi nối API thật | Trình duyệt hai vai | Phần lớn ✅: danh sách, form nghỉ, chi tiết, duyệt, bình luận đã thử trình duyệt; sửa / rút / huỷ / trả lại, trang Quỹ phép, cài đặt loại nghỉ chưa thử tay |
+| 8 | AT-22, AP-23 | Duyệt đơn nghỉ → adjustment `leave` + tính lại công; thông báo người duyệt / người tạo | Unit + trình duyệt đầu–cuối | ✅ Thử thật: duyệt đơn 25/11 → job tính lại lý do request → ngày công trạng thái leave, 1 công nghỉ có lương; người tạo nhận thông báo. OT / đổi ca... ở 3b |
 
 ### 3b. Các loại đơn còn lại và vận hành
 

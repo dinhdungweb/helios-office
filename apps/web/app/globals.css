@@ -27507,7 +27507,7 @@ small {
   gap: var(--space-4);
   min-height: 32px;
   padding: 0 var(--space-5);
-  background: var(--color-surface-base);
+  background: var(--color-surface-muted);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-sm);
 }
@@ -27523,7 +27523,7 @@ small {
 .requests-search-input {
   min-height: 32px;
   padding: 0 var(--space-5);
-  background: var(--color-surface-base);
+  background: var(--color-surface-muted);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-sm);
 }
@@ -27531,7 +27531,7 @@ small {
 .requests-toolbar-right select {
   min-height: 32px;
   padding: 0 var(--space-5);
-  background: var(--color-surface-base);
+  background: var(--color-surface-muted);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-sm);
 }

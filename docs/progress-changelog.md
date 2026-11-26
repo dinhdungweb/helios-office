@@ -10,6 +10,22 @@ File này dùng để theo dõi tiến độ triển khai Helios Office: đã l�
 
 ## 2026-11-26
 
+### Phase 3a - Engine phê duyệt & nghỉ phép (đang làm)
+
+Trạng thái: nhánh `feat/phase-2`, chưa push. Plan: `docs/plans/phase-3.md`. Thiết kế (đã duyệt cùng các đề xuất mục 13): `docs/design/approval-engine.md`.
+
+- Engine phê duyệt: đơn chạy theo phiên bản quy trình cố định; chọn quy trình theo loại đơn / loại nghỉ, không khớp thì quản lý trực tiếp duyệt; sơ đồ kiểu 1Office (bước duyệt, điều kiện nhiều ô, thông báo, email); một người đủ hoặc tất cả cùng duyệt; người duyệt trùng người tạo thì bỏ qua, bước cuối thì lên cấp trên; không tìm được ai thì giao người quản trị quy trình và đánh dấu cần kiểm tra. Duyệt / từ chối / trả lại (bắt buộc lý do), rút, huỷ (đơn đã duyệt chỉ HR), khoá lạc quan, thông báo sau khi lưu.
+- Quy trình: sửa sinh phiên bản mới, nhân bản, bật / tắt có kiểm tra sơ đồ, lọc HTML node thông báo / email phía server (API; giao diện sửa quy trình còn thiếu).
+- Nghỉ phép: loại nghỉ theo Bộ luật Lao động (HR sửa được), quỹ phép dạng sổ cái, cộng 1/12 mỗi tháng + 1 ngày mỗi 5 năm thâm niên, phép tồn chuyển năm và hết hạn 31/03; số ngày nghỉ tính theo lịch ca (nửa ngày, theo giờ); chặn trùng ngày, vượt quỹ, kỳ công đã chốt, thử việc.
+- Bảng công (AT-22): duyệt đơn nghỉ ghi điều chỉnh theo ngày, ngày nghỉ cả ngày có trạng thái "Nghỉ phép" (ký hiệu P), công nghỉ có lương vào paidLeaveUnits; sửa tay của HR vẫn thắng và "Bỏ sửa tay" không còn xoá nghỉ phép.
+- Giao diện phân hệ Đơn từ: danh sách theo hộp, form nghỉ có xem trước, trang chi tiết với các bước và lịch sử, trang Quỹ phép, Cài đặt → Loại nghỉ.
+
+Kiểm tra: typecheck, lint 0 lỗi, audit strict 0 lỗi, 522 unit + 47 e2e pass. Thử thật trên DB local: khanglm tạo đơn → haianh duyệt → quỹ phép trừ, bảng công 25/11 ghi nghỉ phép, khanglm nhận thông báo (tiêu chí hoàn thành của roadmap).
+
+Dữ liệu thử để lại trên DB local: quản lý trực tiếp của Lê Minh Khang đặt là Nguyễn Hải Anh; đơn NP-2026-000003, NP-2026-000004 đã duyệt. Sao lưu trước migration: `.tmp/db-backup/before-phase3-20261126.dump`.
+
+Tiếp theo: thử tay các màn còn lại (sửa / rút / huỷ / trả lại, Quỹ phép, Cài đặt loại nghỉ), giao diện sửa quy trình (AP-04 → AP-08), rồi 3b.
+
 ### Phase 2 - chạy gate đóng phase
 
 - Quy tắc chấm công riêng cho GPS và Wifi như 1Office (DV-06, AT-13, AT-14): mỗi cách chấm có cài đặt riêng cho chấm ngày không có ca, chỉ thiết bị đã duyệt, chụp ảnh và kiểm tra theo đối tượng áp dụng. Công tắc cũ được migration `20261026020000_check_in_rules_per_method` chép sang cả hai. Ca làm việc có mục Địa điểm chấm công. Số ngày liên tiếp không cần chấm mặc định là 2 (AT-28).

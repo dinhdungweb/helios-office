@@ -342,6 +342,26 @@ describe("ApprovalEngineService", () => {
     expect(request().status).toBe("pending");
   });
 
+  it("records an error when nobody at all can approve a step", async () => {
+    const flow: FlowDefinition = {
+      nodes: [
+        { id: "start", type: "start" },
+        { id: "nobody", type: "approval", approvalConfig: { name: "Phòng trống", approverId: "department:missing" } },
+        { id: "ok", type: "approved" }
+      ],
+      edges: [
+        { source: "start", target: "nobody" },
+        { source: "nobody", target: "ok" }
+      ]
+    };
+    const { submit, db, request, engine } = setup(flow);
+    (engine as unknown as { org: { fallbackAdminIds: () => Promise<string[]> } }).org.fallbackAdminIds = async () => [];
+    await submit();
+
+    expect(request()).toMatchObject({ status: "pending", needsAttention: true });
+    expect(db.actions.find((item) => item.action === "error")?.reason).toContain("Không tìm được người duyệt");
+  });
+
   it("skips a step that would go to the requester and flags admin fallbacks", async () => {
     const flow: FlowDefinition = {
       nodes: [

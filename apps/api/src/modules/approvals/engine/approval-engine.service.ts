@@ -317,6 +317,19 @@ export class ApprovalEngineService {
           }
         });
         if (outcome.resolved.needsAttention && !request.needsAttention) await this.transition(tx, request, { needsAttention: true });
+        if (outcome.resolved.assignees.length === 0) {
+          // Not even an approval admin exists: the step waits for HR to fix the workflow or the org chart.
+          await tx.approvalAction.create({
+            data: {
+              requestId: request.id,
+              stepId: step.id,
+              actorType: "system",
+              action: "error",
+              reason: "Không tìm được người duyệt (kể cả người quản trị quy trình). Cần cập nhật quy trình duyệt hoặc người quản lý trên hồ sơ."
+            }
+          });
+          this.logger.warn(`Request ${request.code}: step "${step.name}" has nobody to approve it`);
+        }
         const nodeFollowers = splitAudience(node.approvalConfig?.followerId);
         if (nodeFollowers.length > 0) {
           await this.addFollowers(tx, request.id, nodeFollowers.flatMap((value) => resolveAudience(org, value, request.requesterId).map((item) => item.employeeId)), "node");
