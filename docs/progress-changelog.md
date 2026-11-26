@@ -8,6 +8,16 @@ File này dùng để theo dõi tiến độ triển khai Helios Office: đã l�
 - Ghi rõ phạm vi, file/module chính, trạng thái kiểm tra và việc tiếp theo.
 - Những phần chưa hoàn tất phải ghi là `Chưa xong` hoặc `Tiếp theo` để tránh nhầm là đã chạy thật.
 
+## 2026-11-26
+
+### Phase 2 - chạy gate đóng phase
+
+- Quy tắc chấm công riêng cho GPS và Wifi như 1Office (DV-06, AT-13, AT-14): mỗi cách chấm có cài đặt riêng cho chấm ngày không có ca, chỉ thiết bị đã duyệt, chụp ảnh và kiểm tra theo đối tượng áp dụng. Công tắc cũ được migration `20261026020000_check_in_rules_per_method` chép sang cả hai. Ca làm việc có mục Địa điểm chấm công. Số ngày liên tiếp không cần chấm mặc định là 2 (AT-28).
+- Gate: typecheck pass, 339 unit + 45 e2e pass, lint 0 lỗi, build pass, `audit:features --strict` 0 lỗi. Toàn bộ 33 item của Phase 2 đã `done`.
+- Chưa xong: task 24 (nạp một tháng log thật, so với bảng HR tính tay) và test tay các luồng chính. Migration mới chưa áp vào DB local vì Docker đang tắt.
+
+Tiếp theo: làm task 24 cùng HR → đóng Phase 2, merge `feat/phase-2` vào `main` → viết `docs/design/approval-engine.md` cho Phase 3.
+
 ## 2026-10-22
 
 ### Phase 2 - Ca làm việc & engine tính công (đang làm)
@@ -38,7 +48,7 @@ Trạng thái: nhánh `feat/phase-2`, chưa push. Plan: `docs/plans/phase-2.md`.
 
 Kiểm tra: 304 unit + 45 e2e pass, audit pass. Thử thật: đồng bộ 08:10–17:05 → muộn 10 phút, 0,98 công.
 
-Tiếp theo: máy chấm công (AT-19), lỗi đồng bộ (AT-20), log gốc (AT-21), nhắc quên chấm (AT-23).
+Tiếp theo: (đã xong các mục máy chấm công, lỗi đồng bộ, log gốc, nhắc quên chấm — xem entry 2026-11-26).
 
 ## 2026-10-21
 
