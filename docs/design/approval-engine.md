@@ -129,7 +129,7 @@ Xác định **lúc bước được mở**, không phải lúc gửi đơn, đ�
 | `automatic:direct_manager` | `Employee.managerId` của người tạo. Không có thì lấy trưởng phòng của người tạo (`Department.headId`); người tạo chính là trưởng phòng thì lấy trưởng phòng cha. |
 | `automatic:creator_supervisor` | Quản lý của quản lý trực tiếp (cấp trên hai bậc), cùng cách lùi như trên. |
 | `department:<id>` | Trưởng phòng ban đó (`headId`). |
-| `position:<id>` | Mọi nhân sự đang làm vị trí đó **trong cùng đơn vị** với người tạo (phạm vi `branch`, [data-scope.md](data-scope.md) mục 3). |
+| `position:<id>` | Mọi nhân sự đang làm vị trí đó **trong cùng đơn vị** với người tạo: cây con của phòng ban tổ tiên gần nhất là chi nhánh / công ty, **không gồm** các chi nhánh con bên dưới (khác phạm vi `branch` của [data-scope.md](data-scope.md), vốn gồm cả chi nhánh con). |
 | `title:<id>` | Như `position`, theo chức vụ. |
 | `dynamic:*` | Không dùng cho người duyệt (chỉ dùng cho người nhận thông báo / email). |
 
