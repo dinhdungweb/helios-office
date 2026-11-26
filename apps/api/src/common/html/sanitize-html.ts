@@ -38,6 +38,7 @@ function readHref(attributes: string) {
   if (!match) return null;
   const raw = match[1] ?? match[2] ?? match[3] ?? "";
   // Browsers ignore control characters and whitespace inside the scheme ("java\tscript:").
+  // eslint-disable-next-line no-control-regex -- matching control characters is the point here
   const url = decodeEntities(raw).replace(/[\u0000- \u007f-\u009f]/g, "");
   return SAFE_URL.test(url) ? url : null;
 }
