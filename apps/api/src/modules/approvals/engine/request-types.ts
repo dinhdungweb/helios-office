@@ -46,7 +46,14 @@ export type RequestSummary = {
   unit?: "day" | "hour" | null;
 };
 
-export type HandlerContext = { tx: Prisma.TransactionClient; requesterId: string; actorId?: string };
+export type HandlerContext = {
+  tx: Prisma.TransactionClient;
+  requesterId: string;
+  actorId?: string;
+  // Work to run once the transaction has committed (e.g. recalculating attendance, which reads
+  // through its own connection). Failures are logged, never undo the request.
+  defer?: (label: string, run: () => Promise<unknown>) => void;
+};
 
 export interface RequestTypeHandler<P = Record<string, unknown>> {
   type: RequestType;

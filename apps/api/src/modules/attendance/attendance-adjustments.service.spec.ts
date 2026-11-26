@@ -120,7 +120,8 @@ describe("AttendanceAdjustmentsService (AT-15)", () => {
   it("undoes manual changes and recalculates, or says there is nothing to undo", async () => {
     const { service, calculation, prisma } = setup();
     await service.revoke(user, "day-1", { reason: "Nhập nhầm" });
-    expect(prisma.attendanceAdjustment.updateMany.mock.calls[0][0].where).toEqual({ employeeId: "emp-1", workDate, revokedAt: null });
+    // Leave written by approved requests (AT-22) is not HR's to undo here.
+    expect(prisma.attendanceAdjustment.updateMany.mock.calls[0][0].where).toEqual({ employeeId: "emp-1", workDate, revokedAt: null, type: "manual" });
     expect(calculation.recalculate).toHaveBeenCalled();
 
     await expect(setup({ revoked: 0 }).service.revoke(user, "day-1", {})).rejects.toThrow("không có sửa tay");

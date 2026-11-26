@@ -189,3 +189,42 @@ describe("assignPunches", () => {
 function localTime(date: Date) {
   return new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date);
 }
+
+describe("calculateDay — approved leave (AT-22)", () => {
+  const morning = { start: at(DAY, "08:00"), end: at(DAY, "12:00") };
+  const afternoon = { start: at(DAY, "13:00"), end: at(DAY, "17:00") };
+
+  it("turns a full day of paid leave without punches into leave, not absence", () => {
+    expect(day({ leave: { paidUnits: 1, unpaidUnits: 0, windows: [] } })).toMatchObject({ status: "leave", workUnits: 0, paidLeaveUnits: 1, lateMinutes: 0 });
+  });
+
+  it("does not pay unpaid leave", () => {
+    expect(day({ leave: { paidUnits: 0, unpaidUnits: 1, windows: [] } })).toMatchObject({ status: "leave", paidLeaveUnits: 0 });
+  });
+
+  it("forgives the morning taken as leave", () => {
+    const result = day({ times: ["13:00", "17:00"], leave: { paidUnits: 0.5, unpaidUnits: 0, windows: [morning] } });
+    expect(result).toMatchObject({ lateMinutes: 0, status: "on_time", workUnits: 0.5, paidLeaveUnits: 0.5 });
+    expect(result.flags).toContain("leave");
+  });
+
+  it("forgives leaving for an afternoon off but still counts lateness in the morning", () => {
+    expect(day({ times: ["08:20", "12:00"], leave: { paidUnits: 0.5, unpaidUnits: 0, windows: [afternoon] } })).toMatchObject({
+      lateMinutes: 20,
+      earlyMinutes: 0,
+      status: "late"
+    });
+  });
+
+  it("never lets worked units plus leave pass the shift", () => {
+    expect(day({ times: ["08:00", "17:00"], leave: { paidUnits: 0.5, unpaidUnits: 0, windows: [afternoon] } }).workUnits).toBe(0.5);
+  });
+
+  it("leaves HR's manual figures in charge", () => {
+    expect(day({ leave: { paidUnits: 1, unpaidUnits: 0, windows: [] }, manual: { status: "on_time", workUnits: 1 } })).toMatchObject({ status: "on_time", workUnits: 1 });
+  });
+
+  it("ignores leave on a day without a shift", () => {
+    expect(day({ shift: null, leave: { paidUnits: 1, unpaidUnits: 0, windows: [] } })).toMatchObject({ status: "day_off", paidLeaveUnits: 0 });
+  });
+});

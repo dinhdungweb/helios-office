@@ -3,9 +3,10 @@ import type { Prisma, Request } from "@prisma/client";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import { RequestTypeRegistry, type ConditionFieldDef, type HandlerContext, type RequestSummary, type RequestTypeHandler } from "../approvals/engine/request-types";
-import { localDate } from "../attendance/engine/zoned-time";
+import { AttendanceRecalcService } from "../attendance/attendance-recalc.service";
+import { localDate, zonedInstant } from "../attendance/engine/zoned-time";
 import { LeaveBalancesService } from "./leave-balances.service";
-import { leaveUnits, unitsByYear, type LeaveDay, type LeaveRange, type MinUnit } from "./leave-rules";
+import { leaveUnits, parseTime, unitsByYear, type LeaveDay, type LeaveRange, type MinUnit } from "./leave-rules";
 import { LeaveScheduleService } from "./leave-schedule.service";
 import { LeavePayloadDto } from "./leave.dto";
 
@@ -37,6 +38,17 @@ export function leavePayloadOf(request: Pick<Request, "payload">): LeavePayload 
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
+// The time window of part-day leave on a date (start time on the first day, end time on the last),
+// or null for a whole day.
+export function leaveWindow(ranges: LeaveRange[], date: string, timeZone: string): { start: Date; end: Date } | null {
+  const range = ranges.find((item) => item.fromDate <= date && date <= item.toDate);
+  if (!range) return null;
+  const from = date === range.fromDate ? parseTime(range.fromTime) : null;
+  const to = date === range.toDate ? parseTime(range.toTime) : null;
+  if (from === null && to === null) return null;
+  return { start: new Date(zonedInstant(date, from ?? 0, timeZone)), end: new Date(zonedInstant(date, to ?? 1440 - 1, timeZone)) };
+}
+
 // The "leave" request type (LV-09 → LV-16, docs/design/approval-engine.md §6–7).
 @Injectable()
 export class LeaveRequestHandler implements RequestTypeHandler<LeavePayload>, OnModuleInit {
@@ -45,7 +57,8 @@ export class LeaveRequestHandler implements RequestTypeHandler<LeavePayload>, On
   constructor(
     private readonly registry: RequestTypeRegistry,
     private readonly balances: LeaveBalancesService,
-    private readonly schedule: LeaveScheduleService
+    private readonly schedule: LeaveScheduleService,
+    private readonly recalc: AttendanceRecalcService
   ) {}
 
   onModuleInit() {
@@ -143,12 +156,48 @@ export class LeaveRequestHandler implements RequestTypeHandler<LeavePayload>, On
     await this.move(context, request, "pending", null, "release");
   }
 
+  // AT-22: the leave goes on the timesheet as one adjustment per day, then those days are recalculated.
   async onApproved(request: Request, context: HandlerContext) {
     await this.move(context, request, "pending", "used", "use");
+    const payload = leavePayloadOf(request);
+    const policy = await context.tx.attendancePolicy.findUnique({ where: { id: "default" }, select: { timezone: true } });
+    const timeZone = policy?.timezone ?? "Asia/Ho_Chi_Minh";
+    await context.tx.attendanceAdjustment.createMany({
+      data: payload.days.map((day) => {
+        const window = leaveWindow(payload.ranges, day.date, timeZone);
+        return {
+          employeeId: request.requesterId,
+          workDate: new Date(`${day.date}T00:00:00.000Z`),
+          type: "leave" as const,
+          workUnits: day.units,
+          paid: payload.paid,
+          punchesSet: false,
+          checkIn: window?.start ?? null,
+          checkOut: window?.end ?? null,
+          reason: `${request.code} · ${payload.leaveTypeName}`,
+          sourceRequestId: request.id,
+          createdById: context.actorId ?? null
+        };
+      })
+    });
+    this.recalculateLater(request, context);
   }
 
   async onCancelledAfterApproval(request: Request, context: HandlerContext) {
     await this.move(context, request, "used", null, "refund");
+    await context.tx.attendanceAdjustment.updateMany({
+      where: { sourceRequestId: request.id, revokedAt: null },
+      data: { revokedAt: new Date(), revokedById: context.actorId ?? null }
+    });
+    this.recalculateLater(request, context);
+  }
+
+  private recalculateLater(request: Request, context: HandlerContext) {
+    const dates = leavePayloadOf(request).days.map((day) => day.date).sort();
+    if (dates.length === 0) return;
+    context.defer?.("Tính lại công", () =>
+      this.recalc.request({ from: dates[0], to: dates.at(-1)!, employeeIds: [request.requesterId], reason: "request", requestedById: context.actorId })
+    );
   }
 
   // Takes back what the request holds on `from`, adding it to `to` when given.

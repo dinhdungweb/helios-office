@@ -1,7 +1,7 @@
 import type { AttendancePolicy, HolidayType, Shift } from "@prisma/client";
 import { requiredMinutesFor, resolveShiftRules } from "../../shifts/shift-rules";
 import { datesBetween, resolveDayShift } from "../../shifts/shift-resolver";
-import { assignPunches, calculateDay, scheduleFor, type DayResult, type EnginePolicy, type EngineShift, type ManualOverride } from "./attendance-engine";
+import { assignPunches, calculateDay, scheduleFor, type DayLeave, type DayResult, type EnginePolicy, type EngineShift, type ManualOverride } from "./attendance-engine";
 import { addDays, localDate, zonedInstant } from "./zoned-time";
 
 // One employee over a range of work dates: resolves each date's shift, splits the punches between
@@ -67,6 +67,8 @@ export type EmployeeDaysInput = {
   employment: { startDate: string | null; endDate: string | null };
   punches: Date[];
   manual: Map<string, ManualOverride>;
+  // AT-22: approved leave by date.
+  leave?: Map<string, DayLeave>;
 };
 
 export type EmployeeDay = { workDate: string; result: DayResult | null; shiftCode: string | null; holidayType: HolidayType | null; punchCount: number; policy: EnginePolicy | null };
@@ -178,7 +180,8 @@ export function calculateEmployeeDays(input: EmployeeDaysInput): EmployeeDay[] {
       punches,
       policy: day.enginePolicy,
       employment: input.employment,
-      manual: input.manual.get(day.date) ?? null
+      manual: input.manual.get(day.date) ?? null,
+      leave: input.leave?.get(day.date) ?? null
     };
     const result = calculateDay(input_);
     if (result && day.autoDetected) result.flags.push("auto_shift");
@@ -229,7 +232,7 @@ type PlannedDay = {
 // days, a check-in on the first day and a check-out on the last make the whole run count, the days
 // in between included. Only untouched days qualify (no HR change, nothing punched in between).
 function joinContinuousShifts(days: PlannedDay[], maxDays: number) {
-  const plain = (day: PlannedDay | undefined) => Boolean(day?.shift && day.result && !day.input.manual);
+  const plain = (day: PlannedDay | undefined) => Boolean(day?.shift && day.result && !day.input.manual && !day.input.leave);
   for (let first = 0; first < days.length; first += 1) {
     if (!plain(days[first]) || days[first].result!.status !== "missing_checkout") continue;
     for (let last = first + 1; last < days.length && last - first + 1 <= maxDays; last += 1) {

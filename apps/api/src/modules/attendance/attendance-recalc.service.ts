@@ -11,7 +11,8 @@ import { addDays, localDate } from "./engine/zoned-time";
 // inside the request; larger ones go to the attendance-recalc queue, or run in the background here
 // when Redis is down. Periods locked by AT-17 will be skipped here once locking exists.
 
-export type RecalcReason = "manual" | "schedule" | "holiday" | "policy" | "shift" | "department_default";
+// "request": an approved / cancelled request changed leave or other adjustments (AT-22).
+export type RecalcReason = "manual" | "schedule" | "holiday" | "policy" | "shift" | "department_default" | "request";
 
 export type RecalcRequest = {
   from: string;

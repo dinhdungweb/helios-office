@@ -5,6 +5,7 @@ import { LeaveBalancesService, totalsOf } from "./leave-balances.service";
 import { LeaveRequestHandler } from "./leave-request.handler";
 import type { LeaveDayShift } from "./leave-rules";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely typed in-memory test double
 type Row = Record<string, any>;
 
 const office: LeaveDayShift = { startMinute: 480, endMinute: 1020, breakStartMinute: 720, breakEndMinute: 780, requiredMinutes: 480, workUnits: 1, flexible: false };
@@ -21,6 +22,7 @@ function fakeDb() {
     transactions: [] as Row[],
     requests: [] as Row[],
     periods: [] as Row[],
+    adjustments: [] as Row[],
     employees: [{ id: "staff", startDate: new Date("2023-01-02T00:00:00Z"), endDate: null, officialStartDate: new Date("2023-03-01T00:00:00Z"), status: "active" }] as Row[]
   };
   const key = (where: Row) => where.employeeId_leaveTypeId_year;
@@ -56,6 +58,15 @@ function fakeDb() {
           .map((row) => ({ amount: row.amount, balance: db.balances.find((item) => item.id === row.balanceId) }))
     },
     request: { findMany: async () => db.requests },
+    attendancePolicy: { findUnique: async () => ({ timezone: "Asia/Ho_Chi_Minh" }) },
+    attendanceAdjustment: {
+      createMany: async ({ data }: Row) => data.forEach((row: Row) => db.adjustments.push({ revokedAt: null, ...row })),
+      updateMany: async ({ where, data }: Row) => {
+        const rows = db.adjustments.filter((row) => row.sourceRequestId === where.sourceRequestId && row.revokedAt === null);
+        rows.forEach((row) => Object.assign(row, data));
+        return { count: rows.length };
+      }
+    },
     attendancePeriod: { findMany: async ({ where }: Row) => db.periods.filter((row) => where.month.in.includes(row.month) && row.status === "locked") },
     employee: {
       findUnique: async ({ where }: Row) => db.employees.find((row) => row.id === where.id) ?? null,
@@ -70,12 +81,14 @@ function setup() {
   const { client, db } = fakeDb();
   const balances = new LeaveBalancesService(client as never, { contextFields: () => ({}) } as never, {} as never);
   const schedule = { load: jest.fn().mockResolvedValue(weekdays) };
-  const handler = new LeaveRequestHandler(new RequestTypeRegistry(), balances, schedule as never);
-  const context = { tx: client as never, requesterId: "staff", actorId: "staff" };
+  const recalc = { request: jest.fn() };
+  const handler = new LeaveRequestHandler(new RequestTypeRegistry(), balances, schedule as never, recalc as never);
+  const deferred: Array<{ label: string; run: () => Promise<unknown> }> = [];
+  const context = { tx: client as never, requesterId: "staff", actorId: "staff", defer: (label: string, run: () => Promise<unknown>) => deferred.push({ label, run }) };
   const give = (days: number, year = 2026) => balances.post(client as never, { employeeId: "staff", leaveTypeId: annual.id, year, field: "entitled", amount: days, kind: "accrual" });
   const balance = (year = 2026) => totalsOf(db.balances.find((row) => row.year === year) as never);
   const asRequest = (payload: unknown, overrides: Row = {}) => ({ id: "req-1", code: "NP-2026-000001", requesterId: "staff", payload, ...overrides }) as Request;
-  return { client, db, balances, handler, context, give, balance, asRequest };
+  return { client, db, balances, handler, context, give, balance, asRequest, recalc, deferred };
 }
 
 const range = (fromDate: string, toDate = fromDate, extra: Row = {}) => ({ fromDate, toDate, ...extra });
@@ -182,6 +195,45 @@ describe("LeaveRequestHandler", () => {
     const { payload } = await handler.prepare({ leaveTypeCode: "annual", ranges: [range("2026-12-01", "2026-12-03")] }, context);
     expect(handler.conditionRecord(asRequest(payload))).toEqual({ total_days: 3, leave_type: "annual", paid: true, deducts_balance: true });
     expect(handler.affectedDates(asRequest(payload))).toEqual(["2026-12-01", "2026-12-02", "2026-12-03"]);
+  });
+});
+
+describe("LeaveRequestHandler on the timesheet (AT-22)", () => {
+  it("writes one leave adjustment per day on approval and recalculates after commit", async () => {
+    const { handler, context, give, asRequest, db, recalc, deferred } = setup();
+    await give(5);
+    const { payload } = await handler.prepare(
+      { leaveTypeCode: "annual", ranges: [range("2026-12-01", "2026-12-02", { fromTime: "13:00" })] },
+      context
+    );
+    const request = asRequest(payload);
+    await handler.onSubmitted(request, context);
+    await handler.onApproved(request, context);
+
+    expect(db.adjustments.map((row) => [row.workDate.toISOString().slice(0, 10), row.type, row.workUnits, row.paid, row.sourceRequestId])).toEqual([
+      ["2026-12-01", "leave", 0.5, true, "req-1"],
+      ["2026-12-02", "leave", 1, true, "req-1"]
+    ]);
+    // The afternoon off on the first day keeps its window (13:00 Vietnam = 06:00 UTC); the full day has none.
+    expect(db.adjustments[0].checkIn.toISOString()).toBe("2026-12-01T06:00:00.000Z");
+    expect(db.adjustments[1].checkIn).toBeNull();
+
+    expect(recalc.request).not.toHaveBeenCalled();
+    await deferred[0].run();
+    expect(recalc.request).toHaveBeenCalledWith({ from: "2026-12-01", to: "2026-12-02", employeeIds: ["staff"], reason: "request", requestedById: "staff" });
+  });
+
+  it("revokes the adjustments when HR cancels the approved request", async () => {
+    const { handler, context, give, asRequest, db, deferred } = setup();
+    await give(5);
+    const { payload } = await handler.prepare({ leaveTypeCode: "annual", ranges: [range("2026-12-01")] }, context);
+    const request = asRequest(payload);
+    await handler.onSubmitted(request, context);
+    await handler.onApproved(request, context);
+    await handler.onCancelledAfterApproval(request, context);
+
+    expect(db.adjustments.every((row) => row.revokedAt instanceof Date)).toBe(true);
+    expect(deferred).toHaveLength(2);
   });
 });
 

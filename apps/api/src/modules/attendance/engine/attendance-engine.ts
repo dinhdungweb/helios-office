@@ -57,6 +57,10 @@ export type ManualOverride = {
   status?: AttendanceDayStatus | null;
 };
 
+// Approved leave on the date (AT-22, docs/design/approval-engine.md §8): units of the shift taken
+// as paid / unpaid leave, and the leave's time windows when it covers part of the day only.
+export type DayLeave = { paidUnits: number; unpaidUnits: number; windows: Array<{ start: Date; end: Date }> };
+
 export type DayInput = {
   workDate: string;
   shift: EngineShift | null;
@@ -65,6 +69,7 @@ export type DayInput = {
   policy: EnginePolicy;
   employment?: { startDate?: string | null; endDate?: string | null };
   manual?: ManualOverride | null;
+  leave?: DayLeave | null;
 };
 
 export type AttendanceDayStatus =
@@ -76,7 +81,8 @@ export type AttendanceDayStatus =
   | "missing_checkout"
   | "absent"
   | "holiday"
-  | "day_off";
+  | "day_off"
+  | "leave";
 
 export type DayResult = {
   workDate: string;
@@ -185,6 +191,9 @@ export function calculateDay(input: DayInput): DayResult | null {
 
   const flags: string[] = [];
   const manual = input.manual ?? null;
+  // Leave is applied before HR's manual figures, so a manual change still wins.
+  let breakInterval: Interval | null = null;
+  const finish = (result: DayResult) => applyManual(applyLeave(result, input.leave ?? null, shift, policy, breakInterval), manual);
   const punches = [...input.punches].map((punch) => punch.getTime()).sort((a, b) => a - b);
   const base: DayResult = {
     workDate,
@@ -213,12 +222,13 @@ export function calculateDay(input: DayInput): DayResult | null {
       base.outsideShiftMinutes = punches.length > 1 ? minutes(punches[punches.length - 1] - punches[0]) : 0;
     }
     base.status = holiday && holiday.type !== "compensatory_workday" ? "holiday" : "day_off";
-    return applyManual(base, manual);
+    return finish(base);
   }
 
   // 2. The scheduled shift.
   const schedule = scheduleFor(workDate, shift, policy);
   const shiftInterval: Interval = { start: schedule.start, end: schedule.end };
+  breakInterval = schedule.breakInterval ?? null;
   base.scheduledStart = new Date(schedule.start);
   base.scheduledEnd = new Date(schedule.end);
 
@@ -252,7 +262,7 @@ export function calculateDay(input: DayInput): DayResult | null {
   // 10. Nothing recorded on a scheduled day.
   if (checkIn === null && checkOut === null) {
     base.status = isHoliday ? "holiday" : "absent";
-    return applyManual(base, manual);
+    return finish(base);
   }
 
   if (isHoliday) flags.push("worked_on_holiday");
@@ -275,7 +285,7 @@ export function calculateDay(input: DayInput): DayResult | null {
     } else {
       base.workUnits = roundTo(shift.workUnits * 0.5, policy.workUnitRoundingHundredths);
     }
-    return applyManual(base, manual);
+    return finish(base);
   }
 
   const roundedIn = roundPunch(checkIn!, policy.roundingMinutes, "up");
@@ -327,7 +337,47 @@ export function calculateDay(input: DayInput): DayResult | null {
     base.lateMinutes > 0 && base.earlyMinutes > 0 ? "late_and_early" : base.lateMinutes > 0 ? "late" : base.earlyMinutes > 0 ? "early_leave" : "on_time";
   if (missing) base.status = missing;
 
-  return applyManual(base, manual);
+  return finish(base);
+}
+
+const WORKING_STATUSES = new Set<AttendanceDayStatus>(["on_time", "late", "early_leave", "late_and_early", "missing_checkin", "missing_checkout", "absent"]);
+
+// 10b. Approved leave. A full day of leave replaces absence / missing punches / lateness with
+// "leave"; part of a day forgives the late / early minutes that fall inside the leave. Worked units
+// plus leave never exceed the shift.
+function applyLeave(result: DayResult, leave: DayLeave | null, shift: EngineShift | null, policy: EnginePolicy, breakInterval: Interval | null): DayResult {
+  if (!leave || !shift || leave.paidUnits + leave.unpaidUnits <= 0) return result;
+  const taken = leave.paidUnits + leave.unpaidUnits;
+  result.flags.push("leave");
+  result.paidLeaveUnits = roundTo(result.paidLeaveUnits + leave.paidUnits, 1);
+  result.workUnits = Math.max(0, Math.min(result.workUnits, roundTo(shift.workUnits - taken, policy.workUnitRoundingHundredths)));
+  if (!WORKING_STATUSES.has(result.status)) return result;
+
+  if (taken >= shift.workUnits - 0.001) {
+    result.status = "leave";
+    result.lateMinutes = 0;
+    result.earlyMinutes = 0;
+    result.flags = result.flags.filter((flag) => flag !== "needs_explanation");
+    return result;
+  }
+
+  // The break between a half day off and the half worked is not lateness either.
+  const forgiven: Interval[] = leave.windows.map((window) => ({ start: window.start.getTime(), end: window.end.getTime() }));
+  if (forgiven.length > 0 && breakInterval) forgiven.push(breakInterval);
+  const inLeave = (start: number, end: number) => forgiven.reduce((sum, window) => sum + overlap({ start, end }, window), 0);
+  if (result.scheduledStart && result.lateMinutes > 0) {
+    const start = result.scheduledStart.getTime();
+    result.lateMinutes = Math.max(0, result.lateMinutes - minutes(inLeave(start, start + result.lateMinutes * MINUTE)));
+  }
+  if (result.scheduledEnd && result.earlyMinutes > 0) {
+    const end = result.scheduledEnd.getTime();
+    result.earlyMinutes = Math.max(0, result.earlyMinutes - minutes(inLeave(end - result.earlyMinutes * MINUTE, end)));
+  }
+  if (["on_time", "late", "early_leave", "late_and_early"].includes(result.status)) {
+    result.status =
+      result.lateMinutes > 0 && result.earlyMinutes > 0 ? "late_and_early" : result.lateMinutes > 0 ? "late" : result.earlyMinutes > 0 ? "early_leave" : "on_time";
+  }
+  return result;
 }
 
 // 11. HR's figures win over the computed ones; the day is flagged so reports can show it.

@@ -13,7 +13,8 @@ type Tx = Prisma.TransactionClient;
 
 export type EngineActor = { employeeId: string; accountId?: string };
 
-export type Notice = { event: string; employeeIds: string[]; title: string; body?: string; link?: string; requestId: string };
+// A notification to send after commit, or (with `run`) deferred work a handler asked for.
+export type Notice = { event: string; employeeIds: string[]; title: string; body?: string; link?: string; requestId: string; run?: () => Promise<unknown> };
 
 export type Decision = "approve" | "reject" | "return";
 
@@ -93,10 +94,11 @@ export class ApprovalEngineService {
 
     const settings = (version?.settings ?? {}) as { followerId?: string | null };
     if (settings.followerId) await this.addFollowers(tx, request.id, [settings.followerId], "workflow");
-    await this.registry.get(request.type)?.onSubmitted?.(submitted, this.context(tx, submitted, actor));
+    const deferred: Notice[] = [];
+    await this.registry.get(request.type)?.onSubmitted?.(submitted, this.context(tx, submitted, actor, deferred));
     await this.writeAudit(tx, round > 1 ? "request.resubmit" : "request.submit", submitted, actor);
 
-    return this.advance(tx, submitted, flowOf(version), "start", actor, null);
+    return [...deferred, ...(await this.advance(tx, submitted, flowOf(version), "start", actor, null))];
   }
 
   // §5.7: approve / reject / return by an assignee of an open step.
@@ -154,8 +156,10 @@ export class ApprovalEngineService {
 
       await this.closeStep(tx, stepId, decision === "reject" ? "rejected" : "returned", "superseded");
       const ended = await this.transition(tx, current, decision === "reject" ? { status: "rejected", decidedAt: now } : { status: "returned" });
-      await this.registry.get(request.type)?.onWithdrawn?.(ended, this.context(tx, ended, actor));
+      const deferred: Notice[] = [];
+      await this.registry.get(request.type)?.onWithdrawn?.(ended, this.context(tx, ended, actor, deferred));
       return [
+        ...deferred,
         this.requesterNotice(
           ended,
           decision === "reject" ? "request.rejected" : "request.returned",
@@ -183,9 +187,10 @@ export class ApprovalEngineService {
       for (const step of open) await this.closeStep(tx, step.id, "cancelled", "cancelled");
       const recalled = await this.transition(tx, request, { status: "draft" });
       await tx.approvalAction.create({ data: { requestId, actorId: actor.employeeId, action: "recall" } });
-      await this.registry.get(request.type)?.onWithdrawn?.(recalled, this.context(tx, recalled, actor));
+      const deferred: Notice[] = [];
+      await this.registry.get(request.type)?.onWithdrawn?.(recalled, this.context(tx, recalled, actor, deferred));
       await this.writeAudit(tx, "request.recall", recalled, actor);
-      return [] as Notice[];
+      return deferred;
     });
     await this.dispatch(notices, actor);
     return this.prisma.request.findUniqueOrThrow({ where: { id: requestId } });
@@ -199,18 +204,19 @@ export class ApprovalEngineService {
       const isRequester = request.requesterId === actor.employeeId;
       const note = reason?.trim() || null;
       const handler = this.registry.get(request.type);
+      const deferred: Notice[] = [];
 
       if (request.status === "approved") {
         if (!asManager) throw new ForbiddenException("Đơn đã duyệt chỉ HR huỷ được.");
         if (!note) throw new BadRequestException("Hãy nhập lý do huỷ đơn đã duyệt.");
         await this.assertPeriodsOpen(tx, handler?.affectedDates?.(request) ?? []);
-        await handler?.onCancelledAfterApproval?.(request, this.context(tx, request, actor));
+        await handler?.onCancelledAfterApproval?.(request, this.context(tx, request, actor, deferred));
       } else if (request.status === "draft" || request.status === "returned" || request.status === "pending") {
         if (!isRequester && !asManager) throw new ForbiddenException("Bạn không huỷ được đơn này.");
         const open = await tx.approvalStep.findMany({ where: { requestId, status: "active" }, select: { id: true } });
         for (const step of open) await this.closeStep(tx, step.id, "cancelled", "cancelled");
         // A returned request already released what it held when it was returned.
-        if (request.status === "pending") await handler?.onWithdrawn?.(request, this.context(tx, request, actor));
+        if (request.status === "pending") await handler?.onWithdrawn?.(request, this.context(tx, request, actor, deferred));
       } else {
         throw new ConflictException("Đơn đã kết thúc, không huỷ được.");
       }
@@ -218,7 +224,7 @@ export class ApprovalEngineService {
       const cancelled = await this.transition(tx, request, { status: "cancelled", cancelReason: note, decidedAt: new Date() });
       await tx.approvalAction.create({ data: { requestId, actorId: actor.employeeId, action: "cancel", reason: note } });
       await this.writeAudit(tx, "request.cancel", cancelled, actor, { reason: note, asManager });
-      return isRequester ? [] : [this.requesterNotice(cancelled, "request.cancelled", "đã bị huỷ", note ?? undefined)];
+      return isRequester ? deferred : [...deferred, this.requesterNotice(cancelled, "request.cancelled", "đã bị huỷ", note ?? undefined)];
     });
     await this.dispatch(notices, actor);
     return this.prisma.request.findUniqueOrThrow({ where: { id: requestId } });
@@ -226,6 +232,14 @@ export class ApprovalEngineService {
 
   async dispatch(notices: Notice[], actor?: EngineActor) {
     for (const notice of notices) {
+      if (notice.run) {
+        try {
+          await notice.run();
+        } catch (error) {
+          this.logger.error(`Follow-up "${notice.title}" failed for request ${notice.requestId}`, error as Error);
+        }
+        continue;
+      }
       if (notice.employeeIds.length === 0) continue;
       try {
         await this.notifications.notify({
@@ -320,13 +334,13 @@ export class ApprovalEngineService {
       case "approved": {
         await this.assertPeriodsOpen(tx, handler?.affectedDates?.(request) ?? []);
         const approved = await this.transition(tx, request, { status: "approved", decidedAt: now, needsAttention: false });
-        await handler?.onApproved?.(approved, this.context(tx, approved, actor));
+        await handler?.onApproved?.(approved, this.context(tx, approved, actor, notices));
         await tx.approvalAction.create({ data: { requestId: request.id, actorType: "system", action: "complete", data: { outcome: "approved" } } });
         return [...notices, this.requesterNotice(approved, "request.approved", "đã được duyệt"), ...(await this.followerNotices(tx, approved, "request.approved", "đã được duyệt"))];
       }
       case "rejected": {
         const rejected = await this.transition(tx, request, { status: "rejected", decidedAt: now });
-        await handler?.onWithdrawn?.(rejected, this.context(tx, rejected, actor));
+        await handler?.onWithdrawn?.(rejected, this.context(tx, rejected, actor, notices));
         await tx.approvalAction.create({ data: { requestId: request.id, actorType: "system", action: "complete", data: { outcome: "rejected" } } });
         return [...notices, this.requesterNotice(rejected, "request.rejected", "không được duyệt")];
       }
@@ -421,8 +435,13 @@ export class ApprovalEngineService {
     return request;
   }
 
-  private context(tx: Tx, request: Request, actor: EngineActor): HandlerContext {
-    return { tx, requesterId: request.requesterId, actorId: actor.employeeId };
+  private context(tx: Tx, request: Request, actor: EngineActor, sink: Notice[]): HandlerContext {
+    return {
+      tx,
+      requesterId: request.requesterId,
+      actorId: actor.employeeId,
+      defer: (label, run) => sink.push({ event: "deferred", employeeIds: [], title: label, requestId: request.id, run })
+    };
   }
 
   private stepName(node: FlowNode) {

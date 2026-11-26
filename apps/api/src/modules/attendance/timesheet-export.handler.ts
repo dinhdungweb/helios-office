@@ -19,7 +19,8 @@ const STATUS_LABELS: Record<AttendanceDayStatus, string> = {
   missing_checkout: "Thiếu giờ ra",
   absent: "Vắng",
   holiday: "Nghỉ lễ",
-  day_off: "Ngày nghỉ"
+  day_off: "Ngày nghỉ",
+  leave: "Nghỉ phép"
 };
 const CONFIRMATION_LABELS = { confirmed: "Đã xác nhận", feedback: "Có phản hồi" } as const;
 

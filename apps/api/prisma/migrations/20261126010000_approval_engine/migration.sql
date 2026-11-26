@@ -23,9 +23,13 @@ ALTER TYPE "AttendanceAdjustmentType" ADD VALUE 'explanation';
 ALTER TYPE "AttendanceAdjustmentType" ADD VALUE 'shift_swap';
 ALTER TYPE "AttendanceAdjustmentType" ADD VALUE 'business_trip';
 
+-- A full day of approved leave on the timesheet (AT-22).
+ALTER TYPE "AttendanceDayStatus" ADD VALUE 'leave';
+
 
 -- AlterTable
-ALTER TABLE "AttendanceAdjustment" ADD COLUMN     "sourceRequestId" TEXT;
+ALTER TABLE "AttendanceAdjustment" ADD COLUMN     "sourceRequestId" TEXT,
+ADD COLUMN     "paid" BOOLEAN;
 
 -- AlterTable
 ALTER TABLE "ApprovalWorkflowDefinition" ADD COLUMN     "currentVersion" INTEGER NOT NULL DEFAULT 1;

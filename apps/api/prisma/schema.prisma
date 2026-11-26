@@ -908,6 +908,8 @@ enum AttendanceDayStatus {
   absent
   holiday
   day_off
+  // A full day of approved leave (AT-22).
+  leave
 }
 
 // Engine result for one person on one work date (AT-11), recomputed from AttendanceRawLog, the
@@ -1129,6 +1131,9 @@ model AttendanceAdjustment {
   revokedById     String?
   // The approved request that wrote it; cancelling the request revokes it.
   sourceRequestId String?
+  // Request adjustments of type leave: whether the leave is paid (workUnits = units of leave,
+  // checkIn / checkOut = the leave window when it covers part of the day).
+  paid            Boolean?
 
   @@index([employeeId, workDate])
   @@index([sourceRequestId])

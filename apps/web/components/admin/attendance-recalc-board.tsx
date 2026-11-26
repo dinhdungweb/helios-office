@@ -12,7 +12,8 @@ const REASON_LABELS: Record<RecalcJob["reason"], string> = {
   holiday: "Đổi ngày lễ",
   policy: "Đổi chính sách chấm công",
   shift: "Sửa ca làm việc",
-  department_default: "Đổi ca mặc định phòng ban"
+  department_default: "Đổi ca mặc định phòng ban",
+  request: "Đơn được duyệt / huỷ"
 };
 
 const STATUS_LABELS: Record<RecalcJob["status"], string> = {

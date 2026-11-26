@@ -84,8 +84,9 @@ export class AttendanceAdjustmentsService {
 
     const timeZone = await this.calculation.timezone();
     const toInstant = (value: string | null) => (value === null ? null : new Date(zonedInstant(value.slice(0, 10), Number(value.slice(11, 13)) * 60 + Number(value.slice(14, 16)), timeZone)));
+    // Only HR's own changes; approved requests' adjustments (leave...) stay (AT-22).
     const active = await this.prisma.attendanceAdjustment.findFirst({
-      where: { employeeId: day.employeeId, workDate: day.workDate, revokedAt: null },
+      where: { employeeId: day.employeeId, workDate: day.workDate, revokedAt: null, type: AttendanceAdjustmentType.manual },
       orderBy: { createdAt: "desc" }
     });
 
@@ -128,7 +129,7 @@ export class AttendanceAdjustmentsService {
     await this.periods.assertOpen([isoDate(day.workDate)]);
     const actorId = user.account?.employeeId ?? undefined;
     const result = await this.prisma.attendanceAdjustment.updateMany({
-      where: { employeeId: day.employeeId, workDate: day.workDate, revokedAt: null },
+      where: { employeeId: day.employeeId, workDate: day.workDate, revokedAt: null, type: AttendanceAdjustmentType.manual },
       data: { revokedAt: new Date(), revokedById: actorId ?? user.account?.id ?? null }
     });
     if (result.count === 0) throw new BadRequestException("Ngày này không có sửa tay để bỏ.");

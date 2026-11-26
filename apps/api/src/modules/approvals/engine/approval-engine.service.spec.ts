@@ -6,6 +6,7 @@ import type { FlowDefinition } from "./flow";
 import { RequestTypeRegistry } from "./request-types";
 
 // In-memory stand-in for the Prisma calls the engine makes.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- loosely typed in-memory test double
 type Row = Record<string, any>;
 
 function matches(row: Row, where: Row = {}): boolean {

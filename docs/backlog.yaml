@@ -777,8 +777,9 @@ modules:
       - id: AT-22
         title: Cập nhật công khi đơn nghỉ/OT/đổi ca/giải trình được duyệt
         phase: 3
-        status: todo
+        status: partial
         depends: [AT-11, AP-10]
+        note: "Đơn nghỉ xong: duyệt thì ghi AttendanceAdjustment loại leave theo ngày (kèm khung giờ khi nghỉ nửa ngày) và tính lại công sau commit; ngày nghỉ cả ngày có trạng thái leave, công nghỉ có lương vào paidLeaveUnits, sửa tay của HR vẫn thắng; HR huỷ đơn đã duyệt thì thu hồi. OT, đổi ca, giải trình, vắng mặt ở 3b"
       - id: AT-23
         title: Nhắc quên chấm công
         api: ["GET /attendance/reminders", "POST /attendance/reminders/run"]
@@ -1069,8 +1070,9 @@ modules:
         depends: [AU-21]
       - id: AP-23
         title: Thông báo cho người duyệt và người tạo
-        status: todo
+        status: done
         depends: [NT-05]
+        note: "Engine gửi sau commit: approval.assigned cho người duyệt, request.approved / rejected / returned / cancelled cho người tạo và người theo dõi, approval.workflow_notice cho node thông báo / email (gửi email thật cho node email thuộc AP-26)"
       - id: AP-24
         title: Trang cảnh báo duyệt cho admin nối dữ liệu thật
         ui: /admin/approvals-alerts

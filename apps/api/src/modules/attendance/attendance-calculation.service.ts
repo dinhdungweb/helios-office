@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
-import type { ManualOverride } from "./engine/attendance-engine";
+import type { DayLeave, ManualOverride } from "./engine/attendance-engine";
 import { calculateEmployeeDays, type CalcShift, type EmployeeDay, dependencyReach } from "./engine/employee-days";
 import { addDays, localDate, zonedInstant } from "./engine/zoned-time";
 
@@ -139,12 +139,14 @@ export class AttendanceCalculationService {
             endDate: employee.endDate ? localDate(employee.endDate.getTime(), timeZone) : null
           },
           punches: logs.filter((log) => log.employeeId === employee.id).map((log) => log.punchTime),
-          // Later adjustments overwrite earlier ones for the same date.
+          // Later manual adjustments overwrite earlier ones for the same date.
           manual: new Map(
             adjustments
-              .filter((adjustment) => adjustment.employeeId === employee.id)
+              .filter((adjustment) => adjustment.employeeId === employee.id && adjustment.type === "manual")
               .map((adjustment) => [isoDate(adjustment.workDate), toManualOverride(adjustment)])
-          )
+          ),
+          // Approved leave (AT-22) adds up per date; HR's manual figures still win over it.
+          leave: toLeaveByDate(adjustments.filter((adjustment) => adjustment.employeeId === employee.id && adjustment.type === "leave"))
         });
 
         const stored = new Map(existing.filter((row) => row.employeeId === employee.id).map((row) => [isoDate(row.workDate), row]));
@@ -190,6 +192,24 @@ export class AttendanceCalculationService {
 
     return totals;
   }
+}
+
+// Leave adjustments of one person, summed per date: units as paid / unpaid, and the windows of
+// part-day leave (stored in checkIn / checkOut).
+export function toLeaveByDate(
+  adjustments: Array<{ workDate: Date; workUnits: Prisma.Decimal | null; paid: boolean | null; checkIn: Date | null; checkOut: Date | null }>
+) {
+  const byDate = new Map<string, DayLeave>();
+  for (const adjustment of adjustments) {
+    const date = isoDate(adjustment.workDate);
+    const leave = byDate.get(date) ?? { paidUnits: 0, unpaidUnits: 0, windows: [] };
+    const units = adjustment.workUnits === null ? 0 : Number(adjustment.workUnits);
+    if (adjustment.paid) leave.paidUnits += units;
+    else leave.unpaidUnits += units;
+    if (adjustment.checkIn && adjustment.checkOut) leave.windows.push({ start: adjustment.checkIn, end: adjustment.checkOut });
+    byDate.set(date, leave);
+  }
+  return byDate;
 }
 
 function toManualOverride(adjustment: {

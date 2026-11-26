@@ -236,7 +236,7 @@ export type RecalcJob = {
   to: string;
   // null = everyone employed in the range.
   employees: number | null;
-  reason: "manual" | "schedule" | "holiday" | "policy" | "shift" | "department_default";
+  reason: "manual" | "schedule" | "holiday" | "policy" | "shift" | "department_default" | "request";
   status: RecalcJobStatus;
   result: { days: number; changed: number; removed: number; skipped?: number } | null;
   error: string | null;
