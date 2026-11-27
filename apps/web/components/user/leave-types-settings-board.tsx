@@ -165,7 +165,7 @@ export function LeaveTypesSettingsBoard({ leaveTypes, error, moduleTabs }: { lea
           </button>
         </div>
       </header>
-      {error || actionError ? <p role="alert">{error ?? actionError}</p> : null}
+      {error || actionError ? <p className="requests-error" role="alert">{error ?? actionError}</p> : null}
       {editing === "new" ? <LeaveTypeForm type={null} onDone={() => setEditing(null)} /> : null}
       <table className="requests-table">
         <thead>

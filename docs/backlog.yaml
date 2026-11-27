@@ -862,13 +862,13 @@ modules:
       - id: LV-05
         title: Sửa đơn nháp / bị trả lại
         api: ["PATCH /requests/:id"]
-        status: partial
-        note: "API + UI (nút Sửa mở form với dữ liệu đơn) xong, test service; chưa thử tay trên trình duyệt"
+        status: done
+        note: "Thử trình duyệt: sửa đơn nháp từ cả ngày sang buổi sáng (0,5 ngày) rồi gửi"
       - id: LV-06
         title: Huỷ / rút lại đơn
         api: ["POST /requests/:id/cancel", "POST /requests/:id/recall"]
-        status: partial
-        note: "API + UI (Rút đơn, Huỷ đơn có lý do) xong, test engine; chưa thử tay trên trình duyệt"
+        status: done
+        note: "Thử trình duyệt: rút đơn khi chưa ai xử lý (về nháp, nhả quỹ phép), huỷ đơn bị trả lại có lý do"
       - id: LV-07
         title: Bình luận trên đơn
         api: ["GET /requests/:id/comments", "POST /requests/:id/comments"]
@@ -882,24 +882,24 @@ modules:
       - id: LV-09
         title: Danh mục loại nghỉ (có lương/không lương, trừ phép, cần giấy tờ)
         api: ["GET /leave-types", "POST /leave-types", "PATCH /leave-types/:id", "DELETE /leave-types/:id"]
-        status: partial
-        note: "API + trang Đơn từ → Cài đặt → Loại nghỉ xong (seed theo Bộ luật Lao động); trang cài đặt chưa thử tay"
+        status: done
+        note: "Đơn từ → Cài đặt → Loại nghỉ: thêm, ngừng dùng, xoá (loại đã dùng thì từ chối kèm lý do). Thử trình duyệt"
       - id: LV-10
         title: Quỹ phép của tôi
         api: ["GET /leave-balances/me"]
-        status: partial
+        status: done
         depends: [LV-09]
-        note: "API + trang Quỹ phép xong; số dư đúng trên form nghỉ (thử trình duyệt), trang Quỹ phép chưa thử tay"
+        note: "Trang Quỹ phép của tôi. Thử trình duyệt với khanglm: 11 + 1 − 2,5 = 9,5"
       - id: LV-11
         title: Quỹ phép toàn công ty
         api: ["GET /leave-balances"]
-        status: partial
-        note: "API + bảng Quỹ phép nhân sự (theo phạm vi) xong; chưa thử tay với tài khoản có quyền"
+        status: done
+        note: "Bảng Quỹ phép nhân sự theo phạm vi dữ liệu, chỉ hiện với người có quyền. Thử trình duyệt với admin"
       - id: LV-12
         title: Điều chỉnh quỹ phép thủ công
         api: ["POST /leave-balances/adjust", "GET /leave-balances/:employeeId/transactions"]
-        status: partial
-        note: "API + nút Điều chỉnh trên trang Quỹ phép xong; chưa thử tay"
+        status: done
+        note: "Nút Điều chỉnh có lý do, ghi sổ cái. Thử trình duyệt: +1 ngày cho khanglm"
       - id: LV-13
         title: Cộng phép tự động hằng tháng / theo thâm niên
         status: done
@@ -983,28 +983,28 @@ modules:
       - id: AP-04
         title: Sửa quy trình duyệt
         api: ["PATCH /approval-workflows/:id"]
-        status: partial
-        note: "API xong (PATCH sinh phiên bản mới khi đổi sơ đồ hoặc cài đặt). UI sửa quy trình làm ở task 7 của docs/plans/phase-3.md"
+        status: done
+        note: "Sửa trong cùng màn thiết kế (trang /admin/settings/approval-workflows/:id), lưu sơ đồ đổi thì sinh phiên bản mới. Thử trình duyệt 2026-11-27: NP-NAM lên phiên bản 2"
       - id: AP-05
         title: Chi tiết quy trình duyệt
         api: ["GET /approval-workflows/:id"]
-        status: partial
-        note: "API xong, kèm danh sách lỗi chặn kích hoạt. UI ở task 7"
+        status: done
+        note: "Trang sửa nạp sơ đồ và cài đặt có sẵn, hiện lỗi chặn kích hoạt. Thử trình duyệt"
       - id: AP-06
         title: Phiên bản quy trình (versionMode)
         api: ["GET /approval-workflows/:id/versions"]
-        status: partial
-        note: "Bảng ApprovalWorkflowVersion + API danh sách phiên bản, đơn trỏ tới phiên bản cố định. UI ở task 7"
+        status: done
+        note: "Thanh phiên bản trên trang sửa (phiên bản hiện tại, số đơn mỗi phiên bản); đơn chạy theo phiên bản cố định. Thử trình duyệt: đơn NP-2026-000005 chạy NP-NAM v2"
       - id: AP-07
         title: Nhân bản quy trình
         api: ["POST /approval-workflows/:id/duplicate"]
-        status: partial
-        note: "API xong (bản sao ở trạng thái nháp). UI ở task 7"
+        status: done
+        note: "Nút Nhân bản trên danh sách, bản sao ở trạng thái nháp. Thử trình duyệt"
       - id: AP-08
         title: Bật / tắt quy trình
         api: ["POST /approval-workflows/:id/activate", "POST /approval-workflows/:id/deactivate"]
-        status: partial
-        note: "API xong, kích hoạt kiểm tra sơ đồ (validateFlow). UI ở task 7"
+        status: done
+        note: "Nút Kích hoạt / Tạm dừng trên danh sách, server kiểm tra sơ đồ và trả lý do. Thử trình duyệt"
       - id: AP-09
         title: Node gửi thông báo / gửi email trong sơ đồ quy trình (rich editor, người nhận theo phòng ban/vị trí/chức vụ)
         ui: /admin/settings/approval-workflows/new
@@ -1042,8 +1042,8 @@ modules:
       - id: AP-16
         title: Trả lại để bổ sung
         api: ["POST /approvals/:id/return"]
-        status: partial
-        note: "API + UI (Trả lại, nhập lý do trên trang) xong, test engine; chưa thử tay"
+        status: done
+        note: "Thử trình duyệt: trả lại bắt buộc lý do, đơn về Bị trả lại, quỹ phép được nhả"
       - id: AP-17
         title: Chuyển tiếp người duyệt
         api: ["POST /approvals/:id/forward"]

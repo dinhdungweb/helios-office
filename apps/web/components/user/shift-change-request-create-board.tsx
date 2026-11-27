@@ -1,6 +1,5 @@
 import {
   CalendarBlank,
-  CaretDown,
   Check,
   PaperPlaneTilt,
   Plus,

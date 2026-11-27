@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FormCheckbox } from "@/components/ui/form-controls";
@@ -20,6 +21,17 @@ const objectLabels: Record<string, string> = {
   labor_contract: "Hợp đồng lao động",
   leave_request: "Đơn nghỉ phép",
   proposal: "Đề xuất"
+};
+
+// Leave types seeded by migration 20261126010000_approval_engine; other codes show as stored.
+const subObjectLabels: Record<string, string> = {
+  annual: "Nghỉ phép năm",
+  sick: "Nghỉ ốm (BHXH)",
+  unpaid: "Nghỉ không lương",
+  marriage: "Nghỉ kết hôn",
+  child_marriage: "Nghỉ con kết hôn",
+  bereavement: "Nghỉ tang",
+  maternity: "Nghỉ thai sản (BHXH)"
 };
 
 function normalize(value: string) {
@@ -85,9 +97,9 @@ export function ApprovalWorkflowSettingsBoard({ data, query = "" }: { data: Appr
         ) : (
           <h2 id="approval-workflow-title"><Plus size={18} aria-hidden="true" /> Quy trình duyệt</h2>
         )}
-        <a className="approval-workflow-create-link" href="/admin/settings/approval-workflows/new">
+        <Link className="approval-workflow-create-link" href="/admin/settings/approval-workflows/new">
           <Plus size={16} aria-hidden="true" /> Tạo mới
-        </a>
+        </Link>
       </header>
 
       {message ? <p className="personnel-catalog-message is-error" role="alert">{message}</p> : null}
@@ -117,7 +129,7 @@ export function ApprovalWorkflowSettingsBoard({ data, query = "" }: { data: Appr
                   <td>{item.code ?? "--"}</td>
                   <td><a className="approval-workflow-name-link" href={`/admin/settings/approval-workflows/${item.id}`}><strong>{item.name}</strong></a></td>
                   <td>{objectLabels[item.objectType] ?? item.objectType}</td>
-                  <td>{item.subObject === "all" ? "Tất cả" : item.subObject}</td>
+                  <td>{item.subObject === "all" ? "Tất cả" : subObjectLabels[item.subObject] ?? item.subObject}</td>
                   <td><span className={`approval-workflow-status is-${item.status}`}>{item.status === "active" ? "Hoạt động" : item.status === "draft" ? "Bản nháp" : "Tạm dừng"}</span></td>
                   <td><strong className="approval-workflow-version">{item.versionMode ? "Dùng thật" : "Thử nghiệm"}</strong></td>
                   <td>Quy trình duyệt</td>

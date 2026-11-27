@@ -24,7 +24,14 @@ Kiểm tra: typecheck, lint 0 lỗi, audit strict 0 lỗi, 522 unit + 47 e2e pas
 
 Dữ liệu thử để lại trên DB local: quản lý trực tiếp của Lê Minh Khang đặt là Nguyễn Hải Anh; đơn NP-2026-000003, NP-2026-000004 đã duyệt. Sao lưu trước migration: `.tmp/db-backup/before-phase3-20261126.dump`.
 
-Tiếp theo: thử tay các màn còn lại (sửa / rút / huỷ / trả lại, Quỹ phép, Cài đặt loại nghỉ), giao diện sửa quy trình (AP-04 → AP-08), rồi 3b.
+Bổ sung 2026-11-27 (đóng 3a):
+
+- Giao diện quy trình duyệt: mở quy trình có sẵn trong màn thiết kế để sửa (lưu sơ đồ đổi thì sinh phiên bản mới, thanh phiên bản cho biết mỗi phiên bản có bao nhiêu đơn), Kích hoạt / Tạm dừng / Nhân bản ngay trên danh sách; bước duyệt có thêm "Một người duyệt là đủ / Tất cả cùng duyệt", xử lý khi người duyệt trùng người tạo, cho phép trả lại.
+- Lỗi quan trọng đã sửa: màn thiết kế lưu cấu hình node dưới `config` và ô điều kiện dưới `conditions`, engine không đọc được nên quy trình tạo từ giao diện không bao giờ kích hoạt được. Server giờ nhận cả hai dạng và lưu một dạng chuẩn.
+- Thử tay toàn bộ trên DB local: admin tạo quy trình "Duyệt đơn nghỉ qua HCNS", nhân bản, sửa bản sao thành "Duyệt phép năm" (phiên bản 2), tạm dừng bản gốc; Cài đặt loại nghỉ (thêm, xoá, từ chối xoá loại đã dùng); Quỹ phép nhân sự + điều chỉnh. khanglm lưu nháp → sửa → gửi (engine chọn đúng quy trình phép năm v2, giao trưởng phòng HCNS) → rút → gửi lại; haianh trả lại (bắt buộc lý do); khanglm huỷ. Quỹ phép giữ chỗ và nhả đúng sau mỗi bước.
+- Dữ liệu thử thêm trên DB local: 2 quy trình (NP-HCNS tạm dừng, NP-NAM hoạt động), đơn NP-2026-000005 đã huỷ, Khang được điều chỉnh +1 ngày phép.
+
+Tiếp theo: Phase 3b (đơn vắng mặt, làm thêm, giải trình, đổi ca, thôi việc; chuyển tiếp, duyệt hàng loạt, uỷ quyền, quá hạn).
 
 ### Phase 2 - chạy gate đóng phase
 
