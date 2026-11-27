@@ -50,7 +50,7 @@ const statusTones: Record<DeviceAuthStatus, BadgeTone> = {
 const statusFilters: DeviceAuthStatus[] = ["pending", "approved", "rejected", "locked"];
 
 type QuickFilter = "all" | DeviceAuthStatus;
-type PlatformFilter = "all" | "ios" | "android";
+type PlatformFilter = "all" | "ios" | "android" | "web";
 type ColumnKey = "device" | "deviceId" | "submittedAt" | "status";
 
 const columnOptions: Array<{ key: ColumnKey; label: string }> = [
@@ -62,8 +62,10 @@ const columnOptions: Array<{ key: ColumnKey; label: string }> = [
 
 const defaultVisibleColumns = new Set<ColumnKey>(columnOptions.map((column) => column.key));
 
-function getPlatform(request: DeviceAuthRequest): "ios" | "android" {
-  return request.deviceId.toLowerCase().startsWith("ios") ? "ios" : "android";
+// Device ids start with their platform; web browsers register themselves since DV-05.
+function getPlatform(request: DeviceAuthRequest): "ios" | "android" | "web" {
+  const id = request.deviceId.toLowerCase();
+  return id.startsWith("web") ? "web" : id.startsWith("ios") ? "ios" : "android";
 }
 
 function todayApprovalNote(status: DeviceAuthStatus) {
@@ -433,6 +435,7 @@ function DeviceRequestTable({
                     <FilterOption isSelected={platformFilter === "all"} label="Tất cả" onClick={() => setPlatformFilter("all")} />
                     <FilterOption isSelected={platformFilter === "ios"} label="iOS" onClick={() => setPlatformFilter("ios")} />
                     <FilterOption isSelected={platformFilter === "android"} label="Android" onClick={() => setPlatformFilter("android")} />
+                    <FilterOption isSelected={platformFilter === "web"} label="Web" onClick={() => setPlatformFilter("web")} />
                   </div>
                 </section>
 
@@ -686,35 +689,10 @@ function DevicePolicyDialog({
                 />
               </article>
 
-              <article>
-                <span>
-                  <GlobeHemisphereWest size={17} weight="duotone" aria-hidden="true" />
-                </span>
-                <div>
-                  <h3>GPS chấm công</h3>
-                  <p>{draft.requireGpsForAttendance ? "Bắt buộc định vị" : "Không bắt buộc"}</p>
-                </div>
-                <FormSwitch
-                  checked={draft.requireGpsForAttendance}
-                  label={draft.requireGpsForAttendance ? "Bật" : "Tắt"}
-                  onChange={(event) => updateDraft({ requireGpsForAttendance: event.target.checked })}
-                />
-              </article>
-
-              <article>
-                <span>
-                  <ShieldCheck size={17} weight="duotone" aria-hidden="true" />
-                </span>
-                <div>
-                  <h3>Wifi văn phòng</h3>
-                  <p>{draft.requireWifiForOffice ? "Kiểm tra theo dải mạng" : "Không kiểm tra"}</p>
-                </div>
-                <FormSwitch
-                  checked={draft.requireWifiForOffice}
-                  label={draft.requireWifiForOffice ? "Bật" : "Tắt"}
-                  onChange={(event) => updateDraft({ requireWifiForOffice: event.target.checked })}
-                />
-              </article>
+              <p className="device-policy-moved">
+                Chấm công GPS / Wifi, bắt buộc thiết bị đã xác thực và chụp ảnh nằm ở{" "}
+                <a href="/user/attendance/settings/timekeeping">Công → Cài đặt → Chấm công</a>, như 1Office.
+              </p>
             </div>
           </fieldset>
 
@@ -764,14 +742,9 @@ function DevicePolicyPanel({
       icon: Bell
     },
     {
-      label: "GPS chấm công",
-      value: policy.requireGpsForAttendance ? "Bắt buộc định vị" : "Không bắt buộc",
+      label: "Quy tắc chấm công GPS / Wifi",
+      value: "Ở Công → Cài đặt → Chấm công",
       icon: GlobeHemisphereWest
-    },
-    {
-      label: "Wifi văn phòng",
-      value: policy.requireWifiForOffice ? "Kiểm tra theo dải mạng" : "Không kiểm tra",
-      icon: ShieldCheck
     }
   ];
 

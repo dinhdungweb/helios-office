@@ -351,6 +351,18 @@ export const accountPermissionCatalog = [
     adminOnly: false
   },
   {
+    key: "permission.attendance-period.lock",
+    category: "Chấm công",
+    label: "Chốt / mở chốt kỳ công",
+    adminOnly: false
+  },
+  {
+    key: "permission.leave.manage",
+    category: "Đơn từ",
+    label: "Quản lý loại nghỉ và quỹ phép",
+    adminOnly: false
+  },
+  {
     key: "requests.personal.create",
     category: "Cá nhân",
     label: "Tạo đơn từ cá nhân",
@@ -2007,25 +2019,6 @@ export const leaveRequests = [
     totalDays: 2,
     status: "approved",
     remainingBalance: 9
-  }
-];
-
-export const attendanceRecords = [
-  {
-    id: "att-001",
-    employeeId: "emp-001",
-    workDate: "2026-07-09",
-    checkIn: "08:27",
-    checkOut: "18:04",
-    status: "valid"
-  },
-  {
-    id: "att-002",
-    employeeId: "emp-003",
-    workDate: "2026-07-09",
-    checkIn: "08:58",
-    checkOut: null,
-    status: "missing_checkout"
   }
 ];
 

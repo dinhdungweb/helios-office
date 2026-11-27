@@ -356,16 +356,22 @@ modules:
         status: done
       - id: DV-05
         title: Nhân viên tự gửi yêu cầu đăng ký thiết bị và xem thiết bị của mình
-        api: ["POST /device-auth/my-requests", "GET /device-auth/my-devices"]
-        status: todo
+        api: ["POST /device-auth/my-requests", "GET /device-auth/my-devices", "DELETE /device-auth/my-requests/:id"]
+        ui: /user/attendance
+        status: done
+        note: Khung Thiết bị chấm công trên bảng công cá nhân. Trình duyệt nhận mã web-uuid trong cookie httpOnly, tên gợi ý theo trình duyệt và hệ điều hành; gửi yêu cầu, xem danh sách thiết bị của mình, rút yêu cầu chưa duyệt. Chặn thiết bị của người khác, thiết bị bị khoá, vượt số thiết bị cho phép; yêu cầu bị từ chối gửi lại được. HR duyệt ở màn hình đã có, thêm bộ lọc nền tảng Web. Thử hai vai 2026-10-23
       - id: DV-06
         title: Áp chính sách thiết bị khi check-in trên web/app
-        status: todo
+        ui: /admin/settings/accounts/device-auth
+        status: done
+        note: Chính sách thêm công tắc Thiết bị đã duyệt (mặc định bật). Khi chấm công - thiết bị phải của chính người chấm và đã duyệt; vị trí phải trong một điểm hợp lệ theo cách được bật (GPS, hoặc wifi trên app / dải IP trên web); tắt cả hai thì chấm ở đâu cũng được. Mỗi lý do từ chối có mã riêng (device_unregistered, device_pending, device_rejected, device_locked, device_not_yours, no_places, no_position, outside_places)
         depends: [AT-13]
       - id: DV-07
         title: Điểm chấm công hợp lệ (GPS + bán kính, wifi SSID/BSSID, dải IP)
         api: ["GET /attendance-locations", "POST /attendance-locations", "PATCH /attendance-locations/:id", "DELETE /attendance-locations/:id"]
-        status: todo
+        ui: /user/attendance/settings/locations
+        status: done
+        note: Cài đặt → Chấm công GPS/Wifi như 1Office. Ba kiểu điểm - GPS (bấm bản đồ OpenStreetMap qua Leaflet hoặc lấy vị trí hiện tại, bán kính mặc định 100 m), mạng văn phòng theo IP / dải CIDR (IPv4, IPv6; nút thêm IP hiện tại), wifi SSID / BSSID (chỉ app di động đọc được). Gắn nơi làm việc, bật / tắt, quyền attendance.device.manage, có nhật ký. Hàm so khớp vị trí (khoảng cách, độ chính xác GPS tối đa cộng 100 m, dải IP) dùng lại ở AT-13
 
   # ---------------------------------------------------------------------------
   - code: HR
@@ -648,104 +654,183 @@ modules:
         title: Danh sách bản ghi công
         api: ["GET /attendance"]
         status: done
+        note: Đọc kết quả engine (AttendanceDay), phân trang chuẩn, lọc khoảng ngày / phòng ban / người / trạng thái / tìm kiếm, theo phạm vi dữ liệu. Bảng cũ AttendanceRecord đã bỏ (2026-10-22)
       - id: AT-03
         title: Công của tôi
         api: ["GET /attendance/me"]
         ui: /user/attendance
         status: done
+        note: Kết quả engine theo tháng — ô ngày hiện giờ làm kèm V khi muộn / sớm / thiếu chấm, chi tiết ngày có phút muộn / sớm, giờ trong ca, ngoài ca, đêm, số công, nguồn cập nhật; thống kê tháng từ số thật. Thử trình duyệt 2026-10-22 với khanglm
       - id: AT-04
         title: Tổng hợp công
         api: ["GET /attendance/summary"]
         status: done
       - id: AT-05
         title: Danh mục ca làm việc
-        api: ["GET /shifts", "POST /shifts", "PATCH /shifts/:id", "DELETE /shifts/:id"]
-        status: todo
+        api: ["GET /shifts", "POST /shifts", "PATCH /shifts/:id", "DELETE /shifts/:id", "POST /shifts/:id/archive", "POST /shifts/:id/restore"]
+        ui: /user/attendance/settings/shifts
+        status: done
+        note: Ca cố định / linh hoạt / qua đêm, nghỉ giữa ca, số công, quy tắc riêng ghi đè chính sách. Ca đang là ca mặc định không lưu trữ / xoá được. Seed ca HC 08:00-17:00. Thử trình duyệt 2026-10-22 — ca đêm, ca linh hoạt, ca sai giờ nghỉ bị từ chối, sửa ngưỡng riêng, lưu trữ / khôi phục / xoá
       - id: AT-06
         title: Ca qua đêm, ca linh hoạt, nghỉ giữa ca, ngưỡng đi muộn cho phép
-        status: todo
+        api: ["GET /attendance-policy", "PATCH /attendance-policy"]
+        ui: /user/attendance/settings/timekeeping
+        status: done
+        note: Chính sách chấm công chung (docs/design/attendance-engine.md mục 4) + quy tắc riêng từng ca. Thử trình duyệt 2026-10-22 — đổi ngày làm, ngưỡng muộn, cách tính công, lưu và tải lại giữ nguyên
         depends: [AT-05]
       - id: AT-07
         title: Xếp ca cho nhân sự / phòng ban
-        api: ["GET /shift-assignments", "POST /shift-assignments", "DELETE /shift-assignments/:id"]
-        status: todo
+        api: ["GET /shift-assignments", "POST /shift-assignments", "DELETE /shift-assignments/:id", "POST /shift-assignments/clear", "PUT /departments/:id/default-shift"]
+        ui: /user/attendance/shift-schedule
+        status: done
+        note: Lịch ca theo tuần (người × ngày) áp phạm vi dữ liệu; ca theo thứ bậc lịch riêng → ca mặc định phòng ban → ca mặc định công ty, chỉ ngày làm việc (ngày làm bù tính là ngày làm). Xếp / về mặc định cho nhiều ô, ca mặc định phòng ban. Thử trình duyệt 2026-10-22 (thứ 7 làm bù hiện ca, xếp nghỉ / xếp ca / về mặc định, ca mặc định phòng ban, người không có quyền thấy thông báo rõ). Kỳ đã chốt từ chối xếp ca (AT-17)
         depends: [AT-05]
       - id: AT-08
         title: Xếp ca hàng loạt / theo lịch lặp
-        api: ["POST /shift-assignments/bulk"]
-        status: todo
+        api: ["POST /shift-assignments/bulk", "GET /shift-patterns", "POST /shift-patterns", "PATCH /shift-patterns/:id", "DELETE /shift-patterns/:id"]
+        ui: /user/attendance/shift-schedule
+        status: done
+        note: Một ca vào các thứ đã chọn hoặc mẫu lặp N ngày (tạo ở Cài đặt ca) cho người / cả phòng ban trong phạm vi, tối đa 366 ngày; bắt buộc xem trước số ô mới / ghi đè / không đổi; tuỳ chọn giữ ô đã xếp riêng. Lịch ca xem theo tháng như Phân ca 1Office. Thử trình duyệt 2026-10-22 (mẫu 14 ngày, xem trước, lưu, lưới tháng đúng mẫu, dọn)
         depends: [AT-07]
       - id: AT-09
         title: Lịch ca của tôi
         api: ["GET /shift-assignments/me"]
-        status: todo
+        ui: /user/attendance
+        status: done
+        note: Chỉ cần đăng nhập. Bảng công cá nhân hiện ca từng ngày (mã ca, giờ ca, nguồn xếp), ngày lễ, ngày ngoài thời gian làm việc; công chuẩn và giờ chuẩn tính từ lịch ca thay cho số cố định; chuyển tháng theo URL. Thử trình duyệt 2026-10-22 với khanglm (tháng 10 có 22 công chuẩn, tháng 11 có 21) và admin chưa gắn hồ sơ (thông báo rõ)
       - id: AT-10
         title: Ngày lễ, ngày làm bù
-        api: ["GET /holidays", "POST /holidays", "PATCH /holidays/:id", "DELETE /holidays/:id"]
-        status: todo
+        api: ["GET /holidays", "POST /holidays", "PATCH /holidays/:id", "DELETE /holidays/:id", "POST /holidays/fixed"]
+        ui: /user/attendance/settings/holidays
+        status: done
+        note: Nghỉ lễ / ngày làm bù / công ty nghỉ, có hoặc không hưởng công, mỗi ngày một dòng. Seed ngày lễ dương lịch cố định 2026-2027, nút thêm cho năm khác; lễ âm lịch HR nhập theo lịch Chính phủ. Thử trình duyệt 2026-10-22 (thêm, trùng ngày bị từ chối, làm bù, sửa, thêm lễ cố định 2028)
       - id: AT-11
         title: Engine tính công (muộn, sớm, thiếu công, công thực tế theo ca)
-        status: todo
+        status: done
+        note: Engine thuần (modules/attendance/engine) lưu kết quả vào AttendanceDay qua AttendanceCalculationService; đồng bộ máy chấm công tính lại ngày bị ảnh hưởng (gồm ngày trước cho ca đêm), giờ đọc theo múi giờ công ty; chỉ ghi khi kết quả đổi để giữ nguồn thay đổi của ô. Script tính lại toàn bộ npm run attendance:recalculate. 39 test. Thử thật 2026-10-22 (đồng bộ 08:10–17:05 → muộn 10 phút, 0,98 công)
         depends: [AT-05, AT-07, AT-10]
       - id: AT-12
         title: Tính lại công cho khoảng ngày
-        api: ["POST /attendance/recalculate"]
-        status: todo
+        api: ["POST /attendance/recalculate", "GET /attendance/recalculations", "GET /attendance/recalculations/:id"]
+        ui: /user/attendance/timesheet/history
+        status: done
+        note: Job ghi lại từng lần tính lại; nhỏ chạy ngay, lớn vào hàng đợi attendance-recalc; tự tính lại khi đổi lịch ca, ngày lễ, chính sách, ca đang dùng, ca mặc định phòng ban; không tính ngày chưa tới. Thử trình duyệt 2026-10-22 (ngưỡng muộn 15 phút làm ngày vào 08:10 hết muộn, trả về 0 thì muộn 10 phút lại). Bỏ qua kỳ đã chốt làm cùng AT-17
         depends: [AT-11]
       - id: AT-13
         title: Check-in / check-out trên web và app
-        api: ["POST /attendance/check-in", "POST /attendance/check-out"]
-        status: todo
+        api: ["POST /attendance/check-in", "POST /attendance/check-out", "GET /attendance/me/punches"]
+        ui: /user/attendance
+        status: done
+        note: Nút Chấm công vào / ra trên bảng công cá nhân, đồng hồ và các lượt chấm hôm nay. Lượt chấm là log gốc (source web hoặc app, chiều vào / ra, toạ độ, độ chính xác, IP, thiết bị, điểm khớp) rồi tính lại ngày ngay. Web chuyển IP của trình duyệt kèm WEB_SERVICE_TOKEN; app gọi thẳng thì dùng IP kết nối. Bấm lại trong 1 phút không tính thêm. Tháng đã chốt thì không chấm được. Thử trình duyệt với vị trí giả lập 2026-10-23
         depends: [DV-07]
       - id: AT-14
         title: Check-in kèm ảnh và toạ độ GPS
-        status: todo
+        ui: /user/attendance
+        status: done
+        note: Chính sách thêm công tắc Chụp ảnh khi chấm công (mặc định tắt). Bật thì bấm chấm công mở camera trước (camera trước, xem lại, chụp lại; không có camera thì chọn ảnh), ảnh thu nhỏ 960 px JPEG rồi lên MinIO qua presign (purpose checkin_photo, chủ là nhân sự), lượt chấm giữ photoFileId; ảnh phải của chính người chấm, đã tải xong, chưa dùng cho lượt khác. Xem ảnh - chính nhân sự hoặc người có quyền xem log chấm công trong phạm vi; không ai xoá được. HR xem ảnh thu nhỏ trong chi tiết ngày và link trong tab Dữ liệu chấm công qua route /api/files/:id (mở trực tiếp ảnh). Toạ độ GPS đã lưu từ AT-13
         depends: [AT-13, CORE-11]
       - id: AT-15
         title: HR sửa công thủ công (có lịch sử)
-        api: ["PATCH /attendance/:id"]
-        status: todo
+        api: ["GET /attendance/:id", "PATCH /attendance/:id", "DELETE /attendance/:id/adjustment"]
+        ui: /user/attendance/timesheet
+        status: done
+        note: Bấm ô ở Công → Bảng chấm công mở chi tiết ngày (log gốc, kết quả, lịch sử sửa có tên người sửa và lý do); sửa giờ vào/ra (kể cả ra hôm sau), số công, trạng thái, bắt buộc lý do; bỏ sửa tay. Sửa được giữ qua mọi lần tính lại. Thử trình duyệt 2026-10-22 (muộn 12 phút → sửa vào 08:00 → đúng giờ 1 công, ô có S; bỏ sửa tay → muộn lại). Kỳ đã chốt từ chối sửa (AT-17)
       - id: AT-16
         title: Bảng công tháng toàn công ty
         api: ["GET /attendance/timesheets"]
-        status: todo
+        ui: /user/attendance/timesheet
+        status: done
+        note: Công → Bảng chấm công như 1Office — người × ngày theo phạm vi dữ liệu, ô hiện giờ hoặc công kèm V (vi phạm) / S (sửa tay), N / L / ✕, cuối tuần / lễ / hôm nay tô màu; cột tổng đi muộn, về sớm, quên chấm, vắng, công ca, công lễ, giờ đêm, giờ ngoài ca, công chuẩn, tổng giờ, tổng công; lọc phòng ban, tìm kiếm, phân trang. Thử trình duyệt 2026-10-22; người không có quyền không thấy tab
         depends: [AT-11]
       - id: AT-17
         title: Chốt / mở chốt bảng công tháng
         api: ["POST /attendance/timesheets/:month/lock", "POST /attendance/timesheets/:month/unlock"]
-        status: todo
+        ui: /user/attendance/timesheet
+        status: done
+        note: Quyền permission.attendance-period.lock. Chốt (kèm ghi chú) đóng dấu PayrollCycle.lockedAttendanceAt của kỳ lương trùng tháng; mở chốt bắt buộc lý do; cả hai có audit. Kỳ đã chốt từ chối sửa công tay và xếp ca (lẻ, hàng loạt, về mặc định, xoá), tính lại bỏ qua và ghi số ngày bỏ qua. Thử trình duyệt 2026-10-22 (chốt tháng 10, ô không còn form sửa, xếp ca bị từ chối, tính lại bỏ qua 88 ngày, mở chốt)
         depends: [AT-16]
       - id: AT-18
         title: Export bảng công
-        api: ["GET /attendance/timesheets/:month/export"]
-        status: todo
+        api: ["POST /exports"]
+        ui: /user/attendance/timesheet
+        status: done
+        note: Nút Xuất Excel trên bảng chấm công, dùng khung Export chung (POST /exports, type attendance-timesheet, tham số month và departmentId), file tạo ở worker theo phạm vi dữ liệu. Sheet bảng tháng (giờ làm mỗi ngày hoặc N / L / X, cột tổng, xác nhận) và sheet chi tiết ngày. Khung export mở rộng cho nhiều sheet có cột theo dữ liệu. Thử 2026-10-23 — số liệu file khớp màn hình
         depends: [AT-16, CORE-19]
       - id: AT-19
         title: Quản lý máy chấm công
         api: ["GET /attendance-devices", "POST /attendance-devices", "PATCH /attendance-devices/:id", "DELETE /attendance-devices/:id"]
-        status: todo
+        ui: /user/attendance/devices
+        status: done
+        note: Tab Máy chấm công trong phân hệ Công (quyền attendance.device.manage). Mã máy, tên, địa điểm làm việc, mã cửa hàng, ghi chú, số lượt chấm và lỗi, lần đồng bộ gần nhất. Máy tắt thì cổng đồng bộ từ chối dữ liệu; máy đã có log chỉ tắt được, không xoá. Máy lạ vẫn tự đăng ký ở lần đồng bộ đầu
       - id: AT-20
         title: Lỗi đồng bộ và mapping mã chấm công
-        api: ["GET /attendance/sync-errors", "POST /attendance/sync-errors/:id/resolve"]
-        status: todo
+        api: ["GET /attendance/sync-errors", "GET /attendance/sync-errors/candidates", "POST /attendance/sync-errors/:id/resolve"]
+        ui: /user/attendance/devices?view=errors
+        status: done
+        note: Lỗi chưa xử lý / đã xử lý, lọc theo máy và mã. Mã chấm công chưa gán thì HR chọn nhân sự trong phạm vi, mã lưu vào hồ sơ, mọi lượt chấm bị từ chối cùng mã được nhập thành log gốc và công được tính lại; mã đang thuộc người khác thì chặn. Lỗi khác bỏ qua kèm lý do. Có nhật ký
       - id: AT-21
         title: Xem log chấm công gốc
         api: ["GET /attendance/raw-logs"]
-        status: todo
+        ui: /user/attendance/devices?view=logs
+        status: done
+        note: Dữ liệu chấm công theo khoảng ngày (mặc định 7 ngày gần nhất), máy, tên hoặc mã nhân viên, có phân trang; theo phạm vi dữ liệu của quyền chấm công
       - id: AT-22
         title: Cập nhật công khi đơn nghỉ/OT/đổi ca/giải trình được duyệt
         phase: 3
-        status: todo
+        status: done
         depends: [AT-11, AP-10]
+        note: "Mọi loại đơn ghi AttendanceAdjustment có sourceRequestId và tính lại công sau commit; HR huỷ đơn đã duyệt thì thu hồi. leave: theo ngày, ngày nghỉ cả ngày trạng thái leave, công có lương vào paidLeaveUnits. absence: khoảng giờ, tha muộn/sớm, việc công ty cộng giờ làm, việc riêng trừ giờ làm. overtime: overtimeMinutes. explanation: giờ giải trình tính như log. shift_swap: đổi ShiftAssignment. Sửa tay của HR luôn thắng"
       - id: AT-23
         title: Nhắc quên chấm công
-        status: todo
+        api: ["GET /attendance/reminders", "POST /attendance/reminders/run"]
+        ui: /user/attendance/settings/timekeeping
+        status: done
+        note: Worker kiểm tra 5 phút một lần, quá giờ nhắc trong chính sách (mặc định 08.30, bật / tắt được) thì gửi thông báo attendance.missing_punch cho người ngày hôm qua thiếu giờ vào hoặc giờ ra; mỗi ngày gửi một lần (khoá theo ngày trong AttendanceReminderRun). Không nhắc ngày nghỉ, ngày lễ, tháng đã chốt. HR gửi tay và xem lần gần nhất ở Chính sách chấm công. Lưu chính sách chỉ tính lại công khi quy tắc tính công đổi giá trị
         depends: [NT-05]
       - id: AT-24
         title: Bảng công tháng của tôi + xác nhận công
-        api: ["GET /attendance/me/timesheet", "POST /attendance/me/timesheet/:month/confirm"]
-        status: todo
+        api: ["GET /attendance/me/timesheet", "POST /attendance/me/timesheet/:month/confirm", "POST /attendance/timesheets/:month/confirmation", "POST /attendance/timesheets/:month/confirmations/:employeeId/resolve"]
+        ui: /user/attendance
+        status: done
+        note: HR mở / đóng xác nhận công theo tháng trên bảng chấm công, thấy cột Xác nhận và bộ đếm, đọc và ghi cách xử lý phản hồi; nhân viên xác nhận hoặc phản hồi trên bảng công cá nhân, đổi được tới khi chốt. Chính sách bắt buộc xác nhận thì chặn chốt kỳ khi còn người chưa xác nhận. Thử trình duyệt 2026-10-23 hai vai (admin, khanglm)
         depends: [AT-16]
+      - id: AT-25
+        title: Công chuẩn theo phòng ban / vị trí
+        api: ["GET /standard-workday-rules", "POST /standard-workday-rules", "PATCH /standard-workday-rules/:id", "DELETE /standard-workday-rules/:id"]
+        ui: /user/attendance/timesheet/standard-workdays
+        status: done
+        note: "Như 1Office (docs/design/1office-attendance-reference.md mục 4.1). Cài đặt → Công chuẩn, mỗi nhóm phòng ban × vị trí (để trống là tất cả) chọn số ngày trong tháng trừ Chủ nhật (cộng / trừ điều chỉnh, tương đương TOTAL_DAY-TOTAL_SUNDAY-1), số cố định, hoặc theo lịch ca (mặc định khi không có nhóm). Nhóm cụ thể hơn thắng, cùng mức thì tháng áp dụng mới hơn thắng; trùng nhóm cùng tháng bị chặn; không sửa / xoá được quy tắc ảnh hưởng kỳ đã chốt. Dùng ở cột Công chuẩn bảng chấm công, file Excel và bảng công cá nhân. Ô công chuẩn trong hồ sơ nhân sự (standardWorkdays) chưa dùng cho chấm công. Dạng công thức làm ở AT-27"
+        depends: [AT-16]
+      - id: AT-26
+        title: Mẫu bảng chấm công (đối tượng, chu kỳ công, người xem, tách dòng)
+        phase: 5
+        status: todo
+        note: Nhiều bảng chấm công cho các nhóm khác nhau, chu kỳ công không bắt buộc từ ngày 1, tách dòng theo vị trí / mức lương
+        depends: [AT-16]
+      - id: AT-27
+        title: Công thức chấm công tuỳ biến (cấp ca / ngày / tháng, từ khoá của engine)
+        phase: 5
+        status: todo
+        note: Dùng chung bộ máy công thức với lương (PY-05, PY-06). Phase 2 chỉ tính sẵn các đại lượng gốc làm từ khoá
+        depends: [AT-11, PY-05]
+      - id: AT-28
+        title: Cài đặt chấm công kiểu 1Office (giới hạn sửa/tạo phân ca, muộn theo giây, tách giờ qua ngày, ngày liên tiếp không cần chốt)
+        ui: /user/attendance/settings/timekeeping
+        status: done
+        note: "Mục Cài đặt chung trong Chính sách chấm công (docs/design/attendance-engine.md mục 9b). Muộn / sớm theo phút (mặc định, bỏ qua giây) hoặc theo giây. Tách giờ qua ngày - không tách / tách tại 0h theo giờ làm thực tế / tách theo giờ của ca. Ca trực nhiều ngày - tối đa N ngày liên tiếp có ca, chấm vào ngày đầu và ra ngày cuối thì cả chuỗi đủ công (mặc định 0 = tắt). Giới hạn sửa phân ca N ngày kể từ lúc tạo và xếp ca trước tối đa N ngày (để trống = không giới hạn), áp cho xếp từng ô, hàng loạt, xoá. Tính lại mở rộng dải ngày theo các cài đặt này. Chưa làm - làm thêm qua ngày tính ngày trước (cần đơn làm thêm, Phase 3)"
+        depends: [AT-06]
+      - id: AT-29
+        title: Tự động nhận ca theo log trong các ca áp dụng cho phòng ban / vị trí
+        ui: /user/attendance/settings/shifts
+        status: done
+        note: "Form ca thêm Tự động nhận biết theo phòng ban, vị trí và đối tượng áp dụng (phòng ban, vị trí; để trống = tất cả), như 1Office. Ngày không có ô phân ca và không phải ngày lễ, engine chọn trong các ca tự nhận áp dụng cho người đó cùng ca mặc định của ngày - ca có khung giờ chứa nhiều lượt chấm nhất, rồi ca có giờ vào / ra gần nhất; cần ít nhất một lượt chấm đúng ngày đó. Ngày được nhận ca mang cờ auto_shift, ô bảng công hiện ca đã nhận. Sửa ca tự nhận thì tính lại cho mọi người. Thử 2026-10-26 - ngày 05/10 HC vắng thành ca sáng 06-14 từ log 06.02 / 14.01"
+        depends: [AT-05, AT-11]
+      - id: AT-30
+        title: Ca nhiều khoảng làm việc, ca làm thêm cố định, cài đặt giữa ca
+        phase: 9
+        status: todo
+        note: 1Office có, công ty hiện chưa dùng
+        depends: [AT-05]
 
   # ---------------------------------------------------------------------------
   - code: LV
@@ -755,34 +840,40 @@ modules:
       - id: LV-01
         title: Danh sách đơn nghỉ đọc từ DB
         api: ["GET /leave-requests"]
-        status: partial
-        note: Đọc DB, đã có guard; UI chưa dùng
+        status: done
+        note: "Đọc Request loại leave (giữ dạng cũ cho 3 dashboard), có guard. Bỏ ở Phase 9"
       - id: LV-02
         title: Tạo đơn (API chung cho mọi loại đơn)
-        api: ["POST /requests"]
-        status: todo
+        api: ["POST /requests", "POST /requests/:id/submit", "GET /requests/types"]
+        status: done
         depends: [AP-10]
+        note: "Thử trình duyệt 2026-11-26: khanglm tạo đơn nghỉ và gửi duyệt, quy trình mặc định giao quản lý trực tiếp"
       - id: LV-03
         title: Danh sách đơn của tôi / cần tôi duyệt / tôi theo dõi
         api: ["GET /requests"]
-        status: todo
+        status: done
+        note: "Hộp Đơn của tôi / Cần tôi duyệt (có số đếm) / Tôi đã xử lý / Tôi theo dõi / Tất cả (HR theo phạm vi). Thử trình duyệt hai vai"
       - id: LV-04
         title: Chi tiết đơn
         api: ["GET /requests/:id"]
         ui: /user/requests/detail
-        status: todo
+        status: done
+        note: "Trang chi tiết: thông tin, các ngày nghỉ, các bước duyệt theo lần gửi, lịch sử, thao tác theo quyền. Thử trình duyệt"
       - id: LV-05
         title: Sửa đơn nháp / bị trả lại
         api: ["PATCH /requests/:id"]
-        status: todo
+        status: done
+        note: "Thử trình duyệt: sửa đơn nháp từ cả ngày sang buổi sáng (0,5 ngày) rồi gửi"
       - id: LV-06
         title: Huỷ / rút lại đơn
         api: ["POST /requests/:id/cancel", "POST /requests/:id/recall"]
-        status: todo
+        status: done
+        note: "Thử trình duyệt: rút đơn khi chưa ai xử lý (về nháp, nhả quỹ phép), huỷ đơn bị trả lại có lý do"
       - id: LV-07
         title: Bình luận trên đơn
         api: ["GET /requests/:id/comments", "POST /requests/:id/comments"]
-        status: todo
+        status: done
+        note: "Thử trình duyệt: người duyệt bình luận, hiện trong lịch sử"
       - id: LV-08
         title: Đính kèm file vào đơn
         api: ["POST /requests/:id/attachments"]
@@ -791,57 +882,76 @@ modules:
       - id: LV-09
         title: Danh mục loại nghỉ (có lương/không lương, trừ phép, cần giấy tờ)
         api: ["GET /leave-types", "POST /leave-types", "PATCH /leave-types/:id", "DELETE /leave-types/:id"]
-        status: todo
+        status: done
+        note: "Đơn từ → Cài đặt → Loại nghỉ: thêm, ngừng dùng, xoá (loại đã dùng thì từ chối kèm lý do). Thử trình duyệt"
       - id: LV-10
         title: Quỹ phép của tôi
         api: ["GET /leave-balances/me"]
-        status: todo
+        status: done
         depends: [LV-09]
+        note: "Trang Quỹ phép của tôi. Thử trình duyệt với khanglm: 11 + 1 − 2,5 = 9,5"
       - id: LV-11
         title: Quỹ phép toàn công ty
         api: ["GET /leave-balances"]
-        status: todo
+        status: done
+        note: "Bảng Quỹ phép nhân sự theo phạm vi dữ liệu, chỉ hiện với người có quyền. Thử trình duyệt với admin"
       - id: LV-12
         title: Điều chỉnh quỹ phép thủ công
-        api: ["POST /leave-balances/adjust"]
-        status: todo
+        api: ["POST /leave-balances/adjust", "GET /leave-balances/:employeeId/transactions"]
+        status: done
+        note: "Nút Điều chỉnh có lý do, ghi sổ cái. Thử trình duyệt: +1 ngày cho khanglm"
       - id: LV-13
         title: Cộng phép tự động hằng tháng / theo thâm niên
-        status: todo
+        status: done
         depends: [CORE-16, LV-11]
+        note: "Worker chạy mỗi giờ (LeaveAccrualScheduler): 12 ngày/năm + 1 ngày mỗi 5 năm thâm niên, cộng dồn 1/12 mỗi tháng làm tròn 0,5, tháng vào làm tính nếu vào trước ngày 15. Khoá sourceKey nên chạy lại không cộng trùng. Test leave-rules.spec.ts, leave.spec.ts"
       - id: LV-14
         title: Chuyển phép tồn sang năm sau, hết hạn phép tồn
-        status: todo
+        status: done
         depends: [LV-13]
+        note: "Chuyển toàn bộ phép chưa dùng sang năm sau, phép tồn dùng trước và hết hạn 31/03. Cùng job với LV-13"
       - id: LV-15
         title: Kiểm tra trùng ngày, vượt quỹ phép, nghỉ nửa ngày/theo giờ theo ca
-        status: todo
+        status: done
         depends: [AT-05, LV-10]
+        api: ["POST /leave-requests/preview"]
+        note: "Tính theo lịch ca (bỏ ngày nghỉ, ngày lễ), nửa ngày theo giờ nghỉ giữa ca, theo giờ chính xác; chặn trùng ngày (cho phép hai nửa ngày), vượt quỹ, kỳ công đã chốt, thử việc. Kiểm tra phía server khi tạo và khi gửi đơn"
       - id: LV-16
         title: Form đơn nghỉ phép nối API
         ui: /user/requests/new
-        status: partial
-        note: Có UI, chưa gửi dữ liệu
+        status: done
+        note: "Form nối API: loại nghỉ, nhiều khoảng thời gian, xem trước số ngày theo ca và quỹ phép còn lại, lưu nháp / gửi duyệt. Thử trình duyệt: chiều 02/12 + 03/12 = 1,5 ngày"
         depends: [LV-02]
       - id: LV-17
         title: Form vắng mặt / ra ngoài nối API
-        status: partial
+        ui: /user/requests/new?type=absence
+        status: done
+        note: "Loại absence (VM): nhiều khoảng giờ trong ngày có ca, việc công ty (tính công) / việc riêng (trừ giờ làm); chặn trùng giờ với đơn khác, kỳ đã chốt. Duyệt → adjustment absence, engine tha muộn/sớm trong khoảng và cộng / trừ giờ làm"
         depends: [LV-02]
       - id: LV-18
         title: Form làm thêm giờ (OT) nối API
-        status: partial
+        ui: /user/requests/new?type=overtime
+        status: done
+        note: "Loại overtime (LT): ngày + giờ (qua nửa đêm được), loại ngày thường / nghỉ / lễ lấy từ lịch ca; chặn giờ trong ca, trùng đơn khác, dưới 15 phút, quá 16 giờ. Duyệt → adjustment overtime, AttendanceDay.overtimeMinutes, cột Giờ làm thêm trên bảng công và file Excel. Tính theo giờ được duyệt, chưa đối chiếu với giờ chấm thực tế"
         depends: [LV-02]
       - id: LV-19
         title: Form đổi ca nối API
-        status: partial
+        api: ["GET /attendance-requests/options"]
+        ui: /user/requests/new?type=shift-change
+        status: done
+        note: "Loại shift_change (DC): đổi ca của chính mình trong một ngày. Duyệt → ghi ShiftAssignment + adjustment shift_swap giữ lịch cũ, tính lại công; HR huỷ đơn thì trả lịch cũ (nếu chưa ai đổi lại). Chưa có đổi ca với đồng nghiệp. GET /attendance-requests/options cho các form OT / giải trình / đổi ca: ca trong ngày, ngày lễ, giờ đã ghi nhận, danh sách ca"
         depends: [LV-02, AT-07]
       - id: LV-20
         title: Form giải trình check-in/out nối API
-        status: partial
+        ui: /user/requests/new?type=checkin-out
+        status: done
+        note: "Loại checkin_out (GT): giờ vào và / hoặc ra cần bổ sung, lý do bắt buộc, không cho ngày chưa tới, một đơn mỗi ngày; giờ ra ca đêm tính sang hôm sau. Duyệt → adjustment explanation, engine coi như log của đúng ngày công (cờ explained)"
         depends: [LV-02]
       - id: LV-21
         title: Form nghỉ việc nối API, tự tạo offboarding
-        status: partial
+        ui: /user/requests/new?type=resignation
+        status: done
+        note: "Loại resignation (TV): ngày làm việc cuối, lý do, bàn giao, số ngày báo trước (dùng được trong điều kiện quy trình). Duyệt → ghi endDate hồ sơ (giữ ngày cũ để HR huỷ thì trả lại). Phần tự tạo checklist offboarding làm cùng RC-15 (Phase 7): gọi từ ResignationRequestHandler.onApproved"
         depends: [LV-02, RC-15]
       - id: LV-22
         title: Đơn công tác
@@ -854,8 +964,9 @@ modules:
       - id: LV-24
         title: Trang danh sách đơn nối API (bỏ requestRows viết cứng)
         ui: /user/requests
-        status: partial
+        status: done
         depends: [LV-03]
+        note: "Bỏ requestRows viết cứng; danh sách đọc API có tìm kiếm, lọc trạng thái / loại, phân trang. Thử trình duyệt"
       - id: LV-25
         title: Lịch nghỉ của phòng ban
         api: ["GET /leave-requests/calendar"]
@@ -883,23 +994,28 @@ modules:
       - id: AP-04
         title: Sửa quy trình duyệt
         api: ["PATCH /approval-workflows/:id"]
-        status: todo
+        status: done
+        note: "Sửa trong cùng màn thiết kế (trang /admin/settings/approval-workflows/:id), lưu sơ đồ đổi thì sinh phiên bản mới. Thử trình duyệt 2026-11-27: NP-NAM lên phiên bản 2"
       - id: AP-05
         title: Chi tiết quy trình duyệt
         api: ["GET /approval-workflows/:id"]
-        status: todo
+        status: done
+        note: "Trang sửa nạp sơ đồ và cài đặt có sẵn, hiện lỗi chặn kích hoạt. Thử trình duyệt"
       - id: AP-06
         title: Phiên bản quy trình (versionMode)
         api: ["GET /approval-workflows/:id/versions"]
-        status: todo
+        status: done
+        note: "Thanh phiên bản trên trang sửa (phiên bản hiện tại, số đơn mỗi phiên bản); đơn chạy theo phiên bản cố định. Thử trình duyệt: đơn NP-2026-000005 chạy NP-NAM v2"
       - id: AP-07
         title: Nhân bản quy trình
         api: ["POST /approval-workflows/:id/duplicate"]
-        status: todo
+        status: done
+        note: "Nút Nhân bản trên danh sách, bản sao ở trạng thái nháp. Thử trình duyệt"
       - id: AP-08
         title: Bật / tắt quy trình
         api: ["POST /approval-workflows/:id/activate", "POST /approval-workflows/:id/deactivate"]
-        status: todo
+        status: done
+        note: "Nút Kích hoạt / Tạm dừng trên danh sách, server kiểm tra sơ đồ và trả lý do. Thử trình duyệt"
       - id: AP-09
         title: Node gửi thông báo / gửi email trong sơ đồ quy trình (rich editor, người nhận theo phòng ban/vị trí/chức vụ)
         ui: /admin/settings/approval-workflows/new
@@ -907,33 +1023,38 @@ modules:
         note: Chỉ là cấu hình trên sơ đồ; việc gửi thật thuộc AP-23. Đính kèm file tách sang AP-26.
       - id: AP-10
         title: "Engine: chọn quy trình theo loại đối tượng + điều kiện, sinh các bước duyệt"
-        status: todo
+        status: done
+        note: "ApprovalEngineService.submit + pickWorkflow, quy trình mặc định quản lý trực tiếp khi không khớp. Test approval-engine.service.spec.ts, runner.spec.ts"
       - id: AP-11
         title: "Engine: xác định người duyệt (quản lý trực tiếp, trưởng phòng, vị trí, người chỉ định)"
-        status: todo
+        status: done
         depends: [AP-10]
+        note: "engine/approvers.ts, test bảng trường hợp approvers.spec.ts"
       - id: AP-12
         title: "Engine: duyệt tuần tự / song song / một người đủ"
-        status: todo
+        status: done
         depends: [AP-10]
+        note: "Tuần tự theo sơ đồ, approvalMode any hoặc all trên từng bước. Nhánh song song không hỗ trợ (thiết kế mục 5.4)"
       - id: AP-13
         title: Lưu bước và hành động duyệt (ApprovalStep / ApprovalAction)
-        status: todo
+        status: done
+        note: "ApprovalStep, ApprovalAssignee, ApprovalAction; khoá lạc quan Request.version"
       - id: AP-14
         title: Hộp duyệt của tôi
         api: ["GET /approvals"]
-        status: partial
-        note: Đang trả mock-data
+        status: done
+        note: "GET /approvals đọc DB; hộp Cần tôi duyệt trên web. Thử trình duyệt với haianh"
       - id: AP-15
         title: Duyệt / từ chối
         api: ["POST /approvals/:id/decision"]
-        status: partial
-        note: Mock, không lưu DB
+        status: done
+        note: "Duyệt / từ chối lưu DB theo bước, khoá lạc quan. Thử trình duyệt: duyệt → quỹ phép trừ, bảng công ghi nghỉ, người tạo nhận thông báo"
         depends: [AP-13]
       - id: AP-16
         title: Trả lại để bổ sung
         api: ["POST /approvals/:id/return"]
-        status: todo
+        status: done
+        note: "Thử trình duyệt: trả lại bắt buộc lý do, đơn về Bị trả lại, quỹ phép được nhả"
       - id: AP-17
         title: Chuyển tiếp người duyệt
         api: ["POST /approvals/:id/forward"]
@@ -945,8 +1066,9 @@ modules:
       - id: AP-19
         title: Timeline lịch sử duyệt
         api: ["GET /approvals/:id/timeline"]
-        status: todo
+        status: done
         depends: [AP-13]
+        note: "Lịch sử hoạt động trên trang chi tiết (hành động + bình luận). Thử trình duyệt"
       - id: AP-20
         title: Người theo dõi đơn
         status: todo
@@ -960,8 +1082,9 @@ modules:
         depends: [AU-21]
       - id: AP-23
         title: Thông báo cho người duyệt và người tạo
-        status: todo
+        status: done
         depends: [NT-05]
+        note: "Engine gửi sau commit: approval.assigned cho người duyệt, request.approved / rejected / returned / cancelled cho người tạo và người theo dõi, approval.workflow_notice cho node thông báo / email (gửi email thật cho node email thuộc AP-26)"
       - id: AP-24
         title: Trang cảnh báo duyệt cho admin nối dữ liệu thật
         ui: /admin/approvals-alerts
@@ -969,8 +1092,8 @@ modules:
         note: Đang fallback mock-data
       - id: AP-25
         title: Lọc HTML nội dung node thông báo/email phía server (khi lưu flowDefinition và trước khi gửi)
-        status: todo
-        note: Hiện chỉ lọc ở trình duyệt (sanitizeCommunicationContent)
+        status: done
+        note: "Lọc phía server khi lưu sơ đồ (sanitizeFlow, dựng lại thẻ theo danh sách cho phép), test bằng các mẫu XSS. Engine lọc lại trước khi gửi"
         depends: [AP-04]
       - id: AP-26
         title: Đính kèm file cho node gửi email

@@ -1,12 +1,25 @@
 import { Module } from "@nestjs/common";
+import { AttendanceAdjustmentsService } from "./attendance-adjustments.service";
 import { AttendanceController } from "./attendance.controller";
+import { AttendanceDevicesController } from "./attendance-devices.controller";
+import { AttendanceDevicesService } from "./attendance-devices.service";
+import { AttendanceCheckInController } from "./attendance-check-in.controller";
+import { AttendanceCheckInService } from "./attendance-check-in.service";
+import { AttendanceLocationsController } from "./attendance-locations.controller";
+import { AttendanceLocationsService } from "./attendance-locations.service";
+import { AttendanceLogsService } from "./attendance-logs.service";
+import { AttendanceCalculationModule } from "./attendance-calculation.module";
+import { AttendanceReminderModule } from "./attendance-reminder.module";
+import { AttendanceTransferModule } from "./attendance-transfer.module";
 import { AttendanceService } from "./attendance.service";
 import { AttendanceSyncGuard } from "./attendance-sync.guard";
+import { CheckinPhotoFilePolicy } from "./checkin-photo-file.policy";
+import { StandardWorkdayController } from "./standard-workdays.controller";
 import { AuthModule } from "../auth/auth.module";
 
 @Module({
-  imports: [AuthModule],
-  controllers: [AttendanceController],
-  providers: [AttendanceService, AttendanceSyncGuard]
+  imports: [AuthModule, AttendanceCalculationModule, AttendanceTransferModule, AttendanceReminderModule],
+  controllers: [AttendanceController, AttendanceCheckInController, AttendanceDevicesController, AttendanceLocationsController, StandardWorkdayController],
+  providers: [AttendanceService, AttendanceAdjustmentsService, AttendanceDevicesService, AttendanceCheckInService, AttendanceLocationsService, AttendanceLogsService, AttendanceSyncGuard, CheckinPhotoFilePolicy]
 })
 export class AttendanceModule {}

@@ -54,6 +54,18 @@ export async function deleteDeviceAuthRequestAction(requestId: string): Promise<
   }
 }
 
+// Công → Cài đặt → Chấm công saves the check-in rules of the device policy.
+export async function updateCheckInPolicyAction(payload: Partial<DeviceAuthPolicy>): Promise<DeviceAuthActionResult> {
+  try {
+    const updatedPolicy = await updateDeviceAuthPolicy(payload);
+    revalidatePath(deviceAuthPath);
+    revalidatePath("/user/attendance/settings/timekeeping");
+    return { ok: true, policy: updatedPolicy };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Không lưu được quy tắc chấm công GPS / Wifi." };
+  }
+}
+
 export async function updateDeviceAuthPolicyAction(policy: DeviceAuthPolicy): Promise<DeviceAuthActionResult> {
   try {
     const updatedPolicy = await updateDeviceAuthPolicy(policy);

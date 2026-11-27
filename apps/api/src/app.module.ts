@@ -23,8 +23,12 @@ import { DeviceAuthModule } from "./modules/device-auth/device-auth.module";
 import { EmployeesModule } from "./modules/employees/employees.module";
 import { EmployeeTransferModule } from "./modules/employees/employee-transfer.module";
 import { LeaveRequestsModule } from "./modules/leave-requests/leave-requests.module";
+import { RequestsModule } from "./modules/requests/requests.module";
+import { LeaveModule } from "./modules/leave/leave.module";
+import { AttendanceRequestsModule } from "./modules/attendance-requests/attendance-requests.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { TwoFactorModule } from "./modules/two-factor/two-factor.module";
+import { ShiftsModule } from "./modules/shifts/shifts.module";
 import { PayrollModule } from "./modules/payroll/payroll.module";
 import { PostsModule } from "./modules/posts/posts.module";
 import { ReportsModule } from "./modules/reports/reports.module";
@@ -62,13 +66,17 @@ import { UserPreferencesModule } from "./modules/user-preferences/user-preferenc
     AnnouncementsModule,
     ApprovalsModule,
     LeaveRequestsModule,
+    RequestsModule,
+    LeaveModule,
+    AttendanceRequestsModule,
     AttendanceModule,
     DeviceAuthModule,
     PayrollModule,
     ReportsModule,
     UserPreferencesModule,
     NotificationsModule,
-    TwoFactorModule
+    TwoFactorModule,
+    ShiftsModule
   ],
   // Global guards run in this order: rate limit first so rejected tokens still count, then
   // authentication. Every route requires a verified session unless it is marked @Public().

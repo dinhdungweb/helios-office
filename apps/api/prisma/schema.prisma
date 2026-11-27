@@ -13,27 +13,11 @@ enum EmployeeStatus {
   resigned
 }
 
-enum ApprovalStatus {
-  draft
-  pending
-  approved
-  rejected
-  cancelled
-}
-
 enum PostScope {
   company
   department
   group
   private
-}
-
-enum AttendanceStatus {
-  valid
-  late
-  early_leave
-  missing_checkout
-  needs_review
 }
 
 enum PayrollStatus {
@@ -96,53 +80,53 @@ enum JobCatalogStatus {
 }
 
 model UserAccount {
-  id                       String                 @id @default(uuid())
-  keycloakUserId           String                 @unique
-  email                    String                 @unique
-  displayName              String
-  employee                 Employee?
-  roles                    String[]
-  adminRole                AccountAdminRole       @default(user)
-  licensePlan              LicensePlan            @default(standard)
-  accountStatus            AccountLifecycleStatus @default(pending_activation)
-  permissionGroupId        String?
-  permissionGroup          PermissionGroup?       @relation(fields: [permissionGroupId], references: [id])
+  id                        String                   @id @default(uuid())
+  keycloakUserId            String                   @unique
+  email                     String                   @unique
+  displayName               String
+  employee                  Employee?
+  roles                     String[]
+  adminRole                 AccountAdminRole         @default(user)
+  licensePlan               LicensePlan              @default(standard)
+  accountStatus             AccountLifecycleStatus   @default(pending_activation)
+  permissionGroupId         String?
+  permissionGroup           PermissionGroup?         @relation(fields: [permissionGroupId], references: [id])
   // Per-account overrides of the group (AU-11), applied only while customPermissionsEnabled:
   // granted keys are added, revoked keys removed (revoke wins), and a scope set here replaces the
   // group's scope for that key.
-  customPermissionsEnabled Boolean                @default(false)
+  customPermissionsEnabled  Boolean                  @default(false)
   // Granted permission keys (string[]).
-  customPermissions        Json?
+  customPermissions         Json?
   // Revoked permission keys (string[]).
-  customRevokedPermissions Json?
+  customRevokedPermissions  Json?
   // { "<permission key>": "self" | "department" | "department_tree" | "branch" | "company" } for custom grants
-  customPermissionScopes   Json?
-  customPermissionNote     String?
-  passwordResetRequired    Boolean                @default(false)
+  customPermissionScopes    Json?
+  customPermissionNote      String?
+  passwordResetRequired     Boolean                  @default(false)
   temporaryPasswordIssuedAt DateTime?
-  inviteEmailRequested     Boolean                @default(false)
-  inviteSentAt             DateTime?
-  activatedAt              DateTime?
-  closedAt                 DateTime?
+  inviteEmailRequested      Boolean                  @default(false)
+  inviteSentAt              DateTime?
+  activatedAt               DateTime?
+  closedAt                  DateTime?
   // Access tokens issued before this instant are refused (AU-17 force logout), so signing an
   // account out takes effect at once instead of when its short-lived tokens expire.
-  sessionsRevokedAt        DateTime?
+  sessionsRevokedAt         DateTime?
   // Keycloak session ids (sid) signed out one by one (AU-16): [{ "sid": string, "at": ISO date }].
   // Kept only as long as a token of that session could still be valid.
-  revokedSessionIds        Json?
-  loginEvents              LoginEvent[]
-  twoFactorCredential      TwoFactorCredential?
-  twoFactorSessions        TwoFactorSession[]
-  twoFactorEmailCodes      TwoFactorEmailCode[]
-  preferences              UserPreference[]
-  auditLogs                AuditLog[]
-  notifications            Notification[]
-  notificationPreferences  NotificationPreference[]
-  uploadedFiles            StoredFile[]
-  importJobs               ImportJob[]
-  exportJobs               ExportJob[]
-  createdAt                DateTime               @default(now())
-  updatedAt                DateTime               @updatedAt
+  revokedSessionIds         Json?
+  loginEvents               LoginEvent[]
+  twoFactorCredential       TwoFactorCredential?
+  twoFactorSessions         TwoFactorSession[]
+  twoFactorEmailCodes       TwoFactorEmailCode[]
+  preferences               UserPreference[]
+  auditLogs                 AuditLog[]
+  notifications             Notification[]
+  notificationPreferences   NotificationPreference[]
+  uploadedFiles             StoredFile[]
+  importJobs                ImportJob[]
+  exportJobs                ExportJob[]
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
 }
 
 enum TwoFactorMethod {
@@ -208,9 +192,9 @@ enum LoginOutcome {
 // Sign-in attempts through the Helios login page (AU-20), reported by the web server with the
 // browser's IP and user agent; Keycloak only sees the web server.
 model LoginEvent {
-  id             String        @id @default(uuid())
+  id             String       @id @default(uuid())
   accountId      String?
-  account        UserAccount?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  account        UserAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
   keycloakUserId String?
   username       String
   outcome        LoginOutcome
@@ -218,7 +202,7 @@ model LoginEvent {
   sessionId      String?
   ipAddress      String?
   userAgent      String?
-  createdAt      DateTime      @default(now())
+  createdAt      DateTime     @default(now())
 
   @@index([accountId, createdAt])
   @@index([sessionId])
@@ -244,33 +228,33 @@ model UserPreference {
 }
 
 model PermissionGroup {
-  id          String                @id @default(uuid())
-  name        String                @unique
-  description String
-  roleScope   AccountAdminRole      @default(user)
-  licensePlan LicensePlan           @default(standard)
-  permissions String[]
+  id               String                @id @default(uuid())
+  name             String                @unique
+  description      String
+  roleScope        AccountAdminRole      @default(user)
+  licensePlan      LicensePlan           @default(standard)
+  permissions      String[]
   // Data scope per scopable permission key; see docs/design/data-scope.md
   permissionScopes Json                  @default("{}")
-  status      PermissionGroupStatus @default(active)
-  archivedAt  DateTime?
-  accounts    UserAccount[]
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
+  status           PermissionGroupStatus @default(active)
+  archivedAt       DateTime?
+  accounts         UserAccount[]
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 }
 
 model PermissionDefinition {
-  key         String   @id
-  category    String
-  label       String
-  description String?
-  adminOnly   Boolean  @default(false)
+  key          String   @id
+  category     String
+  label        String
+  description  String?
+  adminOnly    Boolean  @default(false)
   // Scopable permissions are filtered by data scope (self ... company); others are yes/no only.
-  scopable     Boolean @default(false)
+  scopable     Boolean  @default(false)
   defaultScope String?
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model AdminSetting {
@@ -295,6 +279,17 @@ model DeviceAuthPolicy {
   requireNotificationEnabled Boolean  @default(true)
   requireGpsForAttendance    Boolean  @default(true)
   requireWifiForOffice       Boolean  @default(true)
+  // Like 1Office's Timekeeping settings, GPS and Wifi check-ins each have their own rules (DV-06,
+  // AT-14): check in on a day without a shift; only from an approved device; with a photo; only at
+  // a place of the day's shift that applies to the person. requireGps / requireWifi turn the method on.
+  gpsAllowWithoutShift       Boolean  @default(false)
+  gpsRequireApprovedDevice   Boolean  @default(false)
+  gpsRequirePhoto            Boolean  @default(false)
+  gpsCheckEntities           Boolean  @default(false)
+  wifiAllowWithoutShift      Boolean  @default(false)
+  wifiRequireApprovedDevice  Boolean  @default(false)
+  wifiRequirePhoto           Boolean  @default(false)
+  wifiCheckEntities          Boolean  @default(false)
   approvalRefreshHint        String
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
@@ -323,49 +318,54 @@ model DeviceAuthRequest {
 }
 
 model Employee {
-  id                String             @id @default(uuid())
-  code              String             @unique
-  fullName          String
-  title             String
-  positionId        String?
-  jobTitleId        String?
-  status            EmployeeStatus     @default(active)
-  startDate         DateTime
-  officialStartDate DateTime?
-  endDate           DateTime?
-  employeeType      String?
-  avatarUrl         String?
-  attendanceCode    String?            @unique
-  attendanceMode    String?
-  payrollTemplate   String?
-  standardWorkdays  Int?
-  profileData       Json?
-  userAccountId     String?            @unique
-  departmentId      String
-  managerId         String?
-  userAccount       UserAccount?       @relation(fields: [userAccountId], references: [id])
-  department        Department         @relation(fields: [departmentId], references: [id])
-  position          JobPosition?       @relation(fields: [positionId], references: [id])
-  jobTitle          JobTitle?          @relation(fields: [jobTitleId], references: [id])
-  manager           Employee?          @relation("EmployeeManager", fields: [managerId], references: [id])
-  directReports     Employee[]         @relation("EmployeeManager")
-  contracts         Contract[]
-  documents         EmployeeDocument[]
-  attendanceRecords AttendanceRecord[]
-  attendanceRawLogs AttendanceRawLog[]
-  leaveRequests     LeaveRequest[]
-  payrollItems      PayrollItem[]
-  assetAssignments  AssetAssignment[]
-  deviceAuthRequests DeviceAuthRequest[]
-  auditLogs         AuditLog[]
-  createdInternalPenalties InternalPenalty[] @relation("InternalPenaltyCreator")
-  createdWelfareBenefits   WelfareBenefit[]   @relation("WelfareBenefitCreator")
-  createdWelfarePackages   WelfarePackage[]   @relation("WelfarePackageCreator")
+  id                        String                       @id @default(uuid())
+  code                      String                       @unique
+  fullName                  String
+  title                     String
+  positionId                String?
+  jobTitleId                String?
+  status                    EmployeeStatus               @default(active)
+  startDate                 DateTime
+  officialStartDate         DateTime?
+  endDate                   DateTime?
+  employeeType              String?
+  avatarUrl                 String?
+  attendanceCode            String?                      @unique
+  attendanceMode            String?
+  payrollTemplate           String?
+  standardWorkdays          Int?
+  profileData               Json?
+  userAccountId             String?                      @unique
+  departmentId              String
+  managerId                 String?
+  userAccount               UserAccount?                 @relation(fields: [userAccountId], references: [id])
+  department                Department                   @relation(fields: [departmentId], references: [id])
+  position                  JobPosition?                 @relation(fields: [positionId], references: [id])
+  jobTitle                  JobTitle?                    @relation(fields: [jobTitleId], references: [id])
+  manager                   Employee?                    @relation("EmployeeManager", fields: [managerId], references: [id])
+  directReports             Employee[]                   @relation("EmployeeManager")
+  contracts                 Contract[]
+  documents                 EmployeeDocument[]
+  attendanceRawLogs         AttendanceRawLog[]
+  attendanceDays            AttendanceDay[]
+  attendanceAdjustments     AttendanceAdjustment[]
+  attendanceConfirmations   AttendanceConfirmation[]
+  shiftAssignments          ShiftAssignment[]
+  requests                  Request[]                    @relation("RequestRequester")
+  approvalAssignments       ApprovalAssignee[]
+  leaveBalances             LeaveBalance[]
+  payrollItems              PayrollItem[]
+  assetAssignments          AssetAssignment[]
+  deviceAuthRequests        DeviceAuthRequest[]
+  auditLogs                 AuditLog[]
+  createdInternalPenalties  InternalPenalty[]            @relation("InternalPenaltyCreator")
+  createdWelfareBenefits    WelfareBenefit[]             @relation("WelfareBenefitCreator")
+  createdWelfarePackages    WelfarePackage[]             @relation("WelfarePackageCreator")
   followedApprovalWorkflows ApprovalWorkflowDefinition[] @relation("ApprovalWorkflowFollower")
   createdApprovalWorkflows  ApprovalWorkflowDefinition[] @relation("ApprovalWorkflowCreator")
   updatedApprovalWorkflows  ApprovalWorkflowDefinition[] @relation("ApprovalWorkflowUpdater")
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  createdAt                 DateTime                     @default(now())
+  updatedAt                 DateTime                     @updatedAt
 
   @@index([positionId])
   @@index([jobTitleId])
@@ -388,10 +388,195 @@ model Department {
   children            Department[]     @relation("DepartmentTree")
   employees           Employee[]
   workplaces          Workplace[]
+  // Shift for the department's working days when nobody scheduled one (AT-07, design §5.3).
+  defaultShiftId      String?
+  defaultShift        Shift?           @relation("DepartmentDefaultShift", fields: [defaultShiftId], references: [id], onDelete: SetNull)
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 
   @@unique([parentId, name])
+}
+
+enum ShiftType {
+  fixed
+  flexible
+}
+
+enum LateCountMode {
+  // Past the grace period, every minute counts.
+  full
+  // Past the grace period, only the minutes beyond it count.
+  excess
+}
+
+enum PunchPairingMode {
+  first_last
+  pairs
+}
+
+enum OvernightAttribution {
+  shift_start
+  shift_end
+}
+
+enum MissingPunchMode {
+  // 0 units, flagged for an explanation or an HR fix.
+  pending
+  half
+  // Use the shift's scheduled time for the missing punch.
+  scheduled
+}
+
+enum WorkUnitMode {
+  // units × worked / required minutes
+  actual
+  // full units when both punches exist
+  presence
+}
+
+enum OutsideShiftMode {
+  record
+  ignore
+}
+
+// Shift template (AT-05, AT-06). Times are minutes after midnight in the company time zone; an end
+// at or before the start means the shift ends the next day. Override fields left null use the
+// company AttendancePolicy. See docs/design/attendance-engine.md §5.
+model Shift {
+  id                       String             @id @default(uuid())
+  code                     String             @unique
+  name                     String
+  type                     ShiftType          @default(fixed)
+  color                    String?
+  startMinute              Int
+  endMinute                Int
+  breakStartMinute         Int?
+  breakEndMinute           Int?
+  // Flexible shifts: minutes to work inside the window. Fixed shifts: derived (length − break).
+  requiredMinutes          Int?
+  workUnits                Decimal            @default(1) @db.Decimal(4, 2)
+  lateGraceMinutes         Int?
+  earlyGraceMinutes        Int?
+  lateCountMode            LateCountMode?
+  missingPunchMode         MissingPunchMode?
+  punchWindowBeforeMinutes Int?
+  punchWindowAfterMinutes  Int?
+  // AT-29, like 1Office's "Tự động nhận biết theo phòng ban, vị trí": on a day without an assignment,
+  // the shift that best fits the punches is taken among these, for people in the groups below
+  // (empty lists mean everyone).
+  autoDetect               Boolean            @default(false)
+  applyDepartmentIds       String[]           @default([])
+  applyPositionIds         String[]           @default([])
+  // Places check-ins of this shift are accepted at when the policy checks applicable entities.
+  locationIds              String[]           @default([])
+  description              String?
+  status                   JobCatalogStatus   @default(active)
+  archivedAt               DateTime?
+  departmentsDefault       Department[]       @relation("DepartmentDefaultShift")
+  policiesDefault          AttendancePolicy[] @relation("PolicyDefaultShift")
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  shiftAssignments         ShiftAssignment[]
+  attendanceDays           AttendanceDay[]
+}
+
+// A repeating schedule for bulk scheduling (AT-08), e.g. two weeks of day and night shifts.
+// days[i] is the shift id on day i of the cycle, or null for a day off.
+model ShiftPattern {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  days        Json
+  description String?
+  status      JobCatalogStatus @default(active)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+// A person's shift on one date (AT-07), overriding the department and company defaults. A row
+// without shiftId means "day off" that date. Dates are calendar dates in the company time zone.
+model ShiftAssignment {
+  id          String   @id @default(uuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date        DateTime @db.Date
+  shiftId     String?
+  shift       Shift?   @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+enum HolidayType {
+  // Public holiday: no work; paid as the day's shift when `paid` (and the policy pays holidays).
+  holiday
+  // Make-up working day: a normally free day (e.g. a Saturday) that is worked on.
+  compensatory_workday
+  // Day the company closes on its own decision.
+  company_off
+}
+
+// Holidays and make-up days (AT-10), one entry per date. Lunar holidays and the day next to
+// National Day change every year, so HR enters them from the government schedule.
+model Holiday {
+  id        String      @id @default(uuid())
+  date      DateTime    @unique @db.Date
+  name      String
+  type      HolidayType @default(holiday)
+  paid      Boolean     @default(true)
+  note      String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+// Company-wide attendance rules (AT-06); one row with id "default". Every rule is a setting so HR
+// can match how they count by hand. See docs/design/attendance-engine.md §4.
+model AttendancePolicy {
+  id                           String               @id @default("default")
+  timezone                     String               @default("Asia/Ho_Chi_Minh")
+  // ISO weekdays, 1 = Monday … 7 = Sunday.
+  workWeekdays                 Int[]                @default([1, 2, 3, 4, 5])
+  defaultShiftId               String?
+  defaultShift                 Shift?               @relation("PolicyDefaultShift", fields: [defaultShiftId], references: [id], onDelete: SetNull)
+  lateGraceMinutes             Int                  @default(0)
+  earlyGraceMinutes            Int                  @default(0)
+  lateCountMode                LateCountMode        @default(full)
+  roundingMinutes              Int                  @default(0)
+  punchPairing                 PunchPairingMode     @default(first_last)
+  punchWindowBeforeMinutes     Int                  @default(240)
+  punchWindowAfterMinutes      Int                  @default(240)
+  overnightAttribution         OvernightAttribution @default(shift_start)
+  missingPunchMode             MissingPunchMode     @default(pending)
+  workUnitMode                 WorkUnitMode         @default(actual)
+  // Rounding step for work units in hundredths: 1 = 0.01, 25 = 0.25, 50 = 0.5.
+  workUnitRoundingHundredths   Int                  @default(1)
+  outsideShiftMode             OutsideShiftMode     @default(record)
+  overtimeWeekdayPercent       Int                  @default(150)
+  overtimeRestDayPercent       Int                  @default(200)
+  overtimeHolidayPercent       Int                  @default(300)
+  nightAllowancePercent        Int                  @default(30)
+  holidayPaid                  Boolean              @default(true)
+  requireTimesheetConfirmation Boolean              @default(false)
+  // AT-23: remind people with a missing check-in or check-out the day before, at this local time.
+  missingPunchReminder         Boolean              @default(true)
+  missingPunchReminderTime     String               @default("08:30")
+  // AT-28, like 1Office's general attendance settings.
+  // minute: seconds are ignored (08:00:59 is on time) · second: one second late counts.
+  lateEarlyUnit                String               @default("minute")
+  // none · split: hours after midnight go to the next day · split_full: split by the shift's own
+  // hours before/after midnight, so a full shift always gives each day its share.
+  overnightSplit               String               @default("none")
+  // 1 = off (1Office default 2, max 30). Up to N consecutive shift days with a check-in on the first and a check-out on the
+  // last count in full, though nothing was punched in between.
+  continuousShiftMaxDays       Int                  @default(2)
+  // null = no limit. An assignment may be changed only within N days of being created; shifts
+  // may be scheduled at most N days ahead.
+  shiftEditWindowDays          Int?
+  shiftCreateAheadDays         Int?
+  updatedAt                    DateTime             @updatedAt
 }
 
 enum StoredFileStatus {
@@ -403,32 +588,32 @@ enum StoredFileStatus {
 // A file kept in object storage (MinIO/S3). Business tables reference it by id; access is decided
 // per purpose by a FileAccessPolicy. See docs/design/file-storage.md.
 model StoredFile {
-  id           String           @id @default(uuid())
-  bucket       String
-  objectKey    String           @unique
-  fileName     String
-  mimeType     String
-  size         Int
+  id               String            @id @default(uuid())
+  bucket           String
+  objectKey        String            @unique
+  fileName         String
+  mimeType         String
+  size             Int
   // Storage ETag after upload is confirmed.
-  checksum     String?
-  purpose      String
-  ownerType    String?
-  ownerId      String?
-  status       StoredFileStatus @default(pending)
-  uploadedById String?
-  uploadedBy   UserAccount?     @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  checksum         String?
+  purpose          String
+  ownerType        String?
+  ownerId          String?
+  status           StoredFileStatus  @default(pending)
+  uploadedById     String?
+  uploadedBy       UserAccount?      @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
   employeeDocument EmployeeDocument?
-  importJobs   ImportJob[]      @relation("ImportJobFile")
-  exportJob    ExportJob?       @relation("ExportJobFile")
-  createdAt    DateTime         @default(now())
-  deletedAt    DateTime?
+  importJobs       ImportJob[]       @relation("ImportJobFile")
+  exportJob        ExportJob?        @relation("ExportJobFile")
+  createdAt        DateTime          @default(now())
+  deletedAt        DateTime?
 
   @@index([ownerType, ownerId])
   @@index([status, createdAt])
 }
 
 model EmployeeDocument {
-  id         String   @id @default(uuid())
+  id         String      @id @default(uuid())
   employeeId String
   fieldName  String
   fileName   String
@@ -438,8 +623,8 @@ model EmployeeDocument {
   content    Bytes?
   fileId     String?     @unique
   file       StoredFile? @relation(fields: [fileId], references: [id])
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
+  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now())
 
   @@index([employeeId, fieldName])
 }
@@ -506,62 +691,64 @@ model ExportJob {
 }
 
 model JobPosition {
-  id          String           @id @default(uuid())
-  code        String           @unique
-  name        String           @unique
-  family      String?
-  description String?
-  status      JobCatalogStatus @default(active)
-  archivedAt  DateTime?
-  employees   Employee[]
+  id              String           @id @default(uuid())
+  code            String           @unique
+  name            String           @unique
+  family          String?
+  description     String?
+  status          JobCatalogStatus @default(active)
+  archivedAt      DateTime?
+  employees       Employee[]
   welfarePackages WelfarePackage[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model JobTitle {
-  id          String           @id @default(uuid())
-  code        String           @unique
-  name        String           @unique
-  rank        Int              @default(0)
-  levelId     String?
-  description String?
-  status      JobCatalogStatus @default(active)
-  archivedAt  DateTime?
-  level       JobLevel?        @relation(fields: [levelId], references: [id], onDelete: SetNull)
-  employees   Employee[]
+  id              String           @id @default(uuid())
+  code            String           @unique
+  name            String           @unique
+  rank            Int              @default(0)
+  levelId         String?
+  description     String?
+  status          JobCatalogStatus @default(active)
+  archivedAt      DateTime?
+  level           JobLevel?        @relation(fields: [levelId], references: [id], onDelete: SetNull)
+  employees       Employee[]
   welfarePackages WelfarePackage[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([levelId])
 }
 
 model JobLevel {
-  id          String           @id @default(uuid())
-  name        String           @unique
-  description String?
-  sortOrder   Int              @default(0)
-  status      JobCatalogStatus @default(active)
-  archivedAt  DateTime?
-  jobTitles   JobTitle[]
+  id              String           @id @default(uuid())
+  name            String           @unique
+  description     String?
+  sortOrder       Int              @default(0)
+  status          JobCatalogStatus @default(active)
+  archivedAt      DateTime?
+  jobTitles       JobTitle[]
   welfarePackages WelfarePackage[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model Workplace {
-  id                 String           @id @default(uuid())
-  name               String           @unique
-  addressLine        String?
-  administrativeArea String?
-  departmentId       String?
-  description        String?
-  status             JobCatalogStatus @default(active)
-  archivedAt         DateTime?
-  department         Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  id                  String               @id @default(uuid())
+  name                String               @unique
+  addressLine         String?
+  administrativeArea  String?
+  departmentId        String?
+  description         String?
+  status              JobCatalogStatus     @default(active)
+  archivedAt          DateTime?
+  department          Department?          @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  attendanceDevices   AttendanceDevice[]
+  attendanceLocations AttendanceLocation[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@index([departmentId])
 }
@@ -583,24 +770,24 @@ model InternalPenalty {
 }
 
 model WelfareBenefit {
-  id          String           @id @default(uuid())
-  name        String
-  amount      Int              @default(0)
-  description String?
-  status      JobCatalogStatus @default(active)
-  archivedAt  DateTime?
-  createdById String?
-  createdBy   Employee?        @relation("WelfareBenefitCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  id           String               @id @default(uuid())
+  name         String
+  amount       Int                  @default(0)
+  description  String?
+  status       JobCatalogStatus     @default(active)
+  archivedAt   DateTime?
+  createdById  String?
+  createdBy    Employee?            @relation("WelfareBenefitCreator", fields: [createdById], references: [id], onDelete: SetNull)
   packageItems WelfarePackageItem[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
   @@index([createdById])
   @@index([status])
 }
 
 model WelfarePackage {
-  id          String           @id @default(uuid())
+  id          String               @id @default(uuid())
   name        String
   startDate   DateTime?
   endDate     DateTime?
@@ -608,16 +795,16 @@ model WelfarePackage {
   jobTitleId  String?
   jobLevelId  String?
   description String?
-  status      JobCatalogStatus @default(active)
+  status      JobCatalogStatus     @default(active)
   archivedAt  DateTime?
   createdById String?
-  position    JobPosition?     @relation(fields: [positionId], references: [id], onDelete: SetNull)
-  jobTitle    JobTitle?        @relation(fields: [jobTitleId], references: [id], onDelete: SetNull)
-  jobLevel    JobLevel?        @relation(fields: [jobLevelId], references: [id], onDelete: SetNull)
-  createdBy   Employee?        @relation("WelfarePackageCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  position    JobPosition?         @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  jobTitle    JobTitle?            @relation(fields: [jobTitleId], references: [id], onDelete: SetNull)
+  jobLevel    JobLevel?            @relation(fields: [jobLevelId], references: [id], onDelete: SetNull)
+  createdBy   Employee?            @relation("WelfarePackageCreator", fields: [createdById], references: [id], onDelete: SetNull)
   items       WelfarePackageItem[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 
   @@index([positionId])
   @@index([jobTitleId])
@@ -655,18 +842,18 @@ model Contract {
 }
 
 model Post {
-  id          String     @id @default(uuid())
+  id          String         @id @default(uuid())
   authorId    String
   scope       PostScope
   title       String
   body        String
-  requiresAck Boolean    @default(false)
+  requiresAck Boolean        @default(false)
   publishedAt DateTime?
   comments    Comment[]
   reactions   Reaction[]
   readMarks   PostReadMark[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 }
 
 model Comment {
@@ -691,11 +878,11 @@ model Reaction {
 }
 
 model PostReadMark {
-  id        String   @id @default(uuid())
-  postId    String
-  userId    String
-  readAt    DateTime @default(now())
-  post      Post     @relation(fields: [postId], references: [id])
+  id     String   @id @default(uuid())
+  postId String
+  userId String
+  readAt DateTime @default(now())
+  post   Post     @relation(fields: [postId], references: [id])
 
   @@unique([postId, userId])
 }
@@ -711,57 +898,275 @@ model Announcement {
   updatedAt   DateTime  @updatedAt
 }
 
-model ApprovalRequest {
-  id          String         @id @default(uuid())
-  type        String
-  requesterId String
-  assigneeId  String?
-  status      ApprovalStatus @default(pending)
-  priority    String         @default("normal")
-  payload     Json
-  decidedAt   DateTime?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+enum AttendanceDayStatus {
+  on_time
+  late
+  early_leave
+  late_and_early
+  missing_checkin
+  missing_checkout
+  absent
+  holiday
+  day_off
+  // A full day of approved leave (AT-22).
+  leave
 }
 
-model AttendanceRecord {
-  id         String           @id @default(uuid())
-  employeeId String
-  workDate   DateTime
-  checkIn    DateTime?
-  checkOut   DateTime?
-  source     String
-  status     AttendanceStatus @default(valid)
-  employee   Employee         @relation(fields: [employeeId], references: [id])
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+// Engine result for one person on one work date (AT-11), recomputed from AttendanceRawLog, the
+// shift schedule, holidays, policy and HR's adjustments. See docs/design/attendance-engine.md §6.
+model AttendanceDay {
+  id                  String              @id @default(uuid())
+  employeeId          String
+  employee            Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  workDate            DateTime            @db.Date
+  shiftId             String?
+  shift               Shift?              @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  scheduledStart      DateTime?
+  scheduledEnd        DateTime?
+  checkIn             DateTime?
+  checkOut            DateTime?
+  workedMinutes       Int                 @default(0)
+  lateMinutes         Int                 @default(0)
+  earlyMinutes        Int                 @default(0)
+  outsideShiftMinutes Int                 @default(0)
+  nightMinutes        Int                 @default(0)
+  // Approved overtime (LV-18), as approved on the requests.
+  overtimeMinutes     Int                 @default(0)
+  workUnits           Decimal             @default(0) @db.Decimal(5, 2)
+  paidLeaveUnits      Decimal             @default(0) @db.Decimal(5, 2)
+  status              AttendanceDayStatus
+  flags               String[]            @default([])
+  holidayType         HolidayType?
+  punchCount          Int                 @default(0)
+  // Policy and shift rules the engine used, so a figure can be explained later.
+  policySnapshot      Json?
+  // What last changed the day, shown as the cell's history like 1Office: punch_sync, recalculation, manual.
+  lastChangeSource    String
+  calculatedAt        DateTime            @default(now())
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
-  @@unique([employeeId, workDate, source])
+  @@unique([employeeId, workDate])
+  @@index([workDate])
+}
+
+enum AttendancePeriodStatus {
+  open
+  locked
+}
+
+enum AttendanceLocationType {
+  gps
+  wifi
+  ip
+}
+
+// A place web/app check-ins are accepted from (DV-07): a GPS point with a radius, a wifi network
+// (SSID/BSSID, readable by the mobile app only) or office IP ranges (for the browser).
+model AttendanceLocation {
+  id           String                 @id @default(uuid())
+  name         String
+  type         AttendanceLocationType
+  workplaceId  String?
+  workplace    Workplace?             @relation(fields: [workplaceId], references: [id], onDelete: SetNull)
+  latitude     Float?
+  longitude    Float?
+  radiusMeters Int                    @default(100)
+  ssid         String?
+  bssid        String?
+  // IPv4 / IPv6 addresses or CIDR ranges.
+  ipRanges     String[]               @default([])
+  // active | inactive
+  status       String                 @default("active")
+  note         String?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  @@index([workplaceId])
+}
+
+enum StandardWorkdayMode {
+  schedule
+  auto
+  fixed
+}
+
+// Standard work units of a month for a group of departments × positions (AT-25); empty lists mean
+// everyone. See src/modules/attendance/engine/standard-workdays.ts.
+model StandardWorkdayRule {
+  id            String              @id @default(uuid())
+  name          String
+  departmentIds String[]            @default([])
+  positionIds   String[]            @default([])
+  mode          StandardWorkdayMode
+  fixedUnits    Decimal?            @db.Decimal(5, 2)
+  adjustUnits   Decimal             @default(0) @db.Decimal(5, 2)
+  // YYYY-MM: the first month the rule applies to.
+  effectiveFrom String
+  note          String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([effectiveFrom])
+}
+
+// One missing-punch reminder pass for a work date (AT-23). The date is the key, so the daily job
+// sends once even with several workers or a restart; HR may send again by hand.
+model AttendanceReminderRun {
+  workDate      String    @id
+  trigger       String
+  triggeredById String?
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  notified      Int       @default(0)
+  error         String?
+}
+
+// A month of attendance (AT-17). Once locked, nothing may change its days: no manual change, no
+// schedule edit, and recalculations skip it. A month without a row is open.
+model AttendancePeriod {
+  id                     String                 @id @default(uuid())
+  // YYYY-MM
+  month                  String                 @unique
+  status                 AttendancePeriodStatus @default(open)
+  lockedAt               DateTime?
+  // Employee id, or the account id when the account has no employee profile.
+  lockedById             String?
+  note                   String?
+  unlockedAt             DateTime?
+  unlockedById           String?
+  unlockReason           String?
+  // AT-24: employees may confirm or give feedback on their month while this is set.
+  confirmationOpenedAt   DateTime?
+  confirmationOpenedById String?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+}
+
+enum AttendanceConfirmationStatus {
+  confirmed
+  feedback
+}
+
+// An employee's answer on their month (AT-24): confirmed, or feedback for HR, who can record how
+// it was handled. One row per person and month; answering again replaces the answer.
+model AttendanceConfirmation {
+  id           String                       @id @default(uuid())
+  employeeId   String
+  employee     Employee                     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  // YYYY-MM
+  month        String
+  status       AttendanceConfirmationStatus
+  feedback     String?
+  respondedAt  DateTime
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolution   String?
+  createdAt    DateTime                     @default(now())
+  updatedAt    DateTime                     @updatedAt
+
+  @@unique([employeeId, month])
+  @@index([month])
+}
+
+enum AttendanceRecalcStatus {
+  queued
+  running
+  done
+  failed
+}
+
+// One request to recompute AttendanceDay (AT-12): by HR, or automatically after a schedule,
+// holiday, policy or shift change. Small ones run inside the request, larger ones on the
+// attendance-recalc queue.
+model AttendanceRecalcJob {
+  id            String                 @id @default(uuid())
+  from          DateTime               @db.Date
+  to            DateTime               @db.Date
+  // null = everyone employed in the range.
+  employeeIds   Json?
+  // manual, schedule, holiday, policy, shift, department_default
+  reason        String
+  status        AttendanceRecalcStatus @default(queued)
+  // { days, changed, removed }
+  result        Json?
+  error         String?
+  requestedById String?
+  createdAt     DateTime               @default(now())
+  startedAt     DateTime?
+  finishedAt    DateTime?
+
+  @@index([createdAt])
+}
+
+enum AttendanceAdjustmentType {
+  manual
+  // Written when a request is approved (AT-22, docs/design/approval-engine.md §8).
+  leave
+  absence
+  overtime
+  explanation
+  shift_swap
+  business_trip
+}
+
+// A change to one work date that the engine applies last (AT-15; Phase 3 adds approved requests).
+// The latest adjustment not revoked wins.
+model AttendanceAdjustment {
+  id              String                   @id @default(uuid())
+  employeeId      String
+  employee        Employee                 @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  workDate        DateTime                 @db.Date
+  type            AttendanceAdjustmentType @default(manual)
+  checkIn         DateTime?
+  checkOut        DateTime?
+  // Whether checkIn / checkOut were set by HR, as opposed to left to the recorded punches.
+  punchesSet      Boolean                  @default(false)
+  workUnits       Decimal?                 @db.Decimal(5, 2)
+  status          AttendanceDayStatus?
+  reason          String
+  before          Json?
+  // Employee id of who made / revoked it, or the account id when the account has no employee profile.
+  createdById     String?
+  createdAt       DateTime                 @default(now())
+  revokedAt       DateTime?
+  revokedById     String?
+  // The approved request that wrote it; cancelling the request revokes it.
+  sourceRequestId String?
+  // Request adjustments of type leave: whether the leave is paid (workUnits = units of leave,
+  // checkIn / checkOut = the leave window when it covers part of the day).
+  paid            Boolean?
+
+  @@index([employeeId, workDate])
+  @@index([sourceRequestId])
 }
 
 model ApprovalWorkflowDefinition {
-  id                            String                 @id @default(uuid())
-  code                          String?                @unique
-  name                          String
-  status                        ApprovalWorkflowStatus @default(active)
-  objectType                    String
-  subObject                     String                 @default("all")
-  versionMode                   Boolean                @default(true)
-  approvalType                  String                 @default("workflow")
-  followerId                    String?
-  showFlowInObject              Boolean                @default(false)
-  allowAttachmentsAfterApproved Boolean                @default(false)
-  allowDocumentChangesAfterApproved Boolean            @default(false)
-  allowDiscussionAfterApproved Boolean                 @default(true)
-  overdueAction                 String                 @default("none")
-  flowDefinition                Json
-  follower                      Employee?              @relation("ApprovalWorkflowFollower", fields: [followerId], references: [id], onDelete: SetNull)
-  createdById                   String?
-  createdBy                     Employee?              @relation("ApprovalWorkflowCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedById                   String?
-  updatedBy                     Employee?              @relation("ApprovalWorkflowUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
-  createdAt                     DateTime                @default(now())
-  updatedAt                     DateTime                @updatedAt
+  id                                String                    @id @default(uuid())
+  code                              String?                   @unique
+  name                              String
+  status                            ApprovalWorkflowStatus    @default(active)
+  objectType                        String
+  subObject                         String                    @default("all")
+  versionMode                       Boolean                   @default(true)
+  approvalType                      String                    @default("workflow")
+  followerId                        String?
+  showFlowInObject                  Boolean                   @default(false)
+  allowAttachmentsAfterApproved     Boolean                   @default(false)
+  allowDocumentChangesAfterApproved Boolean                   @default(false)
+  allowDiscussionAfterApproved      Boolean                   @default(true)
+  overdueAction                     String                    @default("none")
+  flowDefinition                    Json
+  // Bumped on every saved change; requests run a frozen ApprovalWorkflowVersion.
+  currentVersion                    Int                       @default(1)
+  versions                          ApprovalWorkflowVersion[]
+  follower                          Employee?                 @relation("ApprovalWorkflowFollower", fields: [followerId], references: [id], onDelete: SetNull)
+  createdById                       String?
+  createdBy                         Employee?                 @relation("ApprovalWorkflowCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById                       String?
+  updatedBy                         Employee?                 @relation("ApprovalWorkflowUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt                         DateTime                  @default(now())
+  updatedAt                         DateTime                  @updatedAt
 
   @@index([status])
   @@index([objectType])
@@ -770,65 +1175,334 @@ model ApprovalWorkflowDefinition {
   @@index([updatedById])
 }
 
+// A fingerprint / face device that pushes punches (AT-19). New device ids register themselves on
+// their first sync; an "inactive" device is refused until HR turns it back on.
 model AttendanceDevice {
-  id         String             @id @default(uuid())
-  deviceId   String             @unique
-  deviceName String?
-  storeCode  String?
-  status     String             @default("active")
-  lastSyncAt DateTime?
-  rawLogs    AttendanceRawLog[]
-  syncErrors AttendanceSyncError[]
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
+  id          String                @id @default(uuid())
+  deviceId    String                @unique
+  deviceName  String?
+  storeCode   String?
+  workplaceId String?
+  workplace   Workplace?            @relation(fields: [workplaceId], references: [id], onDelete: SetNull)
+  note        String?
+  // active | inactive
+  status      String                @default("active")
+  lastSyncAt  DateTime?
+  rawLogs     AttendanceRawLog[]
+  syncErrors  AttendanceSyncError[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
 }
 
+// A punch from a machine (AT-03) or a web/app check-in (AT-13). Web/app punches have no machine;
+// they keep where they came from so HR can check them later.
 model AttendanceRawLog {
-  id           String           @id @default(uuid())
-  deviceId     String
-  employeeId   String
-  employeeCode String
-  storeCode    String?
-  punchTime    DateTime
-  verifyType   String?
-  rawPayload   Json?
-  syncedAt     DateTime         @default(now())
-  device       AttendanceDevice @relation(fields: [deviceId], references: [deviceId])
-  employee     Employee         @relation(fields: [employeeId], references: [id])
-  createdAt    DateTime         @default(now())
+  id               String            @id @default(uuid())
+  deviceId         String?
+  employeeId       String
+  employeeCode     String
+  storeCode        String?
+  punchTime        DateTime
+  verifyType       String?
+  rawPayload       Json?
+  syncedAt         DateTime          @default(now())
+  // machine | web | app
+  source           String            @default("machine")
+  // in | out, for web/app check-ins
+  direction        String?
+  latitude         Float?
+  longitude        Float?
+  accuracyMeters   Float?
+  ssid             String?
+  bssid            String?
+  ipAddress        String?
+  // The approved device used (DeviceAuthRequest) and the place matched, kept by value.
+  clientDeviceId   String?
+  clientDeviceName String?
+  locationId       String?
+  locationName     String?
+  // AT-14: StoredFile (purpose checkin_photo) taken at the punch.
+  photoFileId      String?
+  device           AttendanceDevice? @relation(fields: [deviceId], references: [deviceId], onDelete: Restrict)
+  employee         Employee          @relation(fields: [employeeId], references: [id])
+  createdAt        DateTime          @default(now())
 
   @@unique([deviceId, employeeCode, punchTime])
   @@index([employeeId, punchTime])
 }
 
 model AttendanceSyncError {
-  id           String            @id @default(uuid())
-  deviceId     String
-  employeeCode String?
-  storeCode    String?
-  punchTime    DateTime?
-  errorType    String
-  errorMessage String
-  rawPayload   Json?
-  device       AttendanceDevice  @relation(fields: [deviceId], references: [deviceId])
-  createdAt    DateTime          @default(now())
+  id             String           @id @default(uuid())
+  deviceId       String
+  employeeCode   String?
+  storeCode      String?
+  punchTime      DateTime?
+  errorType      String
+  errorMessage   String
+  rawPayload     Json?
+  device         AttendanceDevice @relation(fields: [deviceId], references: [deviceId])
+  createdAt      DateTime         @default(now())
+  // AT-20: handled by mapping the code to an employee (the punch then becomes a raw log) or dismissed.
+  resolvedAt     DateTime?
+  resolvedById   String?
+  // assigned | dismissed
+  resolution     String?
+  resolutionNote String?
 
   @@index([deviceId, createdAt])
   @@index([employeeCode, createdAt])
 }
 
-model LeaveRequest {
-  id          String         @id @default(uuid())
-  employeeId  String
-  type        String
-  fromDate    DateTime
-  toDate      DateTime
-  totalDays   Decimal
-  reason      String?
-  status      ApprovalStatus @default(pending)
-  employee    Employee       @relation(fields: [employeeId], references: [id])
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+// ---------------------------------------------------------------------------------------------
+// Requests and the approval engine (Phase 3, docs/design/approval-engine.md §11).
+
+enum RequestStatus {
+  draft
+  pending
+  returned
+  approved
+  rejected
+  cancelled
+}
+
+enum ApprovalStepStatus {
+  active
+  approved
+  rejected
+  returned
+  skipped
+  cancelled
+}
+
+enum ApprovalAssigneeStatus {
+  pending
+  approved
+  rejected
+  returned
+  forwarded
+  superseded
+  cancelled
+}
+
+// One request of any type (leave, overtime, shift change...). Type-specific data is in `payload`,
+// validated by the type's handler; fromDate / toDate / quantity summarise it for lists and calendars.
+model Request {
+  id                  String                   @id @default(uuid())
+  code                String                   @unique
+  type                String
+  // Type-specific sub-kind used to pick a workflow (leave type code for leave requests).
+  subType             String?
+  requesterId         String
+  requester           Employee                 @relation("RequestRequester", fields: [requesterId], references: [id])
+  status              RequestStatus            @default(draft)
+  title               String
+  payload             Json
+  fromDate            DateTime?                @db.Date
+  toDate              DateTime?                @db.Date
+  quantity            Decimal?                 @db.Decimal(8, 2)
+  // "day" or "hour": what quantity counts.
+  unit                String?
+  workflowVersionId   String?
+  workflowVersion     ApprovalWorkflowVersion? @relation(fields: [workflowVersionId], references: [id], onDelete: SetNull)
+  usedDefaultWorkflow Boolean                  @default(false)
+  needsAttention      Boolean                  @default(false)
+  // How many times it was submitted; steps of a resubmission get the next round.
+  round               Int                      @default(0)
+  // Optimistic lock: bumped on every state change (§5.7).
+  version             Int                      @default(1)
+  submittedAt         DateTime?
+  decidedAt           DateTime?
+  cancelReason        String?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  steps               ApprovalStep[]
+  actions             ApprovalAction[]
+  followers           RequestFollower[]
+  comments            RequestComment[]
+
+  @@index([requesterId, status])
+  @@index([type, status])
+  @@index([fromDate, toDate])
+}
+
+// A frozen copy of a workflow's diagram and settings; requests point here so editing a workflow
+// never changes requests already running.
+model ApprovalWorkflowVersion {
+  id             String                     @id @default(uuid())
+  workflowId     String
+  workflow       ApprovalWorkflowDefinition @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  version        Int
+  flowDefinition Json
+  settings       Json
+  createdById    String?
+  createdAt      DateTime                   @default(now())
+  requests       Request[]
+
+  @@unique([workflowId, version])
+}
+
+// One pass of a request through one approval node of the diagram.
+model ApprovalStep {
+  id        String             @id @default(uuid())
+  requestId String
+  request   Request            @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  nodeId    String
+  name      String
+  // any: the first decision counts · all: everyone must approve.
+  mode      String             @default("any")
+  status    ApprovalStepStatus @default(active)
+  round     Int
+  dueAt     DateTime?
+  openedAt  DateTime           @default(now())
+  closedAt  DateTime?
+  assignees ApprovalAssignee[]
+  actions   ApprovalAction[]
+
+  @@index([requestId])
+  @@index([status, dueAt])
+}
+
+model ApprovalAssignee {
+  id           String                 @id @default(uuid())
+  stepId       String
+  step         ApprovalStep           @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  employeeId   String
+  employee     Employee               @relation(fields: [employeeId], references: [id])
+  // employee | direct_manager | supervisor | department_head | position | title | delegation |
+  // substitute | fallback_admin | forward
+  resolvedFrom String
+  onBehalfOfId String?
+  status       ApprovalAssigneeStatus @default(pending)
+  actedAt      DateTime?
+
+  @@unique([stepId, employeeId])
+  @@index([employeeId, status])
+}
+
+// The business timeline of a request. Audit log is still written separately.
+model ApprovalAction {
+  id        String        @id @default(uuid())
+  requestId String
+  request   Request       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  stepId    String?
+  step      ApprovalStep? @relation(fields: [stepId], references: [id], onDelete: SetNull)
+  // Employee id; null for the system.
+  actorId   String?
+  actorType String        @default("user")
+  // submit | resubmit | approve | reject | return | forward | recall | cancel | auto_skipped |
+  // auto_approve | auto_reject | reminder | notify
+  action    String
+  reason    String?
+  data      Json?
+  createdAt DateTime      @default(now())
+
+  @@index([requestId, createdAt])
+}
+
+model RequestFollower {
+  requestId  String
+  request    Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  employeeId String
+  // requester_choice | workflow | node
+  source     String
+  createdAt  DateTime @default(now())
+
+  @@id([requestId, employeeId])
+  @@index([employeeId])
+}
+
+model RequestComment {
+  id        String   @id @default(uuid())
+  requestId String
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([requestId, createdAt])
+}
+
+// AU-21: someone approves in place of an absent approver (§5.8).
+model ApprovalDelegation {
+  id           String   @id @default(uuid())
+  delegatorId  String
+  delegateId   String
+  fromDate     DateTime @db.Date
+  toDate       DateTime @db.Date
+  // Empty = every request type.
+  requestTypes String[] @default([])
+  status       String   @default("active")
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([delegatorId, fromDate, toDate])
+}
+
+// LV-09. Seeded from the Labour Code; HR edits them.
+model LeaveType {
+  id                   String           @id @default(uuid())
+  code                 String           @unique
+  name                 String
+  paid                 Boolean          @default(true)
+  deductsBalance       Boolean          @default(false)
+  // day | half_day | hour: the smallest amount a request may take.
+  minUnit              String           @default("half_day")
+  maxDaysPerRequest    Decimal?         @db.Decimal(6, 2)
+  requiresDocument     Boolean          @default(false)
+  // all | male | female
+  gender               String           @default("all")
+  // Probation staff accrue this type but may not use it yet (§7.2).
+  allowDuringProbation Boolean          @default(true)
+  status               JobCatalogStatus @default(active)
+  sortOrder            Int              @default(0)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  balances             LeaveBalance[]
+}
+
+// One employee × leave type × year. Never written directly: every change is a transaction row and
+// these totals are kept in step with them (§7.2).
+model LeaveBalance {
+  id                 String                    @id @default(uuid())
+  employeeId         String
+  employee           Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId        String
+  leaveType          LeaveType                 @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  year               Int
+  entitled           Decimal                   @default(0) @db.Decimal(6, 2)
+  carriedOver        Decimal                   @default(0) @db.Decimal(6, 2)
+  adjusted           Decimal                   @default(0) @db.Decimal(6, 2)
+  used               Decimal                   @default(0) @db.Decimal(6, 2)
+  pending            Decimal                   @default(0) @db.Decimal(6, 2)
+  expired            Decimal                   @default(0) @db.Decimal(6, 2)
+  // Last day carried-over days may be used.
+  carryOverExpiresAt DateTime?                 @db.Date
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  transactions       LeaveBalanceTransaction[]
+
+  @@unique([employeeId, leaveTypeId, year])
+}
+
+model LeaveBalanceTransaction {
+  id        String       @id @default(uuid())
+  balanceId String
+  balance   LeaveBalance @relation(fields: [balanceId], references: [id], onDelete: Cascade)
+  // accrual | seniority | carry_over | expire | adjust | reserve | release | use | refund | import
+  kind      String
+  // Which total it changed: entitled | carriedOver | adjusted | used | pending | expired
+  field     String
+  amount    Decimal      @db.Decimal(6, 2)
+  reason    String?
+  requestId String?
+  // Idempotency key for jobs, e.g. accrual:2026-11.
+  sourceKey String?
+  actorId   String?
+  createdAt DateTime     @default(now())
+
+  @@unique([balanceId, sourceKey])
+  @@index([requestId])
 }
 
 model PayrollCycle {
@@ -846,41 +1520,41 @@ model PayrollCycle {
 model PayrollItem {
   id             String       @id @default(uuid())
   payrollCycleId String
-  employeeId      String
-  grossAmount     Decimal
-  netAmount       Decimal
-  currency        String       @default("VND")
-  payload         Json
-  payrollCycle    PayrollCycle @relation(fields: [payrollCycleId], references: [id])
-  employee        Employee     @relation(fields: [employeeId], references: [id])
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  employeeId     String
+  grossAmount    Decimal
+  netAmount      Decimal
+  currency       String       @default("VND")
+  payload        Json
+  payrollCycle   PayrollCycle @relation(fields: [payrollCycleId], references: [id])
+  employee       Employee     @relation(fields: [employeeId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@unique([payrollCycleId, employeeId])
 }
 
 model Objective {
-  id          String   @id @default(uuid())
-  ownerId     String
-  cycle       String
-  title       String
-  progress    Decimal  @default(0)
-  status      String
-  parentId    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  ownerId   String
+  cycle     String
+  title     String
+  progress  Decimal  @default(0)
+  status    String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TrainingCourse {
-  id          String   @id @default(uuid())
+  id          String               @id @default(uuid())
   title       String
   ownerId     String
   startDate   DateTime
   endDate     DateTime?
   status      String
   enrollments TrainingEnrollment[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 }
 
 model TrainingEnrollment {
@@ -961,7 +1635,7 @@ model NotificationEventType {
 }
 
 model AuditLog {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   // Employee behind the action (null for accounts without an employee profile, e.g. admin).
   actorId        String?
   // Account that performed the action; always set for requests made by a signed-in user.
@@ -977,9 +1651,9 @@ model AuditLog {
   requestId      String?
   // "domain": written by a service with before/after values; "http": safety-net entry written by
   // AuditInterceptor for a mutation that recorded nothing itself.
-  source         String   @default("domain")
-  employee       Employee? @relation(fields: [actorId], references: [id])
-  createdAt      DateTime @default(now())
+  source         String       @default("domain")
+  employee       Employee?    @relation(fields: [actorId], references: [id])
+  createdAt      DateTime     @default(now())
 
   @@index([createdAt])
   @@index([entityType, entityId])

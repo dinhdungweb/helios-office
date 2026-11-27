@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
 import { IsBoolean, IsIn, IsObject, IsOptional, IsString, MinLength } from "class-validator";
 
 export class CreateApprovalWorkflowDto {
@@ -70,3 +70,5 @@ export class CreateApprovalWorkflowDto {
   @IsObject()
   flowDefinition!: Record<string, unknown>;
 }
+
+export class UpdateApprovalWorkflowDto extends PartialType(CreateApprovalWorkflowDto) {}

@@ -11,14 +11,15 @@ import {
   WarningCircle
 } from "@/lib/icons";
 import { AbsenceRequestCreateBoard } from "@/components/user/absence-request-create-board";
+import { AttendanceConfirmationBanner } from "@/components/attendance/attendance-confirmation-banner";
+import { AttendanceModuleTabs } from "@/components/attendance/attendance-module-tabs";
 import { AttendanceBoard } from "@/components/user/attendance-board";
 import { CheckinOutRequestCreateBoard } from "@/components/user/checkin-out-request-create-board";
-import { LeaveRequestCreateBoard } from "@/components/user/leave-request-create-board";
+import { redirect } from "next/navigation";
 import { OvertimeRequestCreateBoard } from "@/components/user/overtime-request-create-board";
 import { PersonnelDirectoryBoard } from "@/components/user/personnel-directory-board";
 import { ProfileBoard, type ProfileTabKey } from "@/components/user/profile-board";
 import { ResignationRequestCreateBoard } from "@/components/user/resignation-request-create-board";
-import { RequestsBoard } from "@/components/user/requests-board";
 import { SalaryBoard } from "@/components/user/salary-board";
 import { ShiftChangeRequestCreateBoard } from "@/components/user/shift-change-request-create-board";
 import { Badge } from "@/components/ui/badge";
@@ -27,13 +28,15 @@ import { UserFrame } from "@/components/user/user-frame";
 import { getCurrentSessionUser } from "@/lib/auth-user";
 import { announcements } from "@/lib/mock-data";
 import { getEmployeeDirectoryData } from "@/lib/employee-directory-api";
-import { getMyAttendanceData } from "@/lib/attendance-api";
+import { getMyAttendanceData, getMyMonthConfirmation, getMyShiftSchedule, resolveAttendanceMonth } from "@/lib/attendance-api";
+import { getAttendanceModuleTabs } from "@/lib/attendance-module";
 
 type UserPageProps = {
   searchParams?: Promise<{
     customMenu?: string;
     create?: string;
     employeeId?: string;
+    month?: string;
     profileTab?: string;
     tab?: string;
   }>;
@@ -258,12 +261,24 @@ function UserHome() {
   );
 }
 
-async function UserAttendance() {
-  const data = await getMyAttendanceData();
+async function UserAttendance({ month }: { month?: string }) {
+  const attendanceMonth = resolveAttendanceMonth(month);
+  const [data, schedule, tabs, confirmation] = await Promise.all([
+    getMyAttendanceData(attendanceMonth),
+    getMyShiftSchedule(attendanceMonth),
+    getAttendanceModuleTabs("personal"),
+    getMyMonthConfirmation(attendanceMonth)
+  ]);
 
   return (
     <UserFrame activeModule="attendance">
-      <AttendanceBoard data={data} />
+      <AttendanceBoard
+        banner={<AttendanceConfirmationBanner data={confirmation} />}
+        data={data}
+        key={schedule.month}
+        moduleTabs={<AttendanceModuleTabs tabs={tabs} />}
+        schedule={schedule}
+      />
     </UserFrame>
   );
 }
@@ -276,20 +291,13 @@ function UserPayroll() {
   );
 }
 
-function UserRequests() {
-  return (
-    <UserFrame activeModule="requests" showSearch title="Danh sách đơn từ năm 2026">
-      <RequestsBoard />
-    </UserFrame>
-  );
+// The request list and leave form live on their own pages since they read real data (Phase 3).
+function UserRequests(): never {
+  redirect("/user/requests");
 }
 
-function UserLeaveCreate() {
-  return (
-    <UserFrame activeModule="requests" showSearch title="Tạo mới đơn xin nghỉ">
-      <LeaveRequestCreateBoard />
-    </UserFrame>
-  );
+function UserLeaveCreate(): never {
+  redirect("/user/requests/new?type=leave");
 }
 
 function UserAbsenceCreate() {
@@ -437,7 +445,7 @@ export default async function UserPage({ searchParams }: UserPageProps) {
   const params = searchParams ? await searchParams : undefined;
 
   if (params?.customMenu === "user-board-attendance") {
-    return <UserAttendance />;
+    return <UserAttendance month={params.month} />;
   }
 
   if (

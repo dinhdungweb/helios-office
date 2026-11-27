@@ -49,14 +49,15 @@ export class ObjectStorageService {
     });
   }
 
-  presignDownload(objectKey: string, fileName: string, contentType: string) {
+  // `inline` lets a browser show an image instead of saving it.
+  presignDownload(objectKey: string, fileName: string, contentType: string, disposition: "attachment" | "inline" = "attachment") {
     return getSignedUrl(
       this.public,
       new GetObjectCommand({
         Bucket: this.bucket,
         Key: objectKey,
         ResponseContentType: contentType,
-        ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`
+        ResponseContentDisposition: `${disposition}; filename*=UTF-8''${encodeURIComponent(fileName)}`
       }),
       { expiresIn: DOWNLOAD_URL_TTL_SECONDS }
     );

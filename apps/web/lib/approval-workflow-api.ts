@@ -40,3 +40,37 @@ export async function getApprovalWorkflowData(): Promise<ApprovalWorkflowData> {
     };
   }
 }
+
+// One workflow for the edit page (AP-04, AP-05): settings, the stored diagram and what blocks activation.
+export type ApprovalWorkflowDetail = ApprovalWorkflowRecord & {
+  followerId: string | null;
+  allowAttachmentsAfterApproved: boolean;
+  allowDocumentChangesAfterApproved: boolean;
+  allowDiscussionAfterApproved: boolean;
+  overdueAction: string;
+  flowDefinition: Record<string, unknown>;
+  currentVersion: number;
+  validationErrors: string[];
+};
+
+export type ApprovalWorkflowVersionRecord = { id: string; version: number; createdAt: string; createdById: string | null; requestCount: number };
+
+export async function getApprovalWorkflow(id: string): Promise<{ workflow: ApprovalWorkflowDetail; versions: ApprovalWorkflowVersionRecord[] } | { error: string }> {
+  try {
+    const headers = new Headers();
+    const accessToken = await getSessionAccessToken();
+    if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+    const [workflow, versions] = await Promise.all([
+      fetch(`${getApiBaseUrl()}/approval-workflows/${encodeURIComponent(id)}`, { headers, cache: "no-store" }),
+      fetch(`${getApiBaseUrl()}/approval-workflows/${encodeURIComponent(id)}/versions`, { headers, cache: "no-store" })
+    ]);
+    if (workflow.status === 404) return { error: "Không tìm thấy quy trình duyệt." };
+    if (!workflow.ok) return { error: `Không tải được quy trình (${workflow.status}).` };
+    return {
+      workflow: (await workflow.json()) as ApprovalWorkflowDetail,
+      versions: versions.ok ? ((await versions.json()) as ApprovalWorkflowVersionRecord[]) : []
+    };
+  } catch {
+    return { error: "Không kết nối được máy chủ." };
+  }
+}

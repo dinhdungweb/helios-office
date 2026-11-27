@@ -20,8 +20,9 @@ export type FileKind = "image" | "document" | "spreadsheet";
 export const FILE_PURPOSES = {
   employee_document: { kind: "document", ownerType: "Employee" },
   contract_scan: { kind: "document", ownerType: "Contract" },
-  request_attachment: { kind: "document", ownerType: "ApprovalRequest" },
-  checkin_photo: { kind: "image", ownerType: "AttendanceRecord" },
+  request_attachment: { kind: "document", ownerType: "Request" },
+  // Owned by the employee checking in: the photo is taken before the punch exists (AT-14).
+  checkin_photo: { kind: "image", ownerType: "Employee" },
   post_media: { kind: "image", ownerType: "Post" },
   workflow_attachment: { kind: "document", ownerType: "ApprovalWorkflowDefinition" },
   document: { kind: "document", ownerType: "Document" },

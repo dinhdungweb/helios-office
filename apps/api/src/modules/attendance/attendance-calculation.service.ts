@@ -1,0 +1,324 @@
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import type { DayAbsence, DayLeave, ManualOverride } from "./engine/attendance-engine";
+import { calculateEmployeeDays, type CalcShift, type EmployeeDay, dependencyReach } from "./engine/employee-days";
+import { addDays, localDate, zonedInstant } from "./engine/zoned-time";
+
+// Stores the engine's results in AttendanceDay (AT-11, design §6.5). Reads every input for a batch
+// of employees at once; the engine itself never touches the database.
+
+export type ChangeSource = "punch_sync" | "recalculation" | "manual";
+
+export type RecalculateOptions = {
+  from: string;
+  to: string;
+  // Omitted: everyone employed at some point in the range.
+  employeeIds?: string[];
+  source: ChangeSource;
+};
+
+const BATCH_SIZE = 50;
+const WRITE_CHUNK = 100;
+
+const isoDate = (value: Date) => value.toISOString().slice(0, 10);
+const dbDate = (date: string) => new Date(`${date}T00:00:00.000Z`);
+
+@Injectable()
+export class AttendanceCalculationService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getPolicy() {
+    const policy = await this.prisma.attendancePolicy.findUnique({ where: { id: "default" } });
+    if (!policy) throw new NotFoundException("Chưa có chính sách chấm công.");
+    return policy;
+  }
+
+  async timezone() {
+    return (await this.getPolicy()).timezone;
+  }
+
+  // Recomputes the work dates touched by newly synced punches: each punch's calendar date and the
+  // day before it (a night shift's checkout belongs to the previous work date).
+  async recalculateForPunches(punches: Array<{ employeeId: string; punchTime: Date }>, source: ChangeSource = "punch_sync") {
+    if (punches.length === 0) return { days: 0, changed: 0, removed: 0, skipped: 0 };
+    const timeZone = await this.timezone();
+    const dates = punches.map((punch) => localDate(punch.punchTime.getTime(), timeZone)).sort();
+    return this.recalculate({
+      from: addDays(dates[0], -1),
+      to: dates[dates.length - 1],
+      employeeIds: [...new Set(punches.map((punch) => punch.employeeId))],
+      source
+    });
+  }
+
+  async recalculate(requested: RecalculateOptions) {
+    const policy = await this.getPolicy();
+    const timeZone = policy.timezone;
+    // Days that have not come yet are left alone: with no punches they would read as absences.
+    const today = localDate(Date.now(), timeZone);
+    // AT-28: a day may depend on its neighbours (runs of shift days, split overnight hours), so the
+    // range grows by that reach and twice as much is loaded as context.
+    const reach = dependencyReach(policy);
+    const wantedTo = addDays(requested.to, reach);
+    const options = { ...requested, from: addDays(requested.from, -reach), to: wantedTo < today ? wantedTo : today };
+    if (options.from > options.to) return { days: 0, changed: 0, removed: 0, skipped: 0 };
+    const rangeStart = new Date(zonedInstant(options.from, 0, timeZone));
+    const rangeEnd = new Date(zonedInstant(addDays(options.to, 1), 0, timeZone));
+
+    const employees = await this.prisma.employee.findMany({
+      where: {
+        ...(options.employeeIds ? { id: { in: options.employeeIds } } : {}),
+        startDate: { lt: rangeEnd },
+        OR: [{ endDate: null }, { endDate: { gte: rangeStart } }]
+      },
+      select: { id: true, startDate: true, endDate: true, departmentId: true, positionId: true, department: { select: { defaultShiftId: true } } },
+      orderBy: { id: "asc" }
+    });
+
+    const shiftRows = await this.prisma.shift.findMany({ where: { status: "active" } });
+    const shifts = new Map<string, CalcShift>(shiftRows.map((shift) => [shift.id, { ...shift, workUnits: Number(shift.workUnits) }]));
+
+    // Neighbouring dates are loaded too: their shifts decide where punches near midnight go.
+    const context = 1 + 2 * reach;
+    const loadFrom = addDays(options.from, -context);
+    const loadTo = addDays(options.to, context);
+    const holidayRows = await this.prisma.holiday.findMany({ where: { date: { gte: dbDate(loadFrom), lte: dbDate(loadTo) } } });
+    const holidays = new Map(holidayRows.map((holiday) => [isoDate(holiday.date), { type: holiday.type, paid: holiday.paid }]));
+
+    // Days of locked periods (AT-17) are never rewritten.
+    const months: string[] = [];
+    for (let month = options.from.slice(0, 7); month <= options.to.slice(0, 7); month = addDays(`${month}-01`, 31).slice(0, 7)) months.push(month);
+    const lockedRows = await this.prisma.attendancePeriod.findMany({ where: { month: { in: months }, status: "locked" }, select: { month: true } });
+    const locked = new Set(lockedRows.map((row) => row.month));
+
+    const totals = { days: 0, changed: 0, removed: 0, skipped: 0 };
+    for (let index = 0; index < employees.length; index += BATCH_SIZE) {
+      const batch = employees.slice(index, index + BATCH_SIZE);
+      const ids = batch.map((employee) => employee.id);
+
+      const [assignmentRows, logs, adjustments, existing] = await Promise.all([
+        this.prisma.shiftAssignment.findMany({
+          where: { employeeId: { in: ids }, date: { gte: dbDate(loadFrom), lte: dbDate(loadTo) } },
+          select: { employeeId: true, date: true, shiftId: true }
+        }),
+        // Shift windows reach at most 12 hours past a neighbouring day.
+        this.prisma.attendanceRawLog.findMany({
+          where: {
+            employeeId: { in: ids },
+            punchTime: { gte: new Date(zonedInstant(addDays(loadFrom, -1), 0, timeZone)), lt: new Date(zonedInstant(addDays(loadTo, 2), 0, timeZone)) }
+          },
+          select: { employeeId: true, punchTime: true },
+          orderBy: { punchTime: "asc" }
+        }),
+        this.prisma.attendanceAdjustment.findMany({
+          where: { employeeId: { in: ids }, revokedAt: null, workDate: { gte: dbDate(loadFrom), lte: dbDate(loadTo) } },
+          orderBy: { createdAt: "asc" }
+        }),
+        this.prisma.attendanceDay.findMany({
+          where: { employeeId: { in: ids }, workDate: { gte: dbDate(options.from), lte: dbDate(options.to) } }
+        })
+      ]);
+
+      const writes: Prisma.PrismaPromise<unknown>[] = [];
+      for (const employee of batch) {
+        const own = adjustments.filter((adjustment) => adjustment.employeeId === employee.id);
+        const days = calculateEmployeeDays({
+          from: options.from,
+          to: options.to,
+          policy,
+          shifts,
+          holidays,
+          assignments: new Map(
+            assignmentRows.filter((row) => row.employeeId === employee.id).map((row) => [isoDate(row.date), row.shiftId])
+          ),
+          departmentDefaultShiftId: employee.department.defaultShiftId,
+          departmentId: employee.departmentId,
+          positionId: employee.positionId,
+          employment: {
+            startDate: localDate(employee.startDate.getTime(), timeZone),
+            endDate: employee.endDate ? localDate(employee.endDate.getTime(), timeZone) : null
+          },
+          punches: logs.filter((log) => log.employeeId === employee.id).map((log) => log.punchTime),
+          // Later manual adjustments overwrite earlier ones for the same date.
+          manual: new Map(
+            adjustments
+              .filter((adjustment) => adjustment.employeeId === employee.id && adjustment.type === "manual")
+              .map((adjustment) => [isoDate(adjustment.workDate), toManualOverride(adjustment)])
+          ),
+          // Approved leave (AT-22) adds up per date; HR's manual figures still win over it.
+          leave: toLeaveByDate(own.filter((adjustment) => adjustment.type === "leave")),
+          ...toRequestInputs(own)
+        });
+
+        const stored = new Map(existing.filter((row) => row.employeeId === employee.id).map((row) => [isoDate(row.workDate), row]));
+        for (const day of days) {
+          if (locked.has(day.workDate.slice(0, 7))) {
+            totals.skipped += 1;
+            continue;
+          }
+          const current = stored.get(day.workDate);
+          if (!day.result) {
+            if (current) {
+              writes.push(this.prisma.attendanceDay.delete({ where: { id: current.id } }));
+              totals.removed += 1;
+            }
+            continue;
+          }
+
+          totals.days += 1;
+          const data = toRow(day);
+          if (current && sameFigures(current, data)) {
+            // Same figures under different rules (e.g. a grace period nobody reached): keep the
+            // snapshot current without counting a change or touching the change source.
+            if (!sameSnapshot(current, data)) {
+              writes.push(this.prisma.attendanceDay.update({ where: { id: current.id }, data: { policySnapshot: data.policySnapshot } }));
+            }
+            continue;
+          }
+          totals.changed += 1;
+          writes.push(
+            this.prisma.attendanceDay.upsert({
+              where: { employeeId_workDate: { employeeId: employee.id, workDate: dbDate(day.workDate) } },
+              create: { employeeId: employee.id, workDate: dbDate(day.workDate), ...data, lastChangeSource: options.source },
+              update: { ...data, lastChangeSource: options.source, calculatedAt: new Date() }
+            })
+          );
+        }
+      }
+
+      for (let start = 0; start < writes.length; start += WRITE_CHUNK) {
+        await this.prisma.$transaction(writes.slice(start, start + WRITE_CHUNK));
+      }
+    }
+
+    return totals;
+  }
+}
+
+// Leave adjustments of one person, summed per date: units as paid / unpaid, and the windows of
+// part-day leave (stored in checkIn / checkOut).
+export function toLeaveByDate(
+  adjustments: Array<{ workDate: Date; workUnits: Prisma.Decimal | null; paid: boolean | null; checkIn: Date | null; checkOut: Date | null }>
+) {
+  const byDate = new Map<string, DayLeave>();
+  for (const adjustment of adjustments) {
+    const date = isoDate(adjustment.workDate);
+    const leave = byDate.get(date) ?? { paidUnits: 0, unpaidUnits: 0, windows: [] };
+    const units = adjustment.workUnits === null ? 0 : Number(adjustment.workUnits);
+    if (adjustment.paid) leave.paidUnits += units;
+    else leave.unpaidUnits += units;
+    if (adjustment.checkIn && adjustment.checkOut) leave.windows.push({ start: adjustment.checkIn, end: adjustment.checkOut });
+    byDate.set(date, leave);
+  }
+  return byDate;
+}
+
+type WindowAdjustment = { type: string; workDate: Date; paid: boolean | null; checkIn: Date | null; checkOut: Date | null };
+
+// Approved absence, overtime and explanation adjustments (AT-22, design §8) of one person, by date:
+// absence = the window out (paid = on company business), overtime = the approved window, explanation
+// = the check-in / check-out times to count as punches.
+export function toRequestInputs(adjustments: WindowAdjustment[]) {
+  const absences = new Map<string, DayAbsence[]>();
+  const overtime = new Map<string, number>();
+  const explanations = new Map<string, Date[]>();
+  for (const adjustment of adjustments) {
+    const date = isoDate(adjustment.workDate);
+    if (adjustment.type === "absence" && adjustment.checkIn && adjustment.checkOut) {
+      absences.set(date, [...(absences.get(date) ?? []), { start: adjustment.checkIn, end: adjustment.checkOut, counted: adjustment.paid === true }]);
+    } else if (adjustment.type === "overtime" && adjustment.checkIn && adjustment.checkOut) {
+      const minutes = Math.max(0, Math.round((adjustment.checkOut.getTime() - adjustment.checkIn.getTime()) / 60_000));
+      overtime.set(date, (overtime.get(date) ?? 0) + minutes);
+    } else if (adjustment.type === "explanation") {
+      const times = [adjustment.checkIn, adjustment.checkOut].filter((value): value is Date => value !== null);
+      if (times.length > 0) explanations.set(date, [...(explanations.get(date) ?? []), ...times]);
+    }
+  }
+  return { absences, overtime, explanations };
+}
+
+function toManualOverride(adjustment: {
+  punchesSet: boolean;
+  checkIn: Date | null;
+  checkOut: Date | null;
+  workUnits: Prisma.Decimal | null;
+  status: ManualOverride["status"];
+}): ManualOverride {
+  return {
+    ...(adjustment.punchesSet ? { checkIn: adjustment.checkIn, checkOut: adjustment.checkOut } : {}),
+    workUnits: adjustment.workUnits === null ? null : Number(adjustment.workUnits),
+    status: adjustment.status
+  };
+}
+
+function toRow(day: EmployeeDay) {
+  const result = day.result!;
+  return {
+    shiftId: result.shiftId,
+    scheduledStart: result.scheduledStart,
+    scheduledEnd: result.scheduledEnd,
+    checkIn: result.checkIn,
+    checkOut: result.checkOut,
+    workedMinutes: result.workedMinutes,
+    lateMinutes: result.lateMinutes,
+    earlyMinutes: result.earlyMinutes,
+    outsideShiftMinutes: result.outsideShiftMinutes,
+    nightMinutes: result.nightMinutes,
+    overtimeMinutes: result.overtimeMinutes,
+    workUnits: new Prisma.Decimal(result.workUnits),
+    paidLeaveUnits: new Prisma.Decimal(result.paidLeaveUnits),
+    status: result.status,
+    flags: result.flags,
+    holidayType: day.holidayType,
+    punchCount: day.punchCount,
+    policySnapshot: { shiftCode: day.shiftCode, ...day.policy } as Prisma.InputJsonValue
+  };
+}
+
+type StoredFigures = Omit<ReturnType<typeof toRow>, "workUnits" | "paidLeaveUnits" | "policySnapshot"> & {
+  workUnits: Prisma.Decimal | number;
+  paidLeaveUnits: Prisma.Decimal | number;
+  policySnapshot: unknown;
+};
+
+const time = (value: Date | null) => value?.getTime() ?? null;
+
+// jsonb reorders object keys, so snapshots are compared with sorted keys.
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value as object)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableJson((value as Record<string, unknown>)[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+// Whether a recalculation changed the day's figures; unchanged days keep their last change source.
+export function sameFigures(stored: StoredFigures, next: ReturnType<typeof toRow>) {
+  return (
+    stored.shiftId === next.shiftId &&
+    time(stored.scheduledStart) === time(next.scheduledStart) &&
+    time(stored.scheduledEnd) === time(next.scheduledEnd) &&
+    time(stored.checkIn) === time(next.checkIn) &&
+    time(stored.checkOut) === time(next.checkOut) &&
+    stored.workedMinutes === next.workedMinutes &&
+    stored.lateMinutes === next.lateMinutes &&
+    stored.earlyMinutes === next.earlyMinutes &&
+    stored.outsideShiftMinutes === next.outsideShiftMinutes &&
+    stored.nightMinutes === next.nightMinutes &&
+    stored.overtimeMinutes === next.overtimeMinutes &&
+    Number(stored.workUnits) === Number(next.workUnits) &&
+    Number(stored.paidLeaveUnits) === Number(next.paidLeaveUnits) &&
+    stored.status === next.status &&
+    stored.flags.join(",") === next.flags.join(",") &&
+    stored.holidayType === next.holidayType &&
+    stored.punchCount === next.punchCount
+  );
+}
+
+export function sameSnapshot(stored: Pick<StoredFigures, "policySnapshot">, next: Pick<ReturnType<typeof toRow>, "policySnapshot">) {
+  return stableJson(stored.policySnapshot) === stableJson(next.policySnapshot);
+}

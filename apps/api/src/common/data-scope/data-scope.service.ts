@@ -155,7 +155,7 @@ export class DataScopeService {
     return conditions.length > 0 ? { OR: conditions } : { id: { in: [] } };
   }
 
-  // For models related to Employee (AttendanceRecord, LeaveRequest, Contract, PayrollItem...).
+  // For models related to Employee (AttendanceDay, LeaveRequest, Contract, PayrollItem...).
   viaEmployee(scope: ResolvedScope): { employee?: Prisma.EmployeeWhereInput } {
     return scope.level === "company" ? {} : { employee: this.employeeWhere(scope) };
   }

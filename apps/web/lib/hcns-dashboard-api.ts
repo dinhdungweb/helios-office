@@ -52,12 +52,13 @@ type LeaveRequestRecord = {
   } | null;
 };
 
+// One calculated attendance day from GET /attendance (AT-02).
 type AttendanceRecord = {
   id: string;
   workDate: string;
   checkIn?: string | null;
   checkOut?: string | null;
-  status: "valid" | "late" | "early_leave" | "missing_checkout" | "needs_review" | string;
+  status: "on_time" | "late" | "early_leave" | "late_and_early" | "missing_checkin" | "missing_checkout" | "absent" | "holiday" | "day_off" | string;
   employee?: {
     id: string;
     code: string;
@@ -356,6 +357,10 @@ function formatTime(value?: string | null) {
   }).format(date);
 }
 
+function daysAgoInVietnam(days: number) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(Date.now() - days * 86_400_000));
+}
+
 function percent(value: number, total: number) {
   if (total <= 0) {
     return 0;
@@ -427,25 +432,28 @@ function buildOrganization(employees: EmployeeRecord[], departments: DepartmentR
   };
 }
 
+const WORK_STATUSES = new Set(["on_time", "late", "early_leave", "late_and_early", "missing_checkin", "missing_checkout", "absent"]);
+
+// Snapshot of the latest work date that had scheduled work; the rate comes from this month's summary.
 function buildAttendance(records: AttendanceRecord[], summary: AttendanceSummary | null) {
-  const latestDate = records[0]?.workDate;
-  const snapshotRecords = latestDate ? records.filter((record) => record.workDate === latestDate) : [];
-  const issueRecords = snapshotRecords.filter((record) => record.status !== "valid");
-  const totalRecords = summary?.totalRecords ?? records.length;
-  const validRecords = summary?.validRecords ?? records.filter((record) => record.status === "valid").length;
+  const latestDate = records.find((record) => WORK_STATUSES.has(record.status))?.workDate;
+  const snapshotRecords = latestDate ? records.filter((record) => record.workDate === latestDate && WORK_STATUSES.has(record.status)) : [];
+  const issueRecords = snapshotRecords.filter((record) => record.status !== "on_time");
+  const totalRecords = summary?.totalRecords ?? snapshotRecords.length;
+  const validRecords = summary?.validRecords ?? snapshotRecords.filter((record) => record.status === "on_time").length;
 
   return {
-    earlyLeave: snapshotRecords.filter((record) => record.status === "early_leave").length,
+    earlyLeave: snapshotRecords.filter((record) => record.status === "early_leave" || record.status === "late_and_early").length,
     items: issueRecords.slice(0, 5).map((record) => ({
       department: record.employee?.department?.name ?? "Chưa rõ phòng ban",
       employee: record.employee?.fullName ?? record.employee?.code ?? "Nhân sự",
       id: record.id,
       status: record.status,
-      time: record.status === "missing_checkout" ? formatTime(record.checkIn) : formatTime(record.checkIn ?? record.checkOut)
+      time: record.status === "early_leave" ? formatTime(record.checkOut) : formatTime(record.checkIn ?? record.checkOut)
     })),
-    late: snapshotRecords.filter((record) => record.status === "late").length,
-    missingCheckout: snapshotRecords.filter((record) => record.status === "missing_checkout").length,
-    needReview: summary?.recordsNeedReview ?? records.filter((record) => record.status !== "valid").length,
+    late: snapshotRecords.filter((record) => record.status === "late" || record.status === "late_and_early").length,
+    missingCheckout: snapshotRecords.filter((record) => record.status === "missing_checkin" || record.status === "missing_checkout").length,
+    needReview: summary?.recordsNeedReview ?? issueRecords.length,
     snapshotDate: latestDate ? formatDate(latestDate) : "Chưa có dữ liệu",
     validRate: percent(validRecords, totalRecords)
   };
@@ -577,13 +585,13 @@ export async function getHcnsDashboardData(permissionKeys?: readonly string[]): 
     shouldReadEmployees ? readData<EmployeeRecord[]>("/employees") : skippedData<EmployeeRecord[]>([]),
     shouldReadDepartments ? readData<DepartmentRecord[]>("/departments") : skippedData<DepartmentRecord[]>([]),
     shouldReadLeaveRequests ? readData<LeaveRequestRecord[]>("/leave-requests") : skippedData<LeaveRequestRecord[]>([]),
-    shouldReadAttendance ? readData<AttendanceRecord[]>("/attendance") : skippedData<AttendanceRecord[]>([]),
+    shouldReadAttendance ? readData<{ items: AttendanceRecord[] }>(`/attendance?from=${daysAgoInVietnam(6)}&limit=200`) : skippedData<{ items: AttendanceRecord[] }>({ items: [] }),
     shouldReadAttendance ? readData<AttendanceSummary>("/attendance/summary") : skippedData<AttendanceSummary | null>(null),
     shouldReadContracts ? readData<ContractRecord[]>("/contracts") : skippedData<ContractRecord[]>([])
   ]);
   const employees = employeeResult.value ?? [];
   const departments = departmentResult.value ?? [];
-  const attendanceRecords = (attendanceResult.value ?? []).sort((a, b) => dateValue(b.workDate) - dateValue(a.workDate));
+  const attendanceRecords = (attendanceResult.value?.items ?? []).sort((a, b) => dateValue(b.workDate) - dateValue(a.workDate));
   const leaveRequests = leaveResult.value ?? [];
   const contracts = contractResult.value ?? [];
   const errors = [employeeResult, departmentResult, leaveResult, attendanceResult, attendanceSummaryResult, contractResult]

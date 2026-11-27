@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **helios-office** (3940 symbols, 10559 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **helios-office** (6300 symbols, 16923 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
@@ -46,6 +46,8 @@ This project is indexed by GitNexus as **helios-office** (3940 symbols, 10559 re
 # Backlog chức năng
 
 `docs/backlog.yaml` là nguồn sự thật duy nhất cho phạm vi chức năng (mục tiêu tương đương 1Office phần HRM + Workplace). Thứ tự phase, điều kiện bắt đầu/đóng phase: `docs/roadmap.md`.
+
+**Bắt đầu mỗi phiên (máy mới, phiên mới): đọc `docs/handoff.md`** — đang ở đâu, việc tiếp theo, cách dựng môi trường, quy ước đã thống nhất. Cập nhật file đó trước khi dừng giữa chừng.
 
 - Trước khi làm: đọc item liên quan trong `docs/backlog.yaml`; mọi việc phải gắn với một mã item (ví dụ `LV-03`). Chức năng mới chưa có trong backlog thì thêm item trước.
 - Nhánh/commit ghi mã item: `feat/LV-03-leave-balance`, `feat(LV-03): ...`.

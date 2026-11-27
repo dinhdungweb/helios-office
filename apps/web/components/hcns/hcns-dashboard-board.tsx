@@ -22,11 +22,13 @@ type HcnsDashboardBoardProps = {
 };
 
 const attendanceStatusLabel: Record<string, string> = {
+  absent: "Vắng",
   early_leave: "Về sớm",
   late: "Đi muộn",
-  missing_checkout: "Thiếu checkout",
-  needs_review: "Cần rà soát",
-  valid: "Hợp lệ"
+  late_and_early: "Muộn và sớm",
+  missing_checkin: "Thiếu giờ vào",
+  missing_checkout: "Thiếu giờ ra",
+  on_time: "Đúng giờ"
 };
 
 const moduleStatusTone = {
@@ -131,7 +133,7 @@ function AttendancePanel({ data }: { data: HcnsDashboardData }) {
         </article>
         <article>
           <strong>{data.attendance.missingCheckout}</strong>
-          <span>Thiếu checkout</span>
+          <span>Thiếu giờ chấm</span>
         </article>
         <article>
           <strong>{data.attendance.validRate}%</strong>
@@ -159,7 +161,7 @@ function AttendancePanel({ data }: { data: HcnsDashboardData }) {
                   <td>{item.department}</td>
                   <td>{item.time}</td>
                   <td>
-                    <Badge tone={item.status === "late" || item.status === "early_leave" ? "warning" : "danger"}>
+                    <Badge tone={item.status === "late" || item.status === "early_leave" || item.status === "late_and_early" ? "warning" : "danger"}>
                       {attendanceStatusLabel[item.status] ?? item.status}
                     </Badge>
                   </td>

@@ -1,13 +1,13 @@
 // Dev runner for the worker: reuses the API's `nest start --watch` output instead of a second
 // compiler (both would fight over dist/ with deleteOutDir).
 //
-// It polls dist/worker.js itself rather than using `node --watch`: the API watcher deletes dist/ on
+// It polls dist/ itself rather than using `node --watch`: the API watcher deletes dist/ on
 // startup (deleteOutDir), and `node --watch` neither waits for that nor notices files that were
 // deleted and written again, so the worker stayed dead after the first rebuild. Here the worker
 // only starts from a build newer than this process, restarts after every rebuild once dist/ has
 // been quiet for a moment, and after a crash simply waits for the next build.
 const { spawn } = require("node:child_process");
-const { statSync } = require("node:fs");
+const { readdirSync, statSync } = require("node:fs");
 const { join } = require("node:path");
 
 const dist = join(__dirname, "..", "dist");
@@ -23,9 +23,22 @@ let child = null;
 let runningBuild = 0;
 let stopping = false;
 
+// Newest compiled file under dist/. An incremental rebuild only rewrites the files that changed,
+// so watching the entry files alone left the worker running old service code.
+function newestJs(dir) {
+  let newest = 0;
+  for (const item of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, item.name);
+    if (item.isDirectory()) newest = Math.max(newest, newestJs(path));
+    else if (item.name.endsWith(".js")) newest = Math.max(newest, statSync(path).mtimeMs);
+  }
+  return newest;
+}
+
 function latestBuild() {
   try {
-    return Math.max(...watched.map((file) => statSync(file).mtimeMs));
+    statSync(entry);
+    return Math.max(...watched.map((file) => statSync(file).mtimeMs), newestJs(dist));
   } catch {
     return 0; // dist/ is being rewritten
   }

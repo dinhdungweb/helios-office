@@ -1,5 +1,5 @@
 import * as ExcelJS from "exceljs";
-import type { CellValue, SheetColumn, SheetRow } from "./import-export.types";
+import type { CellValue, ExportSheet, SheetColumn, SheetRow } from "./import-export.types";
 
 export const XLSX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -93,6 +93,25 @@ export async function writeSheet(
 ) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Helios Office";
+  addSheet(workbook, title, columns, rows, options);
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+// Several sheets in one workbook (exports whose columns depend on the data).
+export async function writeWorkbook(sheets: ExportSheet[]) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Helios Office";
+  for (const sheet of sheets) addSheet(workbook, sheet.title, sheet.columns, sheet.rows);
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
+function addSheet(
+  workbook: ExcelJS.Workbook,
+  title: string,
+  columns: readonly SheetColumn[],
+  rows: Array<Record<string, CellValue>>,
+  options: { withExamples?: boolean } = {}
+) {
   const sheet = workbook.addWorksheet(title.slice(0, 31), { views: [{ state: "frozen", ySplit: 1 }] });
 
   sheet.columns = columns.map((column) => ({
@@ -114,8 +133,6 @@ export async function writeSheet(
       sheet.getColumn(column.key).numFmt = "dd/mm/yyyy";
     }
   }
-
-  return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
 // Cell helpers for handlers' validate().

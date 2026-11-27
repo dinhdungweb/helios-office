@@ -88,13 +88,14 @@ export class FilesService {
     return publicFields(ready);
   }
 
-  async downloadUrl(user: AuthenticatedUser, fileId: string) {
+  async downloadUrl(user: AuthenticatedUser, fileId: string, inline = false) {
     const file = await this.prisma.storedFile.findUnique({ where: { id: fileId } });
     // Missing, unfinished, deleted and forbidden all look the same: no existence leak.
     if (!file || file.status !== "ready" || !(await this.policyFor(file).canRead(user, file))) {
       throw new NotFoundException(`File ${fileId} was not found`);
     }
-    return this.storage.presignDownload(file.objectKey, file.fileName, file.mimeType);
+    // Only images open in the browser; anything else is always saved.
+    return this.storage.presignDownload(file.objectKey, file.fileName, file.mimeType, inline && file.mimeType.startsWith("image/") ? "inline" : "attachment");
   }
 
   async remove(user: AuthenticatedUser, fileId: string) {

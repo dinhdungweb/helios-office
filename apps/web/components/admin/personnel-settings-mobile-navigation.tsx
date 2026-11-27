@@ -11,7 +11,6 @@ const generalItems = [
   { key: "internal-penalty", href: "/admin/settings/internal-penalties", label: "Phạt nội bộ" },
   { key: "benefits", href: "/admin/settings/welfare-benefits", label: "Chế độ phúc lợi" },
   { key: "career-path", label: "Lộ trình thăng tiến" },
-  { key: "shift", label: "Cài đặt ca" },
   { key: "approval", href: "/admin/settings/approval-workflows", label: "Quy trình duyệt" }
 ] as const;
 

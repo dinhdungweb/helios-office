@@ -36,6 +36,9 @@ export interface ImportHandler<T = unknown> {
   commit(rows: Array<{ row: number; data: T }>, context: TransferContext): Promise<Record<string, number>>;
 }
 
+// One worksheet of a multi-sheet export; columns may depend on the data (e.g. one per day).
+export type ExportSheet = { title: string; columns: SheetColumn[]; rows: Array<Record<string, CellValue>> };
+
 export interface ExportHandler<P = Record<string, unknown>> {
   readonly type: string;
   readonly title: string;
@@ -44,5 +47,7 @@ export interface ExportHandler<P = Record<string, unknown>> {
   // Validates and normalises request params; throw BadRequestException on bad input.
   parseParams(params: unknown): P;
   rows(params: P, context: TransferContext): Promise<Array<Record<string, CellValue>>>;
+  // Optional: several sheets instead of `columns` + `rows`; the first sheet's rows are counted.
+  sheets?(params: P, context: TransferContext): Promise<ExportSheet[]>;
   fileName(params: P): string;
 }

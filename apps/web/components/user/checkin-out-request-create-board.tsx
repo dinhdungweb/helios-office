@@ -1,161 +1,87 @@
-import {
-  CalendarBlank,
-  CaretDown,
-  Check,
-  Clock,
-  PaperPlaneTilt,
-  Plus,
-  UploadSimple,
-  X
-} from "@/lib/icons";
+"use client";
 
-import { LeaveFormSelect } from "@/components/user/leave-form-select";
+import { useState } from "react";
 import { CollapseButton } from "@/components/user/collapse-button";
+import { RequestFormFooter, today, useDayOptions, useRequestSave } from "@/components/user/request-form-parts";
+import { formatTime, shiftLabel, type CheckinOutPayload, type RequestDetail } from "@/lib/request-format";
 
-const shiftOptions = [
-  { label: "Office Full SC" },
-  { label: "Ca sáng" },
-  { label: "Ca chiều" }
-];
+// LV-20: explanation of a missing or wrong check-in / check-out. Approved, the times count as punches
+// of that work date and the day is recalculated.
+export function CheckinOutRequestCreateBoard({ request, loadError }: { request?: RequestDetail | null; loadError?: string }) {
+  const initial = request?.payload as Partial<CheckinOutPayload> | undefined;
+  const [date, setDate] = useState(initial?.date ?? today());
+  const [checkIn, setCheckIn] = useState(initial?.checkIn ?? "");
+  const [checkOut, setCheckOut] = useState(initial?.checkOut ?? "");
+  const [reason, setReason] = useState(initial?.reason ?? "");
+  const { options, error: optionsError } = useDayOptions(date);
+  const { save, saving, error, setError } = useRequestSave("checkin_out", request, loadError);
 
-const checkinOutReasons = [
-  { label: "Quên check in" },
-  { label: "Quên check out" },
-  { label: "Máy chấm công lỗi" },
-  { label: "Làm việc ngoài văn phòng" },
-  { label: "Đi công tác" }
-];
+  const send = (submit: boolean) => {
+    if (!checkIn && !checkOut) return setError("Hãy nhập giờ vào, giờ ra hoặc cả hai cần giải trình.");
+    if (!reason.trim()) return setError("Hãy nhập lý do giải trình.");
+    save({ date, checkIn: checkIn || undefined, checkOut: checkOut || undefined, reason: reason.trim() }, submit);
+  };
 
-export function CheckinOutRequestCreateBoard() {
+  const recorded = options?.recorded;
+
   return (
-    <main className="leave-create-page" aria-label="Tạo mới đơn checkin/out">
-      <form className="leave-create-form">
-        <section className="leave-create-section leave-create-section--checkin" aria-labelledby="checkin-general-title">
+    <main className="leave-create-page" aria-label={request ? `Sửa đơn ${request.code}` : "Tạo mới đơn checkin/out"}>
+      <form
+        className="leave-create-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          send(true);
+        }}
+      >
+        <section className="leave-create-section" aria-labelledby="checkin-general-title">
           <header className="leave-create-section-header">
             <CollapseButton className="leave-create-collapse" label="Thông tin chung" />
-            <h2 id="checkin-general-title">Thông tin chung</h2>
+            <h2 id="checkin-general-title">{request ? `Đơn ${request.code}` : "Thông tin chung"}</h2>
           </header>
 
-          <div className="leave-create-grid leave-create-grid--checkin">
+          <div className="leave-create-grid leave-create-grid--time">
             <label className="leave-field">
               <span>
-                Ngày <strong>*</strong>
+                Ngày checkin/out <strong>*</strong>
               </span>
-              <div className="leave-input-icon">
-                <input value="09/07/2026" readOnly aria-label="Ngày checkin/out" />
-                <CalendarBlank size={17} weight="duotone" aria-hidden="true" />
-              </div>
+              <input type="date" value={date} max={today()} onChange={(event) => setDate(event.target.value)} aria-label="Ngày checkin/out" required />
             </label>
-
             <label className="leave-field">
-              <span>
-                Giờ <strong>*</strong>
-              </span>
-              <div className="leave-input-icon">
-                <input placeholder="hh:mm" aria-label="Giờ checkin/out" />
-                <Clock size={17} weight="duotone" aria-hidden="true" />
-              </div>
+              <span>Giờ vào</span>
+              <input type="time" value={checkIn} onChange={(event) => setCheckIn(event.target.value)} aria-label="Giờ vào cần giải trình" />
             </label>
-
             <label className="leave-field">
-              <span>
-                Ca <small className="leave-field-hint">?</small>
-              </span>
-              <LeaveFormSelect
-                ariaLabel="Chọn ca checkin/out"
-                menuLabel="Các ca checkin/out"
-                options={shiftOptions}
-                placeholder="Chọn một"
-              />
+              <span>Giờ ra</span>
+              <input type="time" value={checkOut} onChange={(event) => setCheckOut(event.target.value)} aria-label="Giờ ra cần giải trình" />
             </label>
+          </div>
 
-            <label className="leave-field">
-              <span>
-                Lý do <strong>*</strong>
-              </span>
-              <LeaveFormSelect
-                ariaLabel="Chọn lý do checkin/out"
-                menuLabel="Các lý do checkin/out"
-                options={checkinOutReasons}
-                placeholder="Chọn lý do"
-              />
+          <div className="leave-create-grid leave-create-grid--summary">
+            <label className="leave-field leave-field--readonly leave-field--wide">
+              <span>Ca làm việc</span>
+              <input value={options?.shift ? shiftLabel(options.shift) : options ? "Không có ca" : ""} readOnly aria-label="Ca làm việc trong ngày" />
             </label>
-
             <label className="leave-field leave-field--readonly">
-              <span>Phạt tiền</span>
-              <input value="Có" readOnly aria-label="Phạt tiền" />
+              <span>Đã ghi nhận</span>
+              <input
+                value={recorded ? `Vào ${formatTime(recorded.checkIn) || "—"} · Ra ${formatTime(recorded.checkOut) || "—"}` : options ? "Chưa có dữ liệu công" : ""}
+                readOnly
+                aria-label="Giờ chấm công đã ghi nhận"
+              />
             </label>
-
-            <button className="icon-button leave-row-remove" type="button" aria-label="Xóa dòng checkin/out">
-              <X size={18} weight="duotone" aria-hidden="true" />
-            </button>
           </div>
+          {optionsError ? <p className="leave-preview-error" role="alert">{optionsError}</p> : null}
+          <p className="leave-type-hint">Chỉ nhập giờ cần bổ sung hoặc sửa. Với ca đêm, giờ ra trước giờ vào ca được tính sang ngày hôm sau.</p>
 
-          <button className="leave-add-time" type="button" aria-label="Thêm dòng checkin/out">
-            <Plus size={18} weight="duotone" aria-hidden="true" />
-          </button>
-
-          <label className="leave-field leave-simple-description">
-            <span>Mô tả</span>
-            <textarea placeholder="Nhập mô tả" aria-label="Nhập mô tả đơn checkin/out" />
+          <label className="leave-field leave-description">
+            <span>
+              Lý do <strong>*</strong>
+            </span>
+            <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={5000} placeholder="Ví dụ: quên chấm công, máy chấm công lỗi" aria-label="Nhập mô tả đơn checkin/out" required />
           </label>
-
-          <fieldset className="leave-attachment">
-            <legend>Đính kèm</legend>
-            <div className="leave-upload-dropzone">
-              <span className="leave-upload-icon">
-                <UploadSimple size={24} weight="duotone" aria-hidden="true" />
-              </span>
-              <div>
-                <p>Kéo thả file vào đây để tải lên hoặc</p>
-                <div className="leave-upload-actions">
-                  <button className="primary-button" type="button">
-                    <PaperPlaneTilt size={15} weight="duotone" aria-hidden="true" />
-                    Chọn từ máy
-                  </button>
-                  <button className="secondary-button" type="button">
-                    <UploadSimple size={15} weight="duotone" aria-hidden="true" />
-                    Chọn từ cloud
-                  </button>
-                </div>
-              </div>
-            </div>
-          </fieldset>
         </section>
 
-        <section className="leave-create-section" aria-labelledby="checkin-related-title">
-          <header className="leave-create-section-header">
-            <CollapseButton className="leave-create-collapse" label="Đối tượng liên quan" />
-            <h2 id="checkin-related-title">Đối tượng liên quan</h2>
-          </header>
-
-          <div className="leave-related-row">
-            <label className="leave-field leave-field--wide">
-              <span className="sr-only">Đối tượng liên quan</span>
-              <button className="leave-control" type="button" aria-label="Chọn đối tượng liên quan">
-                <span>Đối tượng liên quan</span>
-                <CaretDown size={16} weight="duotone" aria-hidden="true" />
-              </button>
-            </label>
-            <button className="icon-button" type="button" aria-label="Xóa đối tượng liên quan">
-              <X size={18} weight="duotone" aria-hidden="true" />
-            </button>
-          </div>
-
-          <button className="leave-add-time" type="button" aria-label="Thêm đối tượng liên quan">
-            <Plus size={18} weight="duotone" aria-hidden="true" />
-          </button>
-        </section>
-
-        <footer className="leave-create-actionbar">
-          <button className="primary-button" type="submit">
-            <Check size={15} weight="duotone" aria-hidden="true" />
-            Cập nhật
-          </button>
-          <a className="secondary-button" href="/user?customMenu=user-board-requests">
-            Hủy bỏ
-          </a>
-        </footer>
+        <RequestFormFooter saving={saving} onDraft={() => send(false)} request={request} error={error} />
       </form>
     </main>
   );

@@ -24,6 +24,15 @@ export type DeviceAuthPolicy = {
   requireNotificationEnabled: boolean;
   requireGpsForAttendance: boolean;
   requireWifiForOffice: boolean;
+  // GPS and Wifi each have their own rules, as 1Office (DV-06, AT-14, AT-13).
+  gpsAllowWithoutShift: boolean;
+  gpsRequireApprovedDevice: boolean;
+  gpsRequirePhoto: boolean;
+  gpsCheckEntities: boolean;
+  wifiAllowWithoutShift: boolean;
+  wifiRequireApprovedDevice: boolean;
+  wifiRequirePhoto: boolean;
+  wifiCheckEntities: boolean;
   approvalRefreshHint: string;
 };
 
@@ -121,6 +130,32 @@ export async function deleteDeviceAuthRequest(requestId: string) {
   return requestJson<{ ok: boolean }>(`/device-auth/requests/${requestId}`, {
     method: "DELETE"
   });
+}
+
+// The check-in part of the device policy (DV-06, AT-14), shown on Công → Cài đặt → Chấm công like
+// 1Office's "Timekeeping settings". null when the viewer may not read it.
+const CHECK_IN_FIELDS = [
+  "requireGpsForAttendance",
+  "requireWifiForOffice",
+  "gpsAllowWithoutShift",
+  "gpsRequireApprovedDevice",
+  "gpsRequirePhoto",
+  "gpsCheckEntities",
+  "wifiAllowWithoutShift",
+  "wifiRequireApprovedDevice",
+  "wifiRequirePhoto",
+  "wifiCheckEntities"
+] as const;
+
+export type CheckInPolicy = Pick<DeviceAuthPolicy, (typeof CHECK_IN_FIELDS)[number]>;
+
+export async function getCheckInPolicy(): Promise<CheckInPolicy | null> {
+  try {
+    const policy = await requestJson<DeviceAuthPolicy>("/device-auth/policy");
+    return Object.fromEntries(CHECK_IN_FIELDS.map((field) => [field, policy[field]])) as CheckInPolicy;
+  } catch {
+    return null;
+  }
 }
 
 export async function updateDeviceAuthPolicy(payload: DeviceAuthPolicyPayload) {

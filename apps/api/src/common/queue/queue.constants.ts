@@ -3,6 +3,7 @@ export const NOTIFICATIONS_QUEUE = "notifications";
 export const EMAIL_QUEUE = "email";
 export const IMPORTS_QUEUE = "imports";
 export const EXPORTS_QUEUE = "exports";
+export const ATTENDANCE_RECALC_QUEUE = "attendance-recalc";
 
 export const QUEUE_PREFIX = "helios";
 

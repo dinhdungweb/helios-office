@@ -3,8 +3,6 @@ import { resolve } from "node:path";
 import {
   AccountAdminRole,
   AccountLifecycleStatus,
-  ApprovalStatus,
-  AttendanceStatus,
   DeviceAuthStatus,
   EmployeeStatus,
   PayrollStatus,
@@ -13,11 +11,9 @@ import {
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
   accountPermissionCatalog,
-  attendanceRecords,
   contracts,
   departments,
   employees,
-  leaveRequests,
   payrollCycles,
   permissionGroups,
   userAccounts
@@ -194,10 +190,6 @@ function toWorkDate(value: string) {
   return new Date(`${value}T00:00:00.000Z`);
 }
 
-function toDateTime(dateValue: string, timeValue: string | null | undefined) {
-  return timeValue ? new Date(`${dateValue}T${timeValue}:00.000Z`) : null;
-}
-
 function toDeviceDateTime(value: string | null | undefined) {
   if (!value) {
     return null;
@@ -212,26 +204,6 @@ function toDeviceDateTime(value: string | null | undefined) {
   const [, hour, minute, day, month, year] = match;
 
   return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour) - 7, Number(minute)));
-}
-
-function normalizeApprovalStatus(status: string) {
-  if (status === "approved") {
-    return ApprovalStatus.approved;
-  }
-
-  if (status === "rejected") {
-    return ApprovalStatus.rejected;
-  }
-
-  if (status === "cancelled") {
-    return ApprovalStatus.cancelled;
-  }
-
-  if (status === "draft") {
-    return ApprovalStatus.draft;
-  }
-
-  return ApprovalStatus.pending;
 }
 
 function normalizeAdminRole(value: string) {
@@ -278,25 +250,6 @@ function payrollTemplateForDepartment(departmentName: string) {
   return "office-standard";
 }
 
-function normalizeAttendanceStatus(value: string) {
-  if (value === "late") {
-    return AttendanceStatus.late;
-  }
-
-  if (value === "early_leave") {
-    return AttendanceStatus.early_leave;
-  }
-
-  if (value === "missing_checkout") {
-    return AttendanceStatus.missing_checkout;
-  }
-
-  if (value === "needs_review") {
-    return AttendanceStatus.needs_review;
-  }
-
-  return AttendanceStatus.valid;
-}
 
 function normalizePayrollStatus(value: string) {
   if (value === "reviewing") {
@@ -668,56 +621,6 @@ async function seedContracts() {
   }
 }
 
-async function seedLeaveRequests() {
-  for (const request of leaveRequests) {
-    await prisma.leaveRequest.upsert({
-      where: { id: request.id },
-      update: {
-        employeeId: request.employeeId,
-        type: request.type,
-        fromDate: toWorkDate(request.fromDate),
-        toDate: toWorkDate(request.toDate),
-        totalDays: request.totalDays,
-        status: normalizeApprovalStatus(request.status)
-      },
-      create: {
-        id: request.id,
-        employeeId: request.employeeId,
-        type: request.type,
-        fromDate: toWorkDate(request.fromDate),
-        toDate: toWorkDate(request.toDate),
-        totalDays: request.totalDays,
-        status: normalizeApprovalStatus(request.status)
-      }
-    });
-  }
-}
-
-async function seedAttendance() {
-  for (const record of attendanceRecords) {
-    await prisma.attendanceRecord.upsert({
-      where: { id: record.id },
-      update: {
-        employeeId: record.employeeId,
-        workDate: toWorkDate(record.workDate),
-        checkIn: toDateTime(record.workDate, record.checkIn),
-        checkOut: toDateTime(record.workDate, record.checkOut),
-        source: "machine",
-        status: normalizeAttendanceStatus(record.status)
-      },
-      create: {
-        id: record.id,
-        employeeId: record.employeeId,
-        workDate: toWorkDate(record.workDate),
-        checkIn: toDateTime(record.workDate, record.checkIn),
-        checkOut: toDateTime(record.workDate, record.checkOut),
-        source: "machine",
-        status: normalizeAttendanceStatus(record.status)
-      }
-    });
-  }
-}
-
 async function seedPayroll() {
   for (const cycle of payrollCycles) {
     const { periodStart, periodEnd } = payrollPeriodFromId(cycle.id);
@@ -844,8 +747,6 @@ async function main() {
   await seedEmployees();
   await finishDepartmentTreeReset();
   await seedContracts();
-  await seedLeaveRequests();
-  await seedAttendance();
   await seedPayroll();
   await seedDeviceAuth();
 }

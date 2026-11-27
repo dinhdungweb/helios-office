@@ -86,7 +86,7 @@ const moduleCatalog: PersonalModule[] = [
   {
     key: "attendance",
     label: "Công",
-    href: "/user?customMenu=user-board-attendance",
+    href: "/user/attendance",
     group: "Cá nhân",
     icon: CalendarCheck,
     permissionKey: "menu.user.attendance"
@@ -157,15 +157,6 @@ const moduleCatalog: PersonalModule[] = [
     group: "WORKPLACE",
     icon: FileText,
     permissionKey: "menu.work.documents"
-  },
-  {
-    key: "hcns-dashboard",
-    label: "Dashboard HCNS",
-    href: "/hcns",
-    group: "HRM",
-    icon: Users,
-    permissionKey: "menu.hrm.dashboard",
-    legacyPermissionKeys: ["hr.dashboard.modules.view"]
   },
   {
     key: "hcns-employees",

@@ -8,6 +8,92 @@ File này dùng để theo dõi tiến độ triển khai Helios Office: đã l�
 - Ghi rõ phạm vi, file/module chính, trạng thái kiểm tra và việc tiếp theo.
 - Những phần chưa hoàn tất phải ghi là `Chưa xong` hoặc `Tiếp theo` để tránh nhầm là đã chạy thật.
 
+## 2026-11-27
+
+### Phase 3b — task 9: đơn vắng mặt, làm thêm, giải trình, đổi ca, thôi việc
+
+Trạng thái: nhánh `feat/LV-17-request-types` (tách từ `feat/phase-2`). Item: LV-17 → LV-21, AT-22 đặt `done`.
+
+- Năm loại đơn mới đăng ký vào engine phê duyệt như đơn nghỉ: vắng mặt (VM), làm thêm (LT), giải trình chấm công (GT), đổi ca (DC), thôi việc (TV). Mỗi loại kiểm tra dữ liệu, trùng đơn, kỳ công đã chốt và có trường điều kiện cho quy trình (số giờ, loại vắng mặt / làm thêm, số ngày báo trước...).
+- Engine công (AT-22): vắng mặt việc công ty được tính là giờ làm, việc riêng bị trừ khỏi giờ làm, đi muộn / về sớm trong khoảng vắng mặt được tha; giờ giải trình được tính như log của đúng ngày công (ca đêm cũng vậy); giờ làm thêm được duyệt lưu ở cột mới `AttendanceDay.overtimeMinutes` (migration `20261127010000_request_attendance`), có cột "Giờ làm thêm" trên bảng chấm công và file Excel. Đổi ca ghi `ShiftAssignment`; thôi việc ghi ngày nghỉ việc vào hồ sơ. HR huỷ đơn đã duyệt thì trả lại như cũ.
+- `GET /attendance-requests/options`: ca trong ngày, ngày lễ, giờ đã ghi nhận và danh sách ca cho các form.
+- Web: năm form tĩnh nối API thật (lưu nháp, gửi duyệt, sửa đơn nháp / bị trả lại); trang chi tiết đơn hiện thông tin riêng của từng loại.
+
+Kiểm tra: typecheck, lint 0 lỗi (88 cảnh báo), 552 unit + 47 e2e pass, `audit:features --strict` 0 lỗi. Thử API thật trên DB local: khanglm tạo và gửi đủ 5 loại, haianh duyệt, bảng công 24–26/11 tính lại đúng; tạm cấp `permission.requests.manage` cho nhóm quản lý để HR huỷ đơn đổi ca / thôi việc / làm thêm, lịch ca, ngày nghỉ việc và giờ làm thêm được trả lại (đã thu hồi quyền sau khi thử).
+
+Chưa xong / quyết định cần chủ dự án xác nhận:
+- Giao diện năm form chưa thử trên trình duyệt.
+- Giờ làm thêm tính theo giờ được duyệt, chưa đối chiếu với giờ chấm thực tế.
+- Đổi ca chỉ đổi ca của chính mình, chưa có đổi ca với đồng nghiệp.
+- Đơn thôi việc chưa tạo checklist offboarding (làm cùng RC-15, Phase 7).
+
+Dữ liệu thử để lại trên DB local (máy Mac): DB đã áp đủ migration Phase 2–3 (sao lưu trước ở `.tmp/db-backup/before-phase3b-20261127.dump`); quản lý trực tiếp của Lê Minh Khang = Nguyễn Hải Anh; ca CA2 "Ca chiều"; các đơn VM-2026-000003, GT-2026-000005 đã duyệt, DC-2026-000006, TV-2026-000007, LT-2026-000004 đã huỷ sau duyệt.
+
+## 2026-11-26
+
+### Phase 3a - Engine phê duyệt & nghỉ phép (đang làm)
+
+Trạng thái: nhánh `feat/phase-2`, chưa push. Plan: `docs/plans/phase-3.md`. Thiết kế (đã duyệt cùng các đề xuất mục 13): `docs/design/approval-engine.md`.
+
+- Engine phê duyệt: đơn chạy theo phiên bản quy trình cố định; chọn quy trình theo loại đơn / loại nghỉ, không khớp thì quản lý trực tiếp duyệt; sơ đồ kiểu 1Office (bước duyệt, điều kiện nhiều ô, thông báo, email); một người đủ hoặc tất cả cùng duyệt; người duyệt trùng người tạo thì bỏ qua, bước cuối thì lên cấp trên; không tìm được ai thì giao người quản trị quy trình và đánh dấu cần kiểm tra. Duyệt / từ chối / trả lại (bắt buộc lý do), rút, huỷ (đơn đã duyệt chỉ HR), khoá lạc quan, thông báo sau khi lưu.
+- Quy trình: sửa sinh phiên bản mới, nhân bản, bật / tắt có kiểm tra sơ đồ, lọc HTML node thông báo / email phía server (API; giao diện sửa quy trình còn thiếu).
+- Nghỉ phép: loại nghỉ theo Bộ luật Lao động (HR sửa được), quỹ phép dạng sổ cái, cộng 1/12 mỗi tháng + 1 ngày mỗi 5 năm thâm niên, phép tồn chuyển năm và hết hạn 31/03; số ngày nghỉ tính theo lịch ca (nửa ngày, theo giờ); chặn trùng ngày, vượt quỹ, kỳ công đã chốt, thử việc.
+- Bảng công (AT-22): duyệt đơn nghỉ ghi điều chỉnh theo ngày, ngày nghỉ cả ngày có trạng thái "Nghỉ phép" (ký hiệu P), công nghỉ có lương vào paidLeaveUnits; sửa tay của HR vẫn thắng và "Bỏ sửa tay" không còn xoá nghỉ phép.
+- Giao diện phân hệ Đơn từ: danh sách theo hộp, form nghỉ có xem trước, trang chi tiết với các bước và lịch sử, trang Quỹ phép, Cài đặt → Loại nghỉ.
+
+Kiểm tra: typecheck, lint 0 lỗi, audit strict 0 lỗi, 522 unit + 47 e2e pass. Thử thật trên DB local: khanglm tạo đơn → haianh duyệt → quỹ phép trừ, bảng công 25/11 ghi nghỉ phép, khanglm nhận thông báo (tiêu chí hoàn thành của roadmap).
+
+Dữ liệu thử để lại trên DB local: quản lý trực tiếp của Lê Minh Khang đặt là Nguyễn Hải Anh; đơn NP-2026-000003, NP-2026-000004 đã duyệt. Sao lưu trước migration: `.tmp/db-backup/before-phase3-20261126.dump`.
+
+Bổ sung 2026-11-27 (đóng 3a):
+
+- Giao diện quy trình duyệt: mở quy trình có sẵn trong màn thiết kế để sửa (lưu sơ đồ đổi thì sinh phiên bản mới, thanh phiên bản cho biết mỗi phiên bản có bao nhiêu đơn), Kích hoạt / Tạm dừng / Nhân bản ngay trên danh sách; bước duyệt có thêm "Một người duyệt là đủ / Tất cả cùng duyệt", xử lý khi người duyệt trùng người tạo, cho phép trả lại.
+- Lỗi quan trọng đã sửa: màn thiết kế lưu cấu hình node dưới `config` và ô điều kiện dưới `conditions`, engine không đọc được nên quy trình tạo từ giao diện không bao giờ kích hoạt được. Server giờ nhận cả hai dạng và lưu một dạng chuẩn.
+- Thử tay toàn bộ trên DB local: admin tạo quy trình "Duyệt đơn nghỉ qua HCNS", nhân bản, sửa bản sao thành "Duyệt phép năm" (phiên bản 2), tạm dừng bản gốc; Cài đặt loại nghỉ (thêm, xoá, từ chối xoá loại đã dùng); Quỹ phép nhân sự + điều chỉnh. khanglm lưu nháp → sửa → gửi (engine chọn đúng quy trình phép năm v2, giao trưởng phòng HCNS) → rút → gửi lại; haianh trả lại (bắt buộc lý do); khanglm huỷ. Quỹ phép giữ chỗ và nhả đúng sau mỗi bước.
+- Dữ liệu thử thêm trên DB local: 2 quy trình (NP-HCNS tạm dừng, NP-NAM hoạt động), đơn NP-2026-000005 đã huỷ, Khang được điều chỉnh +1 ngày phép.
+
+Tiếp theo: Phase 3b (đơn vắng mặt, làm thêm, giải trình, đổi ca, thôi việc; chuyển tiếp, duyệt hàng loạt, uỷ quyền, quá hạn).
+
+### Phase 2 - chạy gate đóng phase
+
+- Quy tắc chấm công riêng cho GPS và Wifi như 1Office (DV-06, AT-13, AT-14): mỗi cách chấm có cài đặt riêng cho chấm ngày không có ca, chỉ thiết bị đã duyệt, chụp ảnh và kiểm tra theo đối tượng áp dụng. Công tắc cũ được migration `20261026020000_check_in_rules_per_method` chép sang cả hai. Ca làm việc có mục Địa điểm chấm công. Số ngày liên tiếp không cần chấm mặc định là 2 (AT-28).
+- Gate: typecheck pass, 339 unit + 45 e2e pass, lint 0 lỗi, build pass, `audit:features --strict` 0 lỗi. Toàn bộ 33 item của Phase 2 đã `done`.
+- Chưa xong: task 24 (nạp một tháng log thật, so với bảng HR tính tay) và test tay các luồng chính. Migration mới chưa áp vào DB local vì Docker đang tắt.
+
+Tiếp theo: làm task 24 cùng HR → đóng Phase 2, merge `feat/phase-2` vào `main` → viết `docs/design/approval-engine.md` cho Phase 3.
+
+## 2026-10-22
+
+### Phase 2 - Ca làm việc & engine tính công (đang làm)
+
+Trạng thái: nhánh `feat/phase-2`, chưa push. Plan: `docs/plans/phase-2.md`. Thiết kế: `docs/design/attendance-engine.md`; hành vi 1Office đối chiếu: `docs/design/1office-attendance-reference.md`.
+
+- Xong: danh mục ca + chính sách chấm công (AT-05, AT-06), ngày lễ / làm bù (AT-10), lịch ca tuần (AT-07), engine tính công lưu vào `AttendanceDay` (AT-11).
+- Đối chiếu 1Office (chỉ xem): ngưỡng muộn/sớm mặc định đổi về 0; thêm AT-25 → AT-30 (công chuẩn, cài đặt kiểu 1Office, tự nhận ca, mẫu bảng chấm công, công thức tuỳ biến ở Phase 5, ca nhiều khoảng ở Phase 9).
+- Xếp ca hàng loạt (AT-08): một ca theo thứ hoặc mẫu lặp N ngày cho người / phòng ban, xem trước rồi mới lưu; lịch ca xem theo tháng như 1Office.
+- Lịch ca của tôi (AT-09): bảng công cá nhân hiện ca từng ngày, ngày lễ, công chuẩn theo lịch ca; chi tiết ngày có thông tin ca.
+- Tính lại công (AT-12): tự tính lại khi đổi lịch ca, ngày lễ, chính sách, ca; HR tính lại thủ công và theo dõi lịch sử ở Cài đặt → Tính lại công. Worker dev giờ tự khởi động lại khi bất kỳ file build nào đổi.
+- Công đọc từ kết quả engine (task 10): `/attendance` có phân trang, lọc, phạm vi dữ liệu; bảng công cá nhân hiện giờ làm, V khi vi phạm, phút muộn/sớm, số công; dashboard HCNS dùng trạng thái mới. Bỏ bảng cũ `AttendanceRecord`.
+- Phân hệ Công tổ chức như 1Office: tab Bảng công cá nhân (mọi người), Phân ca và Cài đặt (theo quyền HCNS); Phân ca chuyển từ `/hcns/shift-schedule` về `/user/attendance/shift-schedule` (link cũ tự chuyển), bỏ mục Dashboard HCNS khỏi menu. HCNS chỉ là nhóm quyền, không phải khu riêng.
+- Bảng chấm công tháng (AT-16) và sửa công tay (AT-15) ở Công → Bảng chấm công: ô giờ / công kèm V, S; cột tổng như 1Office; bấm ô xem log, kết quả, lịch sử sửa và sửa công (bắt buộc lý do, bỏ sửa tay).
+- Chốt / mở chốt kỳ công (AT-17) trên bảng chấm công: kỳ đã chốt không sửa công, không xếp ca, tính lại bỏ qua; mở chốt bắt buộc lý do; đóng dấu kỳ lương trùng tháng.
+- Nhân viên xác nhận công (AT-24): HR mở xác nhận trên bảng chấm công, nhân viên xác nhận hoặc phản hồi trên bảng công cá nhân, HR ghi cách xử lý. Xuất bảng chấm công ra Excel (AT-18): bảng tháng + chi tiết ngày.
+- Máy chấm công (AT-19/20/21) ở Công → Máy chấm công: danh sách máy (thêm, sửa, gán địa điểm, bật / tắt; máy tắt thì đồng bộ bị từ chối, máy đã có log chỉ tắt không xoá), lỗi đồng bộ (gán mã chấm công lạ cho đúng nhân sự thì các lượt chấm bị từ chối được nhập lại và tính lại công; lỗi khác bỏ qua kèm lý do), dữ liệu chấm công gốc lọc theo ngày, máy, người.
+- Cài đặt chấm công chuyển vào phân hệ Công như 1Office: Công → Cài đặt (Ca làm việc, Chấm công GPS/Wifi, Ngày nghỉ lễ, Quy trình duyệt; Cài đặt đối tượng → Chấm công gồm cả quy tắc GPS / Wifi, thiết bị đã xác thực, chụp ảnh). Bảng chấm công có thêm nút Tính toán, Lịch sử, Công chuẩn. Cài đặt Nhân sự không còn mục chấm công; đường dẫn cũ tự chuyển.
+- Tự động nhận ca theo giờ chấm (AT-29): ca bật Tự động nhận biết theo phòng ban, vị trí được chọn cho ngày chưa xếp ca nếu giờ chấm khớp hơn ca mặc định; ô bảng công hiện ca đã nhận.
+- Cài đặt chung kiểu 1Office (AT-28) trong Chính sách chấm công: tính muộn / sớm theo phút (mặc định, bỏ qua giây) hoặc theo giây; tách giờ ca đêm qua ngày; ca trực nhiều ngày chỉ cần chấm vào ngày đầu, ra ngày cuối; giới hạn sửa phân ca và xếp ca trước.
+- Ảnh khi chấm công (AT-14): HR bật Chụp ảnh khi chấm công; nhân viên chụp bằng camera rồi mới chấm được, HR xem ảnh trong chi tiết ngày và log chấm công.
+- Chấm công trên web (AT-13, DV-06): nút Chấm công vào / ra trên bảng công cá nhân, kiểm tra thiết bị đã duyệt và vị trí (GPS hoặc mạng văn phòng), báo rõ lý do khi bị từ chối; lượt chấm vào log gốc và tính lại công ngay. HR thấy nguồn Web, thiết bị, điểm chấm ở log và chi tiết ngày; bật / tắt yêu cầu thiết bị đã duyệt ở Xác thực thiết bị.
+- Nhân viên tự đăng ký thiết bị (DV-05): khung Thiết bị chấm công trên bảng công cá nhân, gửi yêu cầu cho HR duyệt, xem và rút yêu cầu; HR lọc thêm thiết bị Web.
+- Điểm chấm công hợp lệ (DV-07) ở Cài đặt → Chấm công GPS/Wifi: điểm GPS chọn trên bản đồ kèm bán kính, mạng văn phòng theo dải IP, wifi theo SSID / BSSID (cho app); chuẩn bị cho chấm công trên web.
+- Công chuẩn theo nhóm (AT-25) ở Cài đặt → Công chuẩn: mỗi nhóm phòng ban × vị trí chọn số ngày trong tháng trừ Chủ nhật (có điều chỉnh), số cố định hoặc theo lịch ca; áp dụng từ một tháng, không đổi được kỳ đã chốt. Bảng chấm công, file Excel và bảng công cá nhân dùng số này.
+- Nhắc quên chấm công (AT-23): mỗi sáng (giờ đặt trong Chính sách chấm công, mặc định 08:30) người ngày hôm qua thiếu giờ vào / ra nhận thông báo; mỗi ngày một lần, không nhắc ngày nghỉ, lễ, tháng đã chốt; HR gửi tay được. Lưu chính sách không còn tính lại công khi quy tắc tính công không đổi.
+- Đồng bộ máy chấm công đọc giờ không kèm múi giờ theo giờ công ty (không theo giờ máy chủ) và tính lại ngay các ngày bị ảnh hưởng, gồm ngày trước đó cho ca đêm. Tính lại toàn bộ: `npm run attendance:recalculate -- [--from] [--to]` (chạy lại không đổi gì nếu dữ liệu không đổi).
+
+Kiểm tra: 304 unit + 45 e2e pass, audit pass. Thử thật: đồng bộ 08:10–17:05 → muộn 10 phút, 0,98 công.
+
+Tiếp theo: (đã xong các mục máy chấm công, lỗi đồng bộ, log gốc, nhắc quên chấm — xem entry 2026-11-26).
+
 ## 2026-10-21
 
 ### Phase 1 (roadmap mới) - Hạ tầng dùng chung
