@@ -35,7 +35,7 @@ Chia hai đợt như thiết kế mục 12. Đóng task nào chạy `npm run typ
 
 | # | Item | Việc | Trạng thái |
 |---|---|---|---|
-| 9 | LV-17 → LV-21, AT-22 | Đơn vắng mặt, OT, giải trình, đổi ca, thôi việc + cập nhật công | |
+| 9 | LV-17 → LV-21, AT-22 | Đơn vắng mặt, OT, giải trình, đổi ca, thôi việc + cập nhật công | ✅ 2026-11-27: 5 handler (`apps/api/src/modules/attendance-requests/`), engine công nhận absence / overtime / explanation, cột `overtimeMinutes`, form web nối API. 17 unit handler + 11 unit engine. Thử API thật trên DB local: tạo → duyệt → bảng công tính lại → HR huỷ → trả lại. Giao diện chưa thử trên trình duyệt |
 | 10 | AP-17, AP-18, AP-20, LV-08 | Chuyển tiếp, duyệt hàng loạt, người theo dõi, đính kèm | |
 | 11 | AU-21, AP-21, AP-22, AP-24, AP-26 | Uỷ quyền, quá hạn, trang cảnh báo duyệt, đính kèm email | |
 | 12 | LV-22, LV-23, LV-25 | Đơn công tác, đề xuất chung, lịch nghỉ phòng ban | |

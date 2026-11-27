@@ -1,7 +1,7 @@
 import type { AttendancePolicy, HolidayType, Shift } from "@prisma/client";
 import { requiredMinutesFor, resolveShiftRules } from "../../shifts/shift-rules";
 import { datesBetween, resolveDayShift } from "../../shifts/shift-resolver";
-import { assignPunches, calculateDay, scheduleFor, type DayLeave, type DayResult, type EnginePolicy, type EngineShift, type ManualOverride } from "./attendance-engine";
+import { assignPunches, calculateDay, scheduleFor, type DayAbsence, type DayLeave, type DayResult, type EnginePolicy, type EngineShift, type ManualOverride } from "./attendance-engine";
 import { addDays, localDate, zonedInstant } from "./zoned-time";
 
 // One employee over a range of work dates: resolves each date's shift, splits the punches between
@@ -69,6 +69,11 @@ export type EmployeeDaysInput = {
   manual: Map<string, ManualOverride>;
   // AT-22: approved leave by date.
   leave?: Map<string, DayLeave>;
+  // AT-22 for the other request types: approved time out, overtime minutes, and the check-in /
+  // check-out times of approved explanations (LV-20), which count as punches of that work date.
+  absences?: Map<string, DayAbsence[]>;
+  overtime?: Map<string, number>;
+  explanations?: Map<string, Date[]>;
 };
 
 export type EmployeeDay = { workDate: string; result: DayResult | null; shiftCode: string | null; holidayType: HolidayType | null; punchCount: number; policy: EnginePolicy | null };
@@ -172,7 +177,9 @@ export function calculateEmployeeDays(input: EmployeeDaysInput): EmployeeDay[] {
   }
 
   const days = plan.map((day) => {
-    const punches = day.shift ? assigned.get(day.date) ?? [] : free.get(day.date) ?? [];
+    const explained = input.explanations?.get(day.date) ?? [];
+    const recorded = day.shift ? assigned.get(day.date) ?? [] : free.get(day.date) ?? [];
+    const punches = explained.length > 0 ? [...recorded, ...explained].sort((a, b) => a.getTime() - b.getTime()) : recorded;
     const input_ = {
       workDate: day.date,
       shift: day.shift ? engineShiftFor(day.shift) : null,
@@ -181,10 +188,13 @@ export function calculateEmployeeDays(input: EmployeeDaysInput): EmployeeDay[] {
       policy: day.enginePolicy,
       employment: input.employment,
       manual: input.manual.get(day.date) ?? null,
-      leave: input.leave?.get(day.date) ?? null
+      leave: input.leave?.get(day.date) ?? null,
+      absences: input.absences?.get(day.date) ?? [],
+      overtimeMinutes: input.overtime?.get(day.date) ?? 0
     };
     const result = calculateDay(input_);
     if (result && day.autoDetected) result.flags.push("auto_shift");
+    if (result && explained.length > 0) result.flags.push("explained");
     return { ...day, input: input_, punches, result };
   });
 
@@ -232,7 +242,8 @@ type PlannedDay = {
 // days, a check-in on the first day and a check-out on the last make the whole run count, the days
 // in between included. Only untouched days qualify (no HR change, nothing punched in between).
 function joinContinuousShifts(days: PlannedDay[], maxDays: number) {
-  const plain = (day: PlannedDay | undefined) => Boolean(day?.shift && day.result && !day.input.manual && !day.input.leave);
+  const plain = (day: PlannedDay | undefined) =>
+    Boolean(day?.shift && day.result && !day.input.manual && !day.input.leave && !day.input.absences?.length && !day.result.flags.includes("explained"));
   for (let first = 0; first < days.length; first += 1) {
     if (!plain(days[first]) || days[first].result!.status !== "missing_checkout") continue;
     for (let last = first + 1; last < days.length && last - first + 1 <= maxDays; last += 1) {

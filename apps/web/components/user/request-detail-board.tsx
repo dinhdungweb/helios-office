@@ -6,14 +6,15 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 import { CollapseButton } from "@/components/user/collapse-button";
 import { StatusBadge } from "@/components/user/requests-board";
+import { RequestTypeDetailTable, typeFact } from "@/components/user/request-type-detail";
 import { CheckCircle, Clock, FileText, FlowArrow, PaperPlaneTilt, PencilSimple, Trash, WarningCircle, X } from "@/lib/icons";
 import { cancelRequestAction, commentRequestAction, decideRequestAction, recallRequestAction, submitRequestAction, type ActionResult } from "@/lib/request-actions";
 import {
   ACTION_LABEL,
-  formatDate,
   formatDateTime,
-  formatDays,
+  formatQuantity,
   initials,
+  REQUEST_FORM_SLUG,
   requestRange,
   type RequestDetail,
   type RequestStep,
@@ -167,6 +168,7 @@ export function RequestDetailBoard({ request, timeline }: { request: RequestDeta
   const [working, startWorking] = useTransition();
   const { permissions } = request;
   const payload = request.payload;
+  const fact = typeFact(request);
 
   const run = (work: () => Promise<ActionResult>) => {
     setError(null);
@@ -227,7 +229,7 @@ export function RequestDetailBoard({ request, timeline }: { request: RequestDeta
               </>
             ) : null}
             {permissions.canEdit ? (
-              <Link href={`/user/requests/new?type=${request.type}&id=${request.id}` as Route}>
+              <Link href={`/user/requests/new?type=${REQUEST_FORM_SLUG[request.type] ?? request.type}&id=${request.id}` as Route}>
                 <PencilSimple size={15} weight="duotone" aria-hidden="true" />
                 Sửa
               </Link>
@@ -322,8 +324,8 @@ export function RequestDetailBoard({ request, timeline }: { request: RequestDeta
                     <dd>{request.title}</dd>
                   </div>
                   <div className="request-field">
-                    <dt>Tính công</dt>
-                    <dd>{payload.paid === undefined ? "" : payload.paid ? "Có lương" : "Không lương"}</dd>
+                    <dt>{fact.label}</dt>
+                    <dd>{fact.value}</dd>
                   </div>
                 </div>
                 <div className="request-field-column">
@@ -342,8 +344,8 @@ export function RequestDetailBoard({ request, timeline }: { request: RequestDeta
                     <dd>{requestRange(request)}</dd>
                   </div>
                   <div className="request-field">
-                    <dt>Số ngày</dt>
-                    <dd>{formatDays(request.quantity)}</dd>
+                    <dt>{request.unit === "hour" ? "Số giờ" : "Số ngày"}</dt>
+                    <dd>{formatQuantity(request) || "—"}</dd>
                   </div>
                 </div>
                 <div className="request-field request-field--full">
@@ -360,24 +362,7 @@ export function RequestDetailBoard({ request, timeline }: { request: RequestDeta
             </Panel>
 
             <Panel title="Chi tiết">
-              <div className="request-detail-table" role="table" aria-label="Các ngày nghỉ">
-                <div role="rowgroup">
-                  <div role="row">
-                    <span role="columnheader">Ngày</span>
-                    <span role="columnheader">Thời gian nghỉ</span>
-                    <span role="columnheader">Công</span>
-                  </div>
-                  {(payload.days ?? []).map((day) => (
-                    <div role="row" key={day.date}>
-                      <strong role="cell">{formatDate(day.date)}</strong>
-                      <strong role="cell">
-                        {Math.floor(day.minutes / 60)} giờ{day.minutes % 60 ? ` ${day.minutes % 60} phút` : ""}
-                      </strong>
-                      <strong role="cell">{day.units}</strong>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <RequestTypeDetailTable request={request} />
             </Panel>
           </div>
 

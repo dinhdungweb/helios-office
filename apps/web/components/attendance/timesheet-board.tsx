@@ -438,6 +438,9 @@ export function TimesheetBoard({ data, canConfirm, canEdit, canLock, departmentI
                 Giờ ngoài ca
               </th>
               <th className="timesheet-group" rowSpan={2} scope="col">
+                Giờ làm thêm
+              </th>
+              <th className="timesheet-group" rowSpan={2} scope="col">
                 Công chuẩn
               </th>
               <th className="timesheet-group" colSpan={2} scope="colgroup">
@@ -522,6 +525,7 @@ export function TimesheetBoard({ data, canConfirm, canEdit, canLock, departmentI
                 <td className="timesheet-total">{row.totals.holidayUnits ? units(row.totals.holidayUnits) : ""}</td>
                 <td className="timesheet-total">{row.totals.nightHours || ""}</td>
                 <td className="timesheet-total">{row.totals.outsideHours || ""}</td>
+                <td className="timesheet-total">{row.totals.overtimeHours || ""}</td>
                 <td
                   className="timesheet-total"
                   title={row.totals.standardMode === "schedule" ? `Theo lịch ca${row.totals.standardRule ? ` (nhóm ${row.totals.standardRule})` : ""}` : `Nhóm ${row.totals.standardRule}: ${row.totals.standardMode === "auto" ? "số ngày trong tháng trừ Chủ nhật" : "số cố định"}`}
@@ -537,7 +541,7 @@ export function TimesheetBoard({ data, canConfirm, canEdit, canLock, departmentI
             ))}
             {sheet.items.length === 0 ? (
               <tr>
-                <td className="timesheet-empty" colSpan={sheet.dates.length + 18}>
+                <td className="timesheet-empty" colSpan={sheet.dates.length + 19}>
                   Không có nhân sự nào phù hợp trong phạm vi của bạn.
                 </td>
               </tr>

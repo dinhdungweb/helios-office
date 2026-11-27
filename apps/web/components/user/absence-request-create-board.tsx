@@ -1,211 +1,125 @@
-import {
-  CalendarBlank,
-  CaretDown,
-  Check,
-  Clock,
-  LinkSimple,
-  ListBullets,
-  ListNumbers,
-  Microphone,
-  Minus,
-  PaperPlaneTilt,
-  Plus,
-  Smiley,
-  TextAlignLeft,
-  TextB,
-  TextItalic,
-  TextUnderline,
-  UploadSimple,
-  X
-} from "@/lib/icons";
+"use client";
 
-import { LeaveFormSelect } from "@/components/user/leave-form-select";
+import { useState } from "react";
 import { CollapseButton } from "@/components/user/collapse-button";
+import { RequestFormFooter, today, useRequestSave } from "@/components/user/request-form-parts";
+import { Plus, X } from "@/lib/icons";
+import { formatHours, type AbsencePayload, type RequestDetail } from "@/lib/request-format";
 
-const editorTools = [
-  Microphone,
-  TextB,
-  TextItalic,
-  Smiley,
-  Minus,
-  TextUnderline,
-  ListBullets,
-  ListNumbers,
-  LinkSimple,
-  TextAlignLeft
-];
+type Row = { key: number; date: string; fromTime: string; toTime: string };
 
-const absenceReasons = [
-  { label: "Việc cá nhân" },
-  { label: "Đi gặp khách hàng" },
-  { label: "Làm việc ngoài văn phòng" },
-  { label: "Quên check in/out" },
-  { label: "Đi muộn" },
-  { label: "Về sớm" }
-];
+const minutesOf = (row: Row) => {
+  if (!row.fromTime || !row.toTime) return 0;
+  const [fh, fm] = row.fromTime.split(":").map(Number);
+  const [th, tm] = row.toTime.split(":").map(Number);
+  return Math.max(0, th * 60 + tm - (fh * 60 + fm));
+};
 
-const attendanceOptions = [
-  { label: "Có" },
-  { label: "Không" }
-];
+// LV-17: time out during working hours. Company business counts as worked; personal time out
+// comes off the hours worked. Lateness / leaving early inside the approved time is not a violation.
+export function AbsenceRequestCreateBoard({ request, loadError }: { request?: RequestDetail | null; loadError?: string }) {
+  const initial = request?.payload as Partial<AbsencePayload> | undefined;
+  const [kind, setKind] = useState<"company" | "personal">(initial?.kind ?? "personal");
+  const [rows, setRows] = useState<Row[]>(
+    initial?.ranges?.length ? initial.ranges.map((range, index) => ({ key: index, ...range })) : [{ key: 0, date: today(), fromTime: "", toTime: "" }]
+  );
+  const [reason, setReason] = useState(initial?.reason ?? "");
+  const { save, saving, error, setError } = useRequestSave("absence", request, loadError);
+  const total = rows.reduce((sum, row) => sum + minutesOf(row), 0);
 
-const closingOptions = [
-  { label: "Có" },
-  { label: "Không" }
-];
+  const update = (key: number, patch: Partial<Row>) => setRows((current) => current.map((row) => (row.key === key ? { ...row, ...patch } : row)));
 
-export function AbsenceRequestCreateBoard() {
+  const send = (submit: boolean) => {
+    const ranges = rows.filter((row) => row.date && row.fromTime && row.toTime).map(({ date, fromTime, toTime }) => ({ date, fromTime, toTime }));
+    if (ranges.length === 0) return setError("Hãy nhập ít nhất một khoảng vắng mặt (ngày, từ giờ, đến giờ).");
+    save({ kind, ranges, reason: reason.trim() || undefined }, submit);
+  };
+
   return (
-    <main className="leave-create-page" aria-label="Tạo mới đơn vắng mặt">
-      <form className="leave-create-form">
-        <section className="leave-create-section leave-create-section--wide" aria-labelledby="absence-general-title">
+    <main className="leave-create-page" aria-label={request ? `Sửa đơn ${request.code}` : "Tạo mới đơn vắng mặt"}>
+      <form
+        className="leave-create-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          send(true);
+        }}
+      >
+        <section className="leave-create-section" aria-labelledby="absence-general-title">
           <header className="leave-create-section-header">
-            <CollapseButton className="leave-create-collapse" label="Thông tin đơn" />
-            <h2 id="absence-general-title">Thông tin đơn</h2>
+            <CollapseButton className="leave-create-collapse" label="Thông tin chung" />
+            <h2 id="absence-general-title">{request ? `Đơn ${request.code}` : "Thông tin chung"}</h2>
           </header>
 
-          <div className="leave-create-grid leave-create-grid--absence">
-            <label className="leave-field">
+          <div className="leave-create-grid leave-create-grid--summary">
+            <label className="leave-field leave-field--wide">
               <span>
-                Ngày vắng mặt <strong>*</strong>
+                Loại vắng mặt <strong>*</strong>
               </span>
-              <div className="leave-input-icon">
-                <input value="09/07/2026" readOnly aria-label="Ngày vắng mặt" />
-                <CalendarBlank size={17} weight="duotone" aria-hidden="true" />
-              </div>
+              <select className="leave-control" value={kind} onChange={(event) => setKind(event.target.value as "company" | "personal")}>
+                <option value="personal">Việc riêng (không tính công)</option>
+                <option value="company">Việc công ty (tính công)</option>
+              </select>
             </label>
-
-            <label className="leave-field">
-              <span>
-                Vắng mặt từ <strong>*</strong>
-              </span>
-              <div className="leave-input-icon">
-                <input placeholder="hh:mm" aria-label="Vắng mặt từ" />
-                <Clock size={17} weight="duotone" aria-hidden="true" />
-              </div>
+            <label className="leave-field leave-field--readonly">
+              <span>Tổng thời gian</span>
+              <input value={formatHours(Math.round((total / 60) * 100) / 100)} readOnly />
             </label>
-
-            <label className="leave-field">
-              <span>
-                Vắng mặt đến <strong>*</strong>
-              </span>
-              <div className="leave-input-icon">
-                <input placeholder="hh:mm" aria-label="Vắng mặt đến" />
-                <Clock size={17} weight="duotone" aria-hidden="true" />
-              </div>
-            </label>
-
-            <label className="leave-field">
-              <span>
-                Lý do <strong>*</strong>
-              </span>
-              <LeaveFormSelect
-                ariaLabel="Chọn lý do vắng mặt"
-                menuLabel="Các lý do vắng mặt"
-                options={absenceReasons}
-                placeholder="Chọn lý do..."
-              />
-            </label>
-
-            <label className="leave-field leave-field--compact">
-              <span>Tính công</span>
-              <LeaveFormSelect
-                ariaLabel="Chọn tính công"
-                menuLabel="Tùy chọn tính công"
-                options={attendanceOptions}
-                placeholder="Chọn..."
-              />
-            </label>
-
-            <label className="leave-field leave-field--compact">
-              <span>Yêu cầu chốt</span>
-              <LeaveFormSelect
-                ariaLabel="Chọn yêu cầu chốt"
-                menuLabel="Tùy chọn yêu cầu chốt"
-                options={closingOptions}
-                placeholder="Chọn..."
-              />
-            </label>
-
-            <button className="icon-button leave-row-remove" type="button" aria-label="Xóa dòng vắng mặt">
-              <X size={18} weight="duotone" aria-hidden="true" />
-            </button>
           </div>
 
-          <button className="leave-add-time" type="button" aria-label="Thêm dòng vắng mặt">
+          {rows.map((row, index) => (
+            <div className="leave-create-grid leave-create-grid--time" key={row.key}>
+              <label className="leave-field">
+                <span>
+                  Ngày vắng mặt <strong>*</strong>
+                </span>
+                <input type="date" value={row.date} onChange={(event) => update(row.key, { date: event.target.value })} aria-label={`Ngày vắng mặt, dòng ${index + 1}`} required />
+              </label>
+              <label className="leave-field">
+                <span>
+                  Từ giờ <strong>*</strong>
+                </span>
+                <input type="time" value={row.fromTime} onChange={(event) => update(row.key, { fromTime: event.target.value })} aria-label={`Vắng mặt từ, dòng ${index + 1}`} required />
+              </label>
+              <label className="leave-field">
+                <span>
+                  Đến giờ <strong>*</strong>
+                </span>
+                <input type="time" value={row.toTime} onChange={(event) => update(row.key, { toTime: event.target.value })} aria-label={`Vắng mặt đến, dòng ${index + 1}`} required />
+              </label>
+              <label className="leave-field leave-field--readonly">
+                <span>Thời gian</span>
+                <input value={minutesOf(row) ? formatHours(Math.round((minutesOf(row) / 60) * 100) / 100) : ""} readOnly aria-label={`Thời gian vắng mặt, dòng ${index + 1}`} />
+              </label>
+              <button
+                className="icon-button leave-row-remove"
+                type="button"
+                aria-label={`Xoá dòng vắng mặt ${index + 1}`}
+                disabled={rows.length === 1}
+                onClick={() => setRows((current) => current.filter((item) => item.key !== row.key))}
+              >
+                <X size={18} weight="duotone" aria-hidden="true" />
+              </button>
+            </div>
+          ))}
+
+          <button
+            className="leave-add-time"
+            type="button"
+            aria-label="Thêm dòng vắng mặt"
+            disabled={rows.length >= 10}
+            onClick={() => setRows((current) => [...current, { key: Math.max(...current.map((row) => row.key)) + 1, date: current.at(-1)?.date ?? today(), fromTime: "", toTime: "" }])}
+          >
             <Plus size={18} weight="duotone" aria-hidden="true" />
           </button>
+          <p className="leave-type-hint">Mỗi dòng là một lần ra ngoài trong ca, trong cùng một ngày. Muốn nghỉ cả buổi thì dùng đơn xin nghỉ.</p>
 
           <label className="leave-field leave-description">
-            <span>Mô tả</span>
-            <div className="leave-editor">
-              <div className="leave-editor-toolbar" aria-label="Công cụ định dạng mô tả">
-                {editorTools.map((Tool, index) => (
-                  <button className="icon-button" type="button" aria-label={`Công cụ soạn thảo ${index + 1}`} key={index}>
-                    <Tool size={16} weight="duotone" aria-hidden="true" />
-                  </button>
-                ))}
-              </div>
-              <textarea placeholder="Nhập mô tả" aria-label="Nhập mô tả đơn vắng mặt" />
-            </div>
+            <span>Lý do / mô tả</span>
+            <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={5000} placeholder="Nhập lý do vắng mặt" aria-label="Nhập mô tả đơn vắng mặt" />
           </label>
-
-          <fieldset className="leave-attachment">
-            <legend>Đính kèm</legend>
-            <div className="leave-upload-dropzone">
-              <span className="leave-upload-icon">
-                <UploadSimple size={24} weight="duotone" aria-hidden="true" />
-              </span>
-              <div>
-                <p>Kéo thả file vào đây để tải lên hoặc</p>
-                <div className="leave-upload-actions">
-                  <button className="primary-button" type="button">
-                    <PaperPlaneTilt size={15} weight="duotone" aria-hidden="true" />
-                    Chọn từ máy
-                  </button>
-                  <button className="secondary-button" type="button">
-                    <UploadSimple size={15} weight="duotone" aria-hidden="true" />
-                    Chọn từ cloud
-                  </button>
-                </div>
-              </div>
-            </div>
-          </fieldset>
         </section>
 
-        <section className="leave-create-section" aria-labelledby="absence-related-title">
-          <header className="leave-create-section-header">
-            <CollapseButton className="leave-create-collapse" label="Đối tượng liên quan" />
-            <h2 id="absence-related-title">Đối tượng liên quan</h2>
-          </header>
-
-          <div className="leave-related-row">
-            <label className="leave-field leave-field--wide">
-              <span className="sr-only">Đối tượng liên quan</span>
-              <button className="leave-control" type="button" aria-label="Chọn đối tượng liên quan">
-                <span>Đối tượng liên quan</span>
-                <CaretDown size={16} weight="duotone" aria-hidden="true" />
-              </button>
-            </label>
-            <button className="icon-button" type="button" aria-label="Xóa đối tượng liên quan">
-              <X size={18} weight="duotone" aria-hidden="true" />
-            </button>
-          </div>
-
-          <button className="leave-add-time" type="button" aria-label="Thêm đối tượng liên quan">
-            <Plus size={18} weight="duotone" aria-hidden="true" />
-          </button>
-        </section>
-
-        <footer className="leave-create-actionbar">
-          <button className="primary-button" type="submit">
-            <Check size={15} weight="duotone" aria-hidden="true" />
-            Cập nhật
-          </button>
-          <a className="secondary-button" href="/user?customMenu=user-board-requests">
-            Hủy bỏ
-          </a>
-        </footer>
+        <RequestFormFooter saving={saving} onDraft={() => send(false)} request={request} error={error} />
       </form>
     </main>
   );

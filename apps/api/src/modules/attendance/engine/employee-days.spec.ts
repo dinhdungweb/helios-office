@@ -289,3 +289,31 @@ describe("calculateEmployeeDays detecting shifts from punches (AT-29)", () => {
     expect(office.get("2026-10-21")!.shiftCode).toBe("HC");
   });
 });
+
+// Phase 3b task 9: an approved explanation (LV-20) counts as the missing punch of its work date.
+describe("calculateEmployeeDays with approved explanations", () => {
+  it("fills a forgotten check-out", () => {
+    const days = run({ punches: [vn("2026-10-21", "08:00")], explanations: new Map([["2026-10-21", [vn("2026-10-21", "17:00")]]]) });
+    expect(days.find((day) => day.workDate === "2026-10-21")!.result).toMatchObject({ status: "on_time", workUnits: 1, flags: ["explained"] });
+  });
+
+  it("gives a night shift's explained check-out to the shift's date, not the calendar date", () => {
+    const days = run({
+      assignments: new Map([["2026-10-21", "night"]]),
+      punches: [vn("2026-10-21", "22:00")],
+      explanations: new Map([["2026-10-21", [vn("2026-10-22", "06:00")]]])
+    });
+    expect(days.find((day) => day.workDate === "2026-10-21")!.result).toMatchObject({ status: "on_time", workedMinutes: 480 });
+    // The 06:00 check-out is not also taken by the next day's office shift.
+    expect(days.find((day) => day.workDate === "2026-10-22")).toMatchObject({ punchCount: 0, result: { status: "absent" } });
+  });
+
+  it("passes approved time out and overtime through to the day", () => {
+    const days = run({
+      punches: [vn("2026-10-21", "08:00"), vn("2026-10-21", "17:00")],
+      absences: new Map([["2026-10-21", [{ start: vn("2026-10-21", "14:00"), end: vn("2026-10-21", "16:00"), counted: false }]]]),
+      overtime: new Map([["2026-10-21", 120]])
+    });
+    expect(days.find((day) => day.workDate === "2026-10-21")!.result).toMatchObject({ workedMinutes: 360, overtimeMinutes: 120 });
+  });
+});

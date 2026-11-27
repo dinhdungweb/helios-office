@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../common/prisma/prisma.service";
-import type { DayLeave, ManualOverride } from "./engine/attendance-engine";
+import type { DayAbsence, DayLeave, ManualOverride } from "./engine/attendance-engine";
 import { calculateEmployeeDays, type CalcShift, type EmployeeDay, dependencyReach } from "./engine/employee-days";
 import { addDays, localDate, zonedInstant } from "./engine/zoned-time";
 
@@ -122,6 +122,7 @@ export class AttendanceCalculationService {
 
       const writes: Prisma.PrismaPromise<unknown>[] = [];
       for (const employee of batch) {
+        const own = adjustments.filter((adjustment) => adjustment.employeeId === employee.id);
         const days = calculateEmployeeDays({
           from: options.from,
           to: options.to,
@@ -146,7 +147,8 @@ export class AttendanceCalculationService {
               .map((adjustment) => [isoDate(adjustment.workDate), toManualOverride(adjustment)])
           ),
           // Approved leave (AT-22) adds up per date; HR's manual figures still win over it.
-          leave: toLeaveByDate(adjustments.filter((adjustment) => adjustment.employeeId === employee.id && adjustment.type === "leave"))
+          leave: toLeaveByDate(own.filter((adjustment) => adjustment.type === "leave")),
+          ...toRequestInputs(own)
         });
 
         const stored = new Map(existing.filter((row) => row.employeeId === employee.id).map((row) => [isoDate(row.workDate), row]));
@@ -212,6 +214,30 @@ export function toLeaveByDate(
   return byDate;
 }
 
+type WindowAdjustment = { type: string; workDate: Date; paid: boolean | null; checkIn: Date | null; checkOut: Date | null };
+
+// Approved absence, overtime and explanation adjustments (AT-22, design §8) of one person, by date:
+// absence = the window out (paid = on company business), overtime = the approved window, explanation
+// = the check-in / check-out times to count as punches.
+export function toRequestInputs(adjustments: WindowAdjustment[]) {
+  const absences = new Map<string, DayAbsence[]>();
+  const overtime = new Map<string, number>();
+  const explanations = new Map<string, Date[]>();
+  for (const adjustment of adjustments) {
+    const date = isoDate(adjustment.workDate);
+    if (adjustment.type === "absence" && adjustment.checkIn && adjustment.checkOut) {
+      absences.set(date, [...(absences.get(date) ?? []), { start: adjustment.checkIn, end: adjustment.checkOut, counted: adjustment.paid === true }]);
+    } else if (adjustment.type === "overtime" && adjustment.checkIn && adjustment.checkOut) {
+      const minutes = Math.max(0, Math.round((adjustment.checkOut.getTime() - adjustment.checkIn.getTime()) / 60_000));
+      overtime.set(date, (overtime.get(date) ?? 0) + minutes);
+    } else if (adjustment.type === "explanation") {
+      const times = [adjustment.checkIn, adjustment.checkOut].filter((value): value is Date => value !== null);
+      if (times.length > 0) explanations.set(date, [...(explanations.get(date) ?? []), ...times]);
+    }
+  }
+  return { absences, overtime, explanations };
+}
+
 function toManualOverride(adjustment: {
   punchesSet: boolean;
   checkIn: Date | null;
@@ -239,6 +265,7 @@ function toRow(day: EmployeeDay) {
     earlyMinutes: result.earlyMinutes,
     outsideShiftMinutes: result.outsideShiftMinutes,
     nightMinutes: result.nightMinutes,
+    overtimeMinutes: result.overtimeMinutes,
     workUnits: new Prisma.Decimal(result.workUnits),
     paidLeaveUnits: new Prisma.Decimal(result.paidLeaveUnits),
     status: result.status,
@@ -282,6 +309,7 @@ export function sameFigures(stored: StoredFigures, next: ReturnType<typeof toRow
     stored.earlyMinutes === next.earlyMinutes &&
     stored.outsideShiftMinutes === next.outsideShiftMinutes &&
     stored.nightMinutes === next.nightMinutes &&
+    stored.overtimeMinutes === next.overtimeMinutes &&
     Number(stored.workUnits) === Number(next.workUnits) &&
     Number(stored.paidLeaveUnits) === Number(next.paidLeaveUnits) &&
     stored.status === next.status &&

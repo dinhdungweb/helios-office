@@ -777,9 +777,9 @@ modules:
       - id: AT-22
         title: Cập nhật công khi đơn nghỉ/OT/đổi ca/giải trình được duyệt
         phase: 3
-        status: partial
+        status: done
         depends: [AT-11, AP-10]
-        note: "Đơn nghỉ xong: duyệt thì ghi AttendanceAdjustment loại leave theo ngày (kèm khung giờ khi nghỉ nửa ngày) và tính lại công sau commit; ngày nghỉ cả ngày có trạng thái leave, công nghỉ có lương vào paidLeaveUnits, sửa tay của HR vẫn thắng; HR huỷ đơn đã duyệt thì thu hồi. OT, đổi ca, giải trình, vắng mặt ở 3b"
+        note: "Mọi loại đơn ghi AttendanceAdjustment có sourceRequestId và tính lại công sau commit; HR huỷ đơn đã duyệt thì thu hồi. leave: theo ngày, ngày nghỉ cả ngày trạng thái leave, công có lương vào paidLeaveUnits. absence: khoảng giờ, tha muộn/sớm, việc công ty cộng giờ làm, việc riêng trừ giờ làm. overtime: overtimeMinutes. explanation: giờ giải trình tính như log. shift_swap: đổi ShiftAssignment. Sửa tay của HR luôn thắng"
       - id: AT-23
         title: Nhắc quên chấm công
         api: ["GET /attendance/reminders", "POST /attendance/reminders/run"]
@@ -924,23 +924,34 @@ modules:
         depends: [LV-02]
       - id: LV-17
         title: Form vắng mặt / ra ngoài nối API
-        status: partial
+        ui: /user/requests/new?type=absence
+        status: done
+        note: "Loại absence (VM): nhiều khoảng giờ trong ngày có ca, việc công ty (tính công) / việc riêng (trừ giờ làm); chặn trùng giờ với đơn khác, kỳ đã chốt. Duyệt → adjustment absence, engine tha muộn/sớm trong khoảng và cộng / trừ giờ làm"
         depends: [LV-02]
       - id: LV-18
         title: Form làm thêm giờ (OT) nối API
-        status: partial
+        ui: /user/requests/new?type=overtime
+        status: done
+        note: "Loại overtime (LT): ngày + giờ (qua nửa đêm được), loại ngày thường / nghỉ / lễ lấy từ lịch ca; chặn giờ trong ca, trùng đơn khác, dưới 15 phút, quá 16 giờ. Duyệt → adjustment overtime, AttendanceDay.overtimeMinutes, cột Giờ làm thêm trên bảng công và file Excel. Tính theo giờ được duyệt, chưa đối chiếu với giờ chấm thực tế"
         depends: [LV-02]
       - id: LV-19
         title: Form đổi ca nối API
-        status: partial
+        api: ["GET /attendance-requests/options"]
+        ui: /user/requests/new?type=shift-change
+        status: done
+        note: "Loại shift_change (DC): đổi ca của chính mình trong một ngày. Duyệt → ghi ShiftAssignment + adjustment shift_swap giữ lịch cũ, tính lại công; HR huỷ đơn thì trả lịch cũ (nếu chưa ai đổi lại). Chưa có đổi ca với đồng nghiệp. GET /attendance-requests/options cho các form OT / giải trình / đổi ca: ca trong ngày, ngày lễ, giờ đã ghi nhận, danh sách ca"
         depends: [LV-02, AT-07]
       - id: LV-20
         title: Form giải trình check-in/out nối API
-        status: partial
+        ui: /user/requests/new?type=checkin-out
+        status: done
+        note: "Loại checkin_out (GT): giờ vào và / hoặc ra cần bổ sung, lý do bắt buộc, không cho ngày chưa tới, một đơn mỗi ngày; giờ ra ca đêm tính sang hôm sau. Duyệt → adjustment explanation, engine coi như log của đúng ngày công (cờ explained)"
         depends: [LV-02]
       - id: LV-21
         title: Form nghỉ việc nối API, tự tạo offboarding
-        status: partial
+        ui: /user/requests/new?type=resignation
+        status: done
+        note: "Loại resignation (TV): ngày làm việc cuối, lý do, bàn giao, số ngày báo trước (dùng được trong điều kiện quy trình). Duyệt → ghi endDate hồ sơ (giữ ngày cũ để HR huỷ thì trả lại). Phần tự tạo checklist offboarding làm cùng RC-15 (Phase 7): gọi từ ResignationRequestHandler.onApproved"
         depends: [LV-02, RC-15]
       - id: LV-22
         title: Đơn công tác

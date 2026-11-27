@@ -228,3 +228,48 @@ describe("calculateDay — approved leave (AT-22)", () => {
     expect(day({ shift: null, leave: { paidUnits: 1, unpaidUnits: 0, windows: [] } })).toMatchObject({ status: "day_off", paidLeaveUnits: 0 });
   });
 });
+
+// Phase 3b task 9 (AT-22): approved time out (LV-17) and overtime (LV-18).
+describe("calculateDay — approved time out and overtime", () => {
+  const out = (from: string, to: string, counted: boolean) => ({ start: at(DAY, from), end: at(DAY, to), counted });
+
+  it("counts time out on company business as worked and forgives leaving early for it", () => {
+    expect(day({ times: ["08:00", "14:00"], absences: [out("14:00", "17:00", true)] })).toMatchObject({
+      workedMinutes: 480,
+      earlyMinutes: 0,
+      workUnits: 1,
+      status: "on_time",
+      flags: ["absence"]
+    });
+  });
+
+  it("takes personal time out off the hours worked even when the punches span it", () => {
+    expect(day({ times: ["08:00", "17:00"], absences: [out("14:00", "16:00", false)] })).toMatchObject({ workedMinutes: 360, workUnits: 0.75, status: "on_time" });
+  });
+
+  it("forgives lateness inside personal time out without paying for it", () => {
+    expect(day({ times: ["10:00", "17:00"], absences: [out("08:00", "10:00", false)] })).toMatchObject({ lateMinutes: 0, workedMinutes: 360, workUnits: 0.75, status: "on_time" });
+  });
+
+  it("still counts lateness outside the approved window", () => {
+    expect(day({ times: ["10:30", "17:00"], absences: [out("08:00", "10:00", false)] })).toMatchObject({ lateMinutes: 30, status: "late" });
+  });
+
+  it("counts a whole day out on company business without any punch", () => {
+    expect(day({ absences: [out("08:00", "17:00", true)] })).toMatchObject({ workedMinutes: 480, workUnits: 1, status: "on_time", checkIn: null, checkOut: null });
+  });
+
+  it("leaves a day with only personal time out absent", () => {
+    expect(day({ absences: [out("09:00", "10:00", false)] })).toMatchObject({ workUnits: 0, status: "absent" });
+  });
+
+  it("records approved overtime on a working day and on a day off", () => {
+    expect(day({ times: ["08:00", "17:00"], overtimeMinutes: 180 })).toMatchObject({ overtimeMinutes: 180, workUnits: 1, status: "on_time", flags: ["overtime"] });
+    expect(day({ shift: null, overtimeMinutes: 240 })).toMatchObject({ overtimeMinutes: 240, status: "day_off", flags: ["overtime"] });
+    expect(day({ times: ["08:00", "17:00"] }).overtimeMinutes).toBe(0);
+  });
+
+  it("keeps HR's manual figures above time out", () => {
+    expect(day({ times: ["08:00", "17:00"], absences: [out("14:00", "16:00", false)], manual: { workUnits: 1 } })).toMatchObject({ workUnits: 1 });
+  });
+});

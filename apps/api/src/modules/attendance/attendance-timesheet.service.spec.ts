@@ -98,6 +98,7 @@ describe("AttendanceTimesheetService (AT-16)", () => {
       holidayUnits: 0,
       nightHours: 1,
       outsideHours: 0,
+      overtimeHours: 0,
       // 22 working weekdays in October 2026, less the company day off on 30/10.
       standardUnits: 21,
       standardHours: 168,

@@ -930,6 +930,8 @@ model AttendanceDay {
   earlyMinutes        Int                 @default(0)
   outsideShiftMinutes Int                 @default(0)
   nightMinutes        Int                 @default(0)
+  // Approved overtime (LV-18), as approved on the requests.
+  overtimeMinutes     Int                 @default(0)
   workUnits           Decimal             @default(0) @db.Decimal(5, 2)
   paidLeaveUnits      Decimal             @default(0) @db.Decimal(5, 2)
   status              AttendanceDayStatus
