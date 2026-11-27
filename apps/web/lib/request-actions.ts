@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { getApiBaseUrl } from "@/lib/api-base";
 import { getSessionAccessToken } from "@/lib/auth-session";
-import type { LeavePreview, LeaveRange, LeaveType, RequestDetail } from "@/lib/request-format";
+import type { LeavePreview, LeaveRange, LeaveType, RequestDetail, RequestOptions } from "@/lib/request-format";
 
 // Server actions of the "Đơn từ" module. Every result carries the API's own reason when it refuses.
 
 export type ActionResult<T = unknown> = { ok: true; data: T } | { ok: false; error: string };
 
-async function call<T>(path: string, method: "POST" | "PATCH" | "DELETE", body?: unknown): Promise<ActionResult<T>> {
+async function call<T>(path: string, method: "GET" | "POST" | "PATCH" | "DELETE", body?: unknown): Promise<ActionResult<T>> {
   const accessToken = await getSessionAccessToken();
   if (!accessToken) return { ok: false, error: "Phiên đăng nhập đã hết hạn. Đăng nhập lại để tiếp tục." };
   try {
@@ -43,6 +43,11 @@ export async function previewLeaveAction(input: LeaveFormInput & { requestId?: s
 }
 
 export async function saveLeaveRequestAction(input: { requestId?: string; version?: number; payload: LeaveFormInput; followerIds: string[]; submit: boolean }) {
+  return saveRequestAction({ ...input, type: "leave" });
+}
+
+// Creates (or edits, then optionally submits) a request of any type; the API's handler checks the payload.
+export async function saveRequestAction(input: { type: string; requestId?: string; version?: number; payload: object; followerIds: string[]; submit: boolean }) {
   if (input.requestId) {
     const updated = await call<RequestDetail>(`/requests/${input.requestId}`, "PATCH", { payload: input.payload, followerIds: input.followerIds, version: input.version });
     if (!updated.ok || !input.submit) {
@@ -53,9 +58,14 @@ export async function saveLeaveRequestAction(input: { requestId?: string; versio
     refresh(input.requestId);
     return submitted;
   }
-  const created = await call<RequestDetail>("/requests", "POST", { type: "leave", payload: input.payload, followerIds: input.followerIds, submit: input.submit });
+  const created = await call<RequestDetail>("/requests", "POST", { type: input.type, payload: input.payload, followerIds: input.followerIds, submit: input.submit });
   refresh();
   return created;
+}
+
+// LV-18 → LV-20: my shift, holiday and recorded punches on a date, and the shifts I may change to.
+export async function requestOptionsAction(date: string) {
+  return call<RequestOptions>(`/attendance-requests/options?date=${encodeURIComponent(date)}`, "GET");
 }
 
 export async function submitRequestAction(id: string) {

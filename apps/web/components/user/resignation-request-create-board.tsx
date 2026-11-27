@@ -1,135 +1,68 @@
-import {
-  CalendarBlank,
-  CaretDown,
-  Check,
-  PaperPlaneTilt,
-  Plus,
-  UploadSimple,
-  X
-} from "@/lib/icons";
+"use client";
 
-import { LeaveFormSelect } from "@/components/user/leave-form-select";
+import { useState } from "react";
 import { CollapseButton } from "@/components/user/collapse-button";
+import { RequestFormFooter, today, useRequestSave } from "@/components/user/request-form-parts";
+import type { RequestDetail, ResignationPayload } from "@/lib/request-format";
 
-const resignationReasons = [
-  { label: "Lý do cá nhân" },
-  { label: "Thay đổi định hướng nghề nghiệp" },
-  { label: "Tìm cơ hội mới" },
-  { label: "Sức khỏe" },
-  { label: "Khác" }
-];
+const daysUntil = (date: string) => Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today()}T00:00:00Z`)) / 86_400_000);
 
-export function ResignationRequestCreateBoard() {
+// LV-21: resignation. Approved, the last working day becomes the end date on the profile.
+export function ResignationRequestCreateBoard({ request, loadError }: { request?: RequestDetail | null; loadError?: string }) {
+  const initial = request?.payload as Partial<ResignationPayload> | undefined;
+  const [lastWorkingDate, setLastWorkingDate] = useState(initial?.lastWorkingDate ?? "");
+  const [reason, setReason] = useState(initial?.reason ?? "");
+  const [handover, setHandover] = useState(initial?.handover ?? "");
+  const { save, saving, error, setError } = useRequestSave("resignation", request, loadError);
+  const notice = lastWorkingDate ? daysUntil(lastWorkingDate) : null;
+
+  const send = (submit: boolean) => {
+    if (!lastWorkingDate) return setError("Hãy chọn ngày làm việc cuối.");
+    if (!reason.trim()) return setError("Hãy nhập lý do thôi việc.");
+    save({ lastWorkingDate, reason: reason.trim(), handover: handover.trim() || undefined }, submit);
+  };
+
   return (
-    <main className="leave-create-page" aria-label="Tạo mới đơn xin thôi việc">
-      <form className="leave-create-form">
-        <section className="leave-create-section leave-create-section--resignation" aria-labelledby="resignation-general-title">
+    <main className="leave-create-page" aria-label={request ? `Sửa đơn ${request.code}` : "Tạo mới đơn xin thôi việc"}>
+      <form
+        className="leave-create-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          send(true);
+        }}
+      >
+        <section className="leave-create-section" aria-labelledby="resignation-general-title">
           <header className="leave-create-section-header">
             <CollapseButton className="leave-create-collapse" label="Thông tin chung" />
-            <h2 id="resignation-general-title">Thông tin chung</h2>
+            <h2 id="resignation-general-title">{request ? `Đơn ${request.code}` : "Thông tin chung"}</h2>
           </header>
 
-          <div className="leave-create-grid leave-create-grid--resignation-reason">
-            <label className="leave-field">
-              <span className="sr-only">Lý do thôi việc</span>
-              <LeaveFormSelect
-                ariaLabel="Chọn lý do thôi việc"
-                menuLabel="Các lý do thôi việc"
-                options={resignationReasons}
-                placeholder="Lý do thôi việc *"
-              />
-            </label>
-          </div>
-
-          <div className="leave-create-grid leave-create-grid--resignation-dates">
-            <label className="leave-field">
-              <span>Ngày nộp đơn</span>
-              <div className="leave-input-icon">
-                <input value="09/07/2026" readOnly aria-label="Ngày nộp đơn" />
-                <CalendarBlank size={17} weight="duotone" aria-hidden="true" />
-              </div>
-            </label>
-
-            <label className="leave-field">
-              <span>Ngày làm việc cuối</span>
-              <div className="leave-input-icon">
-                <input value="8/7/2026" readOnly aria-label="Ngày làm việc cuối" />
-                <CalendarBlank size={17} weight="duotone" aria-hidden="true" />
-              </div>
-            </label>
-
+          <div className="leave-create-grid leave-create-grid--summary">
             <label className="leave-field">
               <span>
-                Ngày thôi việc <strong>*</strong>
+                Ngày làm việc cuối <strong>*</strong>
               </span>
-              <div className="leave-input-icon">
-                <input value="09/07/2026" readOnly aria-label="Ngày thôi việc" />
-                <CalendarBlank size={17} weight="duotone" aria-hidden="true" />
-              </div>
+              <input type="date" value={lastWorkingDate} min={today()} onChange={(event) => setLastWorkingDate(event.target.value)} aria-label="Ngày làm việc cuối" required />
+            </label>
+            <label className="leave-field leave-field--readonly">
+              <span>Báo trước</span>
+              <input value={notice === null ? "" : `${notice} ngày`} readOnly aria-label="Số ngày báo trước" />
             </label>
           </div>
 
-          <label className="leave-field leave-simple-description">
-            <span>Mô tả</span>
-            <textarea placeholder="Nhập mô tả..." aria-label="Nhập mô tả đơn xin thôi việc" />
+          <label className="leave-field leave-description">
+            <span>
+              Lý do thôi việc <strong>*</strong>
+            </span>
+            <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={5000} placeholder="Lý do thôi việc *" aria-label="Nhập mô tả đơn xin thôi việc" required />
           </label>
-
-          <fieldset className="leave-attachment">
-            <legend>Đính kèm</legend>
-            <div className="leave-upload-dropzone">
-              <span className="leave-upload-icon">
-                <UploadSimple size={24} weight="duotone" aria-hidden="true" />
-              </span>
-              <div>
-                <p>Kéo thả file vào đây để tải lên hoặc</p>
-                <div className="leave-upload-actions">
-                  <button className="primary-button" type="button">
-                    <PaperPlaneTilt size={15} weight="duotone" aria-hidden="true" />
-                    Chọn từ máy
-                  </button>
-                  <button className="secondary-button" type="button">
-                    <UploadSimple size={15} weight="duotone" aria-hidden="true" />
-                    Chọn từ cloud
-                  </button>
-                </div>
-              </div>
-            </div>
-          </fieldset>
+          <label className="leave-field leave-description">
+            <span>Bàn giao công việc</span>
+            <textarea value={handover} onChange={(event) => setHandover(event.target.value)} maxLength={5000} placeholder="Bàn giao những gì, cho ai" aria-label="Nội dung bàn giao" />
+          </label>
         </section>
 
-        <section className="leave-create-section" aria-labelledby="resignation-related-title">
-          <header className="leave-create-section-header">
-            <CollapseButton className="leave-create-collapse" label="Đối tượng liên quan" />
-            <h2 id="resignation-related-title">Đối tượng liên quan</h2>
-          </header>
-
-          <div className="leave-related-row">
-            <label className="leave-field leave-field--wide">
-              <span className="sr-only">Đối tượng liên quan</span>
-              <button className="leave-control" type="button" aria-label="Chọn đối tượng liên quan">
-                <span>Đối tượng liên quan</span>
-                <CaretDown size={16} weight="duotone" aria-hidden="true" />
-              </button>
-            </label>
-            <button className="icon-button" type="button" aria-label="Xóa đối tượng liên quan">
-              <X size={18} weight="duotone" aria-hidden="true" />
-            </button>
-          </div>
-
-          <button className="leave-add-time" type="button" aria-label="Thêm đối tượng liên quan">
-            <Plus size={18} weight="duotone" aria-hidden="true" />
-          </button>
-        </section>
-
-        <footer className="leave-create-actionbar">
-          <button className="primary-button" type="submit">
-            <Check size={15} weight="duotone" aria-hidden="true" />
-            Cập nhật
-          </button>
-          <a className="secondary-button" href="/user?customMenu=user-board-requests">
-            Hủy bỏ
-          </a>
-        </footer>
+        <RequestFormFooter saving={saving} onDraft={() => send(false)} request={request} error={error} />
       </form>
     </main>
   );

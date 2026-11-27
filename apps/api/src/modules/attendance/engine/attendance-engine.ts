@@ -61,6 +61,10 @@ export type ManualOverride = {
 // as paid / unpaid leave, and the leave's time windows when it covers part of the day only.
 export type DayLeave = { paidUnits: number; unpaidUnits: number; windows: Array<{ start: Date; end: Date }> };
 
+// Approved time out during the shift (LV-17): late / early minutes inside it are forgiven; time
+// out on company business counts as worked, personal time out is taken off the hours worked.
+export type DayAbsence = { start: Date; end: Date; counted: boolean };
+
 export type DayInput = {
   workDate: string;
   shift: EngineShift | null;
@@ -70,6 +74,9 @@ export type DayInput = {
   employment?: { startDate?: string | null; endDate?: string | null };
   manual?: ManualOverride | null;
   leave?: DayLeave | null;
+  absences?: DayAbsence[];
+  // Approved overtime on the date (LV-18), recorded as approved.
+  overtimeMinutes?: number;
 };
 
 export type AttendanceDayStatus =
@@ -98,6 +105,7 @@ export type DayResult = {
   nightMinutes: number;
   workUnits: number;
   paidLeaveUnits: number;
+  overtimeMinutes: number;
   status: AttendanceDayStatus;
   flags: string[];
 };
@@ -117,6 +125,34 @@ function minutes(ms: number) {
 
 function intersect(a: Interval, b: Interval): Interval {
   return { start: Math.max(a.start, b.start), end: Math.min(a.end, b.end) };
+}
+
+// Sorted, non-overlapping intervals covering the same time.
+export function unionIntervals(intervals: Interval[]): Interval[] {
+  const sorted = intervals.filter((item) => item.end > item.start).sort((a, b) => a.start - b.start);
+  const merged: Interval[] = [];
+  for (const item of sorted) {
+    const last = merged[merged.length - 1];
+    if (last && item.start <= last.end) last.end = Math.max(last.end, item.end);
+    else merged.push({ ...item });
+  }
+  return merged;
+}
+
+// The parts of `intervals` outside every one of `cuts`.
+export function subtractIntervals(intervals: Interval[], cuts: Interval[]): Interval[] {
+  let rest = unionIntervals(intervals);
+  for (const cut of unionIntervals(cuts)) {
+    rest = rest.flatMap((item) =>
+      cut.end <= item.start || cut.start >= item.end
+        ? [item]
+        : [
+            ...(cut.start > item.start ? [{ start: item.start, end: cut.start }] : []),
+            ...(cut.end < item.end ? [{ start: cut.end, end: item.end }] : [])
+          ]
+    );
+  }
+  return rest;
 }
 
 // Rounds work units to a step given in hundredths (1 = 0.01, 25 = 0.25, 50 = 0.5), half up. Works
@@ -193,7 +229,15 @@ export function calculateDay(input: DayInput): DayResult | null {
   const manual = input.manual ?? null;
   // Leave is applied before HR's manual figures, so a manual change still wins.
   let breakInterval: Interval | null = null;
-  const finish = (result: DayResult) => applyManual(applyLeave(result, input.leave ?? null, shift, policy, breakInterval), manual);
+  const overtimeMinutes = Math.max(0, Math.round(input.overtimeMinutes ?? 0));
+  const absences: Array<Interval & { counted: boolean }> = (input.absences ?? [])
+    .map((item) => ({ start: item.start.getTime(), end: item.end.getTime(), counted: item.counted }))
+    .filter((item) => item.end > item.start);
+  const finish = (result: DayResult) => {
+    result.overtimeMinutes = overtimeMinutes;
+    if (overtimeMinutes > 0) result.flags.push("overtime");
+    return applyManual(applyLeave(result, input.leave ?? null, shift, policy, breakInterval), manual);
+  };
   const punches = [...input.punches].map((punch) => punch.getTime()).sort((a, b) => a - b);
   const base: DayResult = {
     workDate,
@@ -209,6 +253,7 @@ export function calculateDay(input: DayInput): DayResult | null {
     nightMinutes: 0,
     workUnits: 0,
     paidLeaveUnits: 0,
+    overtimeMinutes: 0,
     status: "day_off",
     flags
   };
@@ -259,6 +304,15 @@ export function calculateDay(input: DayInput): DayResult | null {
     }
   }
 
+  // Time out on company business with no punch at all (out from the start to the end of the
+  // window): the windows alone are the time worked.
+  const counted = absences.filter((item) => item.counted).map((item) => intersect(item, shiftInterval)).filter((item) => item.end > item.start);
+  const absenceOnly = checkIn === null && checkOut === null && counted.length > 0;
+  if (absenceOnly) {
+    checkIn = Math.min(...counted.map((item) => item.start));
+    checkOut = Math.max(...counted.map((item) => item.end));
+  }
+
   // 10. Nothing recorded on a scheduled day.
   if (checkIn === null && checkOut === null) {
     base.status = isHoliday ? "holiday" : "absent";
@@ -275,8 +329,8 @@ export function calculateDay(input: DayInput): DayResult | null {
     flags.push("filled_from_schedule");
   }
 
-  base.checkIn = checkIn !== null ? new Date(checkIn) : null;
-  base.checkOut = checkOut !== null ? new Date(checkOut) : null;
+  base.checkIn = checkIn !== null && !absenceOnly ? new Date(checkIn) : null;
+  base.checkOut = checkOut !== null && !absenceOnly ? new Date(checkOut) : null;
 
   if (missing && policy.missingPunchMode !== "scheduled") {
     base.status = missing;
@@ -290,8 +344,18 @@ export function calculateDay(input: DayInput): DayResult | null {
 
   const roundedIn = roundPunch(checkIn!, policy.roundingMinutes, "up");
   const roundedOut = roundPunch(checkOut!, policy.roundingMinutes, "down");
-  if (workIntervals.length === 0 || (manual && (manual.checkIn !== undefined || manual.checkOut !== undefined))) {
+  if (absenceOnly) {
+    workIntervals = [];
+  } else if (workIntervals.length === 0 || (manual && (manual.checkIn !== undefined || manual.checkOut !== undefined))) {
     workIntervals = [{ start: roundedIn, end: roundedOut }];
+  }
+  // LV-17: company time out is added to the time present, personal time out is taken off it.
+  if (absences.length > 0) {
+    flags.push("absence");
+    workIntervals = subtractIntervals(
+      [...workIntervals, ...counted],
+      absences.filter((item) => !item.counted)
+    );
   }
 
   // 5. Late arrival and early departure (fixed shifts only).
@@ -333,6 +397,9 @@ export function calculateDay(input: DayInput): DayResult | null {
       ? shift.workUnits
       : roundTo(shift.workUnits * fraction, policy.workUnitRoundingHundredths);
 
+  // Late / early minutes inside approved time out are not violations.
+  if (absences.length > 0) forgiveInside(base, absences, schedule.breakInterval ?? null);
+
   base.status =
     base.lateMinutes > 0 && base.earlyMinutes > 0 ? "late_and_early" : base.lateMinutes > 0 ? "late" : base.earlyMinutes > 0 ? "early_leave" : "on_time";
   if (missing) base.status = missing;
@@ -361,23 +428,32 @@ function applyLeave(result: DayResult, leave: DayLeave | null, shift: EngineShif
     return result;
   }
 
-  // The break between a half day off and the half worked is not lateness either.
-  const forgiven: Interval[] = leave.windows.map((window) => ({ start: window.start.getTime(), end: window.end.getTime() }));
-  if (forgiven.length > 0 && breakInterval) forgiven.push(breakInterval);
-  const inLeave = (start: number, end: number) => forgiven.reduce((sum, window) => sum + overlap({ start, end }, window), 0);
-  if (result.scheduledStart && result.lateMinutes > 0) {
-    const start = result.scheduledStart.getTime();
-    result.lateMinutes = Math.max(0, result.lateMinutes - minutes(inLeave(start, start + result.lateMinutes * MINUTE)));
-  }
-  if (result.scheduledEnd && result.earlyMinutes > 0) {
-    const end = result.scheduledEnd.getTime();
-    result.earlyMinutes = Math.max(0, result.earlyMinutes - minutes(inLeave(end - result.earlyMinutes * MINUTE, end)));
-  }
+  forgiveInside(
+    result,
+    leave.windows.map((window) => ({ start: window.start.getTime(), end: window.end.getTime() })),
+    breakInterval
+  );
   if (["on_time", "late", "early_leave", "late_and_early"].includes(result.status)) {
     result.status =
       result.lateMinutes > 0 && result.earlyMinutes > 0 ? "late_and_early" : result.lateMinutes > 0 ? "late" : result.earlyMinutes > 0 ? "early_leave" : "on_time";
   }
   return result;
+}
+
+// Takes off the late / early minutes that fall inside approved windows (leave, time out). The break
+// next to a window is not lateness either (a half day off, then the afternoon worked).
+function forgiveInside(result: DayResult, windows: Interval[], breakInterval: Interval | null) {
+  if (windows.length === 0) return;
+  const forgiven = breakInterval ? [...windows, breakInterval] : windows;
+  const inside = (start: number, end: number) => unionIntervals(forgiven).reduce((sum, window) => sum + overlap({ start, end }, window), 0);
+  if (result.scheduledStart && result.lateMinutes > 0) {
+    const start = result.scheduledStart.getTime();
+    result.lateMinutes = Math.max(0, result.lateMinutes - minutes(inside(start, start + result.lateMinutes * MINUTE)));
+  }
+  if (result.scheduledEnd && result.earlyMinutes > 0) {
+    const end = result.scheduledEnd.getTime();
+    result.earlyMinutes = Math.max(0, result.earlyMinutes - minutes(inside(end - result.earlyMinutes * MINUTE, end)));
+  }
 }
 
 // 11. HR's figures win over the computed ones; the day is flagged so reports can show it.

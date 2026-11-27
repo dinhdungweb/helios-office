@@ -198,3 +198,70 @@ export function requestRange(request: Pick<RequestSummary, "fromDate" | "toDate"
   if (!request.fromDate) return "";
   return request.fromDate === request.toDate || !request.toDate ? formatDate(request.fromDate) : `${formatDate(request.fromDate)} – ${formatDate(request.toDate)}`;
 }
+
+// Phase 3b task 9: the attendance request types besides leave.
+
+// The ?type= of /user/requests/new for each request type, and back.
+export const REQUEST_FORM_SLUG: Record<string, string> = {
+  leave: "leave",
+  absence: "absence",
+  overtime: "overtime",
+  checkin_out: "checkin-out",
+  shift_change: "shift-change",
+  resignation: "resignation"
+};
+
+export function requestTypeOfSlug(slug: string | undefined) {
+  if (!slug) return "leave";
+  const entry = Object.entries(REQUEST_FORM_SLUG).find(([type, value]) => value === slug || type === slug);
+  return entry?.[0] ?? null;
+}
+
+export type AbsencePayload = { kind: "company" | "personal"; kindLabel: string; ranges: Array<{ date: string; fromTime: string; toTime: string; minutes: number }>; reason: string | null };
+export type OvertimePayload = { date: string; fromTime: string; toTime: string; overnight: boolean; minutes: number; kind: "weekday" | "day_off" | "holiday"; kindLabel: string; shiftCode: string | null; reason: string | null };
+export type CheckinOutPayload = {
+  date: string;
+  checkIn: string | null;
+  checkOut: string | null;
+  checkOutNextDay: boolean;
+  shiftCode: string | null;
+  recorded: { checkIn: string | null; checkOut: string | null; status: string | null };
+  reason: string | null;
+};
+export type ShiftRef = { id: string; code: string; name: string };
+export type ShiftChangePayload = { date: string; fromShift: ShiftRef | null; toShift: ShiftRef; reason: string | null };
+export type ResignationPayload = { lastWorkingDate: string; noticeDays: number; reason: string; handover: string | null };
+
+export type RequestOptions = {
+  date: string;
+  employed: boolean;
+  shift: (ShiftRef & { startMinute: number; endMinute: number }) | null;
+  holiday: { name: string; type: string } | null;
+  recorded: { checkIn: string | null; checkOut: string | null; status: string | null; workUnits: number } | null;
+  shifts: Array<ShiftRef & { startMinute: number; endMinute: number }>;
+};
+
+export function minuteLabel(minute: number) {
+  const value = ((minute % 1440) + 1440) % 1440;
+  return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+}
+
+export function shiftLabel(shift: { code: string; name: string; startMinute: number; endMinute: number }) {
+  return `${shift.code} · ${shift.name} (${minuteLabel(shift.startMinute)} – ${minuteLabel(shift.endMinute)})`;
+}
+
+export function formatTime(value: string | null | undefined) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
+export function formatHours(value: number | null | undefined) {
+  if (value === null || value === undefined) return "";
+  return `${Number(value).toLocaleString("vi-VN", { maximumFractionDigits: 2 })} giờ`;
+}
+
+// Quantity of a request in its own unit (days of leave, hours of overtime / time out).
+export function formatQuantity(request: Pick<RequestSummary, "quantity" | "unit">) {
+  if (request.quantity === null) return "";
+  return request.unit === "hour" ? formatHours(request.quantity) : formatDays(request.quantity);
+}

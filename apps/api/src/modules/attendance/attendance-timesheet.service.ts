@@ -45,6 +45,7 @@ export type TimesheetCell = {
   lateMinutes: number;
   earlyMinutes: number;
   outsideShiftMinutes: number;
+  overtimeMinutes: number;
   adjusted: boolean;
   needsExplanation: boolean;
 };
@@ -163,6 +164,7 @@ export class AttendanceTimesheetService {
           lateMinutes: result?.lateMinutes ?? 0,
           earlyMinutes: result?.earlyMinutes ?? 0,
           outsideShiftMinutes: result?.outsideShiftMinutes ?? 0,
+          overtimeMinutes: result?.overtimeMinutes ?? 0,
           adjusted: result?.flags.includes("adjusted") ?? false,
           needsExplanation: result?.flags.includes("needs_explanation") ?? false
         };
@@ -188,6 +190,8 @@ export class AttendanceTimesheetService {
           holidayUnits: round2(sum((cell) => cell.paidLeaveUnits)),
           nightHours: round2(nightMinutes / 60),
           outsideHours: round2(sum((cell) => cell.outsideShiftMinutes) / 60),
+          // LV-18: overtime approved on requests.
+          overtimeHours: round2(sum((cell) => cell.overtimeMinutes) / 60),
           standardUnits: standard.units,
           standardHours: standard.hours,
           standardMode: standard.mode,

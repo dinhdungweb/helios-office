@@ -8,6 +8,27 @@ File này dùng để theo dõi tiến độ triển khai Helios Office: đã l�
 - Ghi rõ phạm vi, file/module chính, trạng thái kiểm tra và việc tiếp theo.
 - Những phần chưa hoàn tất phải ghi là `Chưa xong` hoặc `Tiếp theo` để tránh nhầm là đã chạy thật.
 
+## 2026-11-27
+
+### Phase 3b — task 9: đơn vắng mặt, làm thêm, giải trình, đổi ca, thôi việc
+
+Trạng thái: nhánh `feat/LV-17-request-types` (tách từ `feat/phase-2`). Item: LV-17 → LV-21, AT-22 đặt `done`.
+
+- Năm loại đơn mới đăng ký vào engine phê duyệt như đơn nghỉ: vắng mặt (VM), làm thêm (LT), giải trình chấm công (GT), đổi ca (DC), thôi việc (TV). Mỗi loại kiểm tra dữ liệu, trùng đơn, kỳ công đã chốt và có trường điều kiện cho quy trình (số giờ, loại vắng mặt / làm thêm, số ngày báo trước...).
+- Engine công (AT-22): vắng mặt việc công ty được tính là giờ làm, việc riêng bị trừ khỏi giờ làm, đi muộn / về sớm trong khoảng vắng mặt được tha; giờ giải trình được tính như log của đúng ngày công (ca đêm cũng vậy); giờ làm thêm được duyệt lưu ở cột mới `AttendanceDay.overtimeMinutes` (migration `20261127010000_request_attendance`), có cột "Giờ làm thêm" trên bảng chấm công và file Excel. Đổi ca ghi `ShiftAssignment`; thôi việc ghi ngày nghỉ việc vào hồ sơ. HR huỷ đơn đã duyệt thì trả lại như cũ.
+- `GET /attendance-requests/options`: ca trong ngày, ngày lễ, giờ đã ghi nhận và danh sách ca cho các form.
+- Web: năm form tĩnh nối API thật (lưu nháp, gửi duyệt, sửa đơn nháp / bị trả lại); trang chi tiết đơn hiện thông tin riêng của từng loại.
+
+Kiểm tra: typecheck, lint 0 lỗi (88 cảnh báo), 552 unit + 47 e2e pass, `audit:features --strict` 0 lỗi. Thử API thật trên DB local: khanglm tạo và gửi đủ 5 loại, haianh duyệt, bảng công 24–26/11 tính lại đúng; tạm cấp `permission.requests.manage` cho nhóm quản lý để HR huỷ đơn đổi ca / thôi việc / làm thêm, lịch ca, ngày nghỉ việc và giờ làm thêm được trả lại (đã thu hồi quyền sau khi thử).
+
+Chưa xong / quyết định cần chủ dự án xác nhận:
+- Giao diện năm form chưa thử trên trình duyệt.
+- Giờ làm thêm tính theo giờ được duyệt, chưa đối chiếu với giờ chấm thực tế.
+- Đổi ca chỉ đổi ca của chính mình, chưa có đổi ca với đồng nghiệp.
+- Đơn thôi việc chưa tạo checklist offboarding (làm cùng RC-15, Phase 7).
+
+Dữ liệu thử để lại trên DB local (máy Mac): DB đã áp đủ migration Phase 2–3 (sao lưu trước ở `.tmp/db-backup/before-phase3b-20261127.dump`); quản lý trực tiếp của Lê Minh Khang = Nguyễn Hải Anh; ca CA2 "Ca chiều"; các đơn VM-2026-000003, GT-2026-000005 đã duyệt, DC-2026-000006, TV-2026-000007, LT-2026-000004 đã huỷ sau duyệt.
+
 ## 2026-11-26
 
 ### Phase 3a - Engine phê duyệt & nghỉ phép (đang làm)

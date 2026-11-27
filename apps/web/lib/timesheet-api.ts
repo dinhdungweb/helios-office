@@ -33,6 +33,7 @@ export type TimesheetTotals = {
   holidayUnits: number;
   nightHours: number;
   outsideHours: number;
+  overtimeHours?: number;
   standardUnits: number;
   standardMode: "schedule" | "auto" | "fixed";
   standardRule: string | null;

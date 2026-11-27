@@ -8,8 +8,8 @@
 - **Phase 0, 1:** đã đóng, đã merge `main`.
 - **Phase 2 (chấm công):** 33/33 item `done`, gate kỹ thuật pass. **Chưa đóng phase:** còn task 24 (đối chiếu một tháng log máy chấm công thật với bảng công HR tính tay), xem `docs/plans/phase-2.md`.
 - **Phase 3a (engine phê duyệt + nghỉ phép):** xong 2026-11-27, đã thử tay toàn bộ trên DB local. Phase 3 đạt 35/53 item.
-- **Phase 3b:** chưa bắt đầu.
-- Kiểm tra lần cuối: typecheck sạch, lint 0 lỗi (88 cảnh báo, ngưỡng 89), 524 unit + 47 e2e pass, `npm run audit:features -- --strict` 0 lỗi.
+- **Phase 3b:** task 9 xong 2026-11-27 trên nhánh `feat/LV-17-request-types` (tách từ `feat/phase-2`, chưa merge): đơn vắng mặt, làm thêm, giải trình, đổi ca, thôi việc. Giao diện 5 form chưa thử trên trình duyệt. Task 10 đã soạn giao việc cho trợ lý khác (chuyển tiếp, duyệt hàng loạt, người theo dõi, đính kèm), làm trên nhánh con riêng từ `feat/phase-2`.
+- Kiểm tra lần cuối (task 9): typecheck sạch, lint 0 lỗi (88 cảnh báo, ngưỡng 89), 552 unit + 47 e2e pass, `npm run audit:features -- --strict` 0 lỗi.
 
 ## Nguồn sự thật
 
@@ -26,7 +26,7 @@
 
 1. **Mở PR** `feat/phase-2` → `main` với nội dung ở mục "PR". Trên máy Windows `gh` chưa đăng nhập và GitHub yêu cầu bật 2FA cho tài khoản `dungdev1010`.
 2. **Phase 3b** (`docs/plans/phase-3.md` task 9–12):
-   - Task 9: đơn vắng mặt, làm thêm (OT), giải trình chấm công, đổi ca, thôi việc (LV-17 → LV-21) và cập nhật công cho từng loại (AT-22). Mỗi loại là một `RequestTypeHandler` như `apps/api/src/modules/leave/leave-request.handler.ts`, đăng ký vào `RequestTypeRegistry`. Form web có sẵn dạng tĩnh ở `apps/web/components/user/*-request-create-board.tsx`.
+   - Task 9: xong (`apps/api/src/modules/attendance-requests/`). Còn thử giao diện trên trình duyệt; chủ dự án cần xác nhận: OT tính theo giờ duyệt (chưa đối chiếu giờ chấm), đổi ca chưa có đổi với đồng nghiệp.
    - Task 10: chuyển tiếp, duyệt hàng loạt, người theo dõi, đính kèm (AP-17, AP-18, AP-20, LV-08).
    - Task 11: uỷ quyền, quá hạn, trang cảnh báo duyệt, đính kèm email (AU-21, AP-21, AP-22, AP-24, AP-26). Bảng `ApprovalDelegation` và phần engine thêm người được uỷ quyền đã có sẵn.
    - Task 12: đơn công tác, đề xuất chung, lịch nghỉ phòng ban (LV-22, LV-23, LV-25).

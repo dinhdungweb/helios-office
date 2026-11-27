@@ -25,6 +25,7 @@ import { EmployeeTransferModule } from "./modules/employees/employee-transfer.mo
 import { LeaveRequestsModule } from "./modules/leave-requests/leave-requests.module";
 import { RequestsModule } from "./modules/requests/requests.module";
 import { LeaveModule } from "./modules/leave/leave.module";
+import { AttendanceRequestsModule } from "./modules/attendance-requests/attendance-requests.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { TwoFactorModule } from "./modules/two-factor/two-factor.module";
 import { ShiftsModule } from "./modules/shifts/shifts.module";
@@ -67,6 +68,7 @@ import { UserPreferencesModule } from "./modules/user-preferences/user-preferenc
     LeaveRequestsModule,
     RequestsModule,
     LeaveModule,
+    AttendanceRequestsModule,
     AttendanceModule,
     DeviceAuthModule,
     PayrollModule,
