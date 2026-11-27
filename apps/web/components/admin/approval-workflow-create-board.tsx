@@ -7,7 +7,8 @@ import { FormCheckbox } from "@/components/ui/form-controls";
 import type { EmployeeDirectoryRecord } from "@/lib/employee-directory-api";
 import type { DepartmentRecord } from "@/lib/org-chart-api";
 import type { JobPositionRecord, JobTitleRecord } from "@/lib/position-title-api";
-import { createApprovalWorkflowAction, type ApprovalWorkflowFormState } from "@/lib/approval-workflow-actions";
+import { createApprovalWorkflowAction, updateApprovalWorkflowAction, type ApprovalWorkflowFormState } from "@/lib/approval-workflow-actions";
+import type { ApprovalWorkflowDetail } from "@/lib/approval-workflow-api";
 import { ArrowRight, ArrowSquareOut, Bell, BookmarkSimple, CaretDown, CheckCircle, CurvePath, EnvelopeSimple, FitToScreen, FlowConnection, MagnifyingGlass, Network, Paperclip, Plus, ShieldCheck, SquaresFour, User, WarningCircle, X } from "@/lib/icons";
 
 const initialState: ApprovalWorkflowFormState = { ok: false };
@@ -130,6 +131,10 @@ type ApprovalNodeConfig = {
   deadlineHours: string;
   deadlineMinutes: string;
   overdueAction: ApprovalNodeOverdueAction;
+  // Approval engine options (docs/design/approval-engine.md §5.2); older diagrams leave them out.
+  approvalMode?: "any" | "all";
+  selfApproval?: "skip" | "allow";
+  allowReturn?: boolean;
 };
 
 type NotificationNodeConfig = {
@@ -179,7 +184,10 @@ const createEmptyApprovalNodeConfig = (): ApprovalNodeConfig => ({
   deadlineDays: "",
   deadlineHours: "",
   deadlineMinutes: "",
-  overdueAction: "none"
+  overdueAction: "none",
+  approvalMode: "any",
+  selfApproval: "skip",
+  allowReturn: true
 });
 
 type ConditionOperandType = "field" | "value";
@@ -1489,6 +1497,17 @@ function ApprovalNodeSettingsModal({
             {audienceField("approverId", "Người duyệt", true)}
             {audienceField("followerId", "Người theo dõi")}
             {audienceField("substituteId", "Người duyệt thay thế")}
+            <fieldset className="approval-node-overdue-options">
+              <legend>Khi bước có nhiều người duyệt</legend>
+              <label><input checked={(draft.approvalMode ?? "any") === "any"} name={`approval-mode-${node.id}`} type="radio" onChange={() => setField("approvalMode", "any")} /> Một người duyệt là đủ</label>
+              <label><input checked={draft.approvalMode === "all"} name={`approval-mode-${node.id}`} type="radio" onChange={() => setField("approvalMode", "all")} /> Tất cả cùng duyệt</label>
+            </fieldset>
+            <fieldset className="approval-node-overdue-options">
+              <legend>Khi người duyệt cũng là người tạo đơn</legend>
+              <label><input checked={(draft.selfApproval ?? "skip") === "skip"} name={`approval-self-${node.id}`} type="radio" onChange={() => setField("selfApproval", "skip")} /> Bỏ qua bước này (bước cuối thì chuyển lên cấp trên)</label>
+              <label><input checked={draft.selfApproval === "allow"} name={`approval-self-${node.id}`} type="radio" onChange={() => setField("selfApproval", "allow")} /> Vẫn để người đó tự duyệt</label>
+            </fieldset>
+            <FormCheckbox checked={draft.allowReturn ?? true} label="Cho phép trả lại đơn để người tạo bổ sung" onChange={(event) => setField("allowReturn", event.target.checked)} />
           </section>
 
           <section className="approval-node-modal-section">
@@ -1716,33 +1735,89 @@ function CommunicationNodeSettingsModal({
   );
 }
 
+type LoadedCanvas = {
+  nodes: WorkflowCanvasNode[];
+  edges: WorkflowCanvasEdge[];
+  startNodePosition: { x: number; y: number };
+  edgeStyle: WorkflowEdgeStyle;
+  lastNode: number;
+  lastEdge: number;
+  lastSlot: number;
+};
+
+// AP-04: rebuilds the canvas from a stored diagram. Accepts what this designer posts (settings under
+// "config", condition slots under "conditions") and the server's canonical shape (approvalConfig,
+// conditionSlots...), which uses the canvas node's own field names.
+function canvasFromFlow(flow: Record<string, unknown>): LoadedCanvas {
+  type StoredNode = Omit<Partial<WorkflowCanvasNode>, "id" | "type"> & { id: string; type: string; config?: unknown; conditions?: Array<{ id: string; config?: ConditionNodeConfig | null }> };
+  const stored = (Array.isArray(flow.nodes) ? flow.nodes : []) as StoredNode[];
+  const start = stored.find((node) => node.type === "start");
+  const suffix = (value: string, pattern: RegExp) => Number(pattern.exec(value)?.[1] ?? 0);
+  const nodes: WorkflowCanvasNode[] = stored
+    .filter((node) => node.type !== "start" && workflowNodeOptions.some((option) => option.value === node.type))
+    .map((node) => {
+      const type = node.type as WorkflowNodeType;
+      const config = node.config as never;
+      return {
+        id: node.id,
+        type,
+        label: node.label ?? workflowNodeOptions.find((option) => option.value === type)?.label ?? type,
+        x: Number(node.x ?? 0),
+        y: Number(node.y ?? 0),
+        ...(type === "approval" ? { approvalConfig: node.approvalConfig ?? config } : {}),
+        ...(type === "notification" ? { notificationConfig: node.notificationConfig ?? config } : {}),
+        ...(type === "email" ? { emailConfig: node.emailConfig ?? config } : {}),
+        ...(type === "condition"
+          ? {
+              conditionConfig: node.conditionConfig,
+              conditionSlots: node.conditionSlots?.length ? node.conditionSlots : node.conditions?.map((slot) => ({ id: slot.id, config: slot.config ?? undefined }))
+            }
+          : {})
+      };
+    });
+  const edges = ((Array.isArray(flow.edges) ? flow.edges : []) as WorkflowCanvasEdge[]).map((edge, index) => ({ ...edge, id: edge.id ?? "edge-" + (index + 1) }));
+  return {
+    nodes,
+    edges,
+    startNodePosition: start ? { x: Number(start.x ?? 60), y: Number(start.y ?? 172) } : { x: 60, y: 172 },
+    edgeStyle: flow.edgeStyle === "straight" ? "straight" : "curved",
+    lastNode: Math.max(0, ...nodes.map((node) => suffix(node.id, /-(d+)$/))),
+    lastEdge: Math.max(0, ...edges.map((edge) => suffix(edge.id, /-(d+)$/))),
+    lastSlot: Math.max(0, ...nodes.flatMap((node) => (node.conditionSlots ?? []).map((slot) => suffix(slot.id, /condition-(d+)$/))))
+  };
+}
+
 export function ApprovalWorkflowCreateBoard({
   employees,
   departments = [],
   positions = [],
-  titles = []
+  titles = [],
+  initial = null
 }: {
   employees: EmployeeDirectoryRecord[];
   departments?: DepartmentRecord[];
   positions?: JobPositionRecord[];
   titles?: JobTitleRecord[];
+  // Editing an existing workflow (AP-04).
+  initial?: ApprovalWorkflowDetail | null;
 }) {
-  const [activeTab, setActiveTab] = useState<"general" | "flow">("general");
-  const [displayStatus, setDisplayStatus] = useState("");
-  const [followerId, setFollowerId] = useState("");
+  const [loaded] = useState<LoadedCanvas | null>(() => (initial ? canvasFromFlow(initial.flowDefinition) : null));
+  const [activeTab, setActiveTab] = useState<"general" | "flow">(initial ? "flow" : "general");
+  const [displayStatus, setDisplayStatus] = useState(initial ? (initial.status === "active" ? "active" : "inactive") : "");
+  const [followerId, setFollowerId] = useState(initial?.followerId ?? "");
   const [followerSearch, setFollowerSearch] = useState("");
   const [isFollowerOpen, setIsFollowerOpen] = useState(false);
-  const [objectType, setObjectType] = useState("");
-  const [subObject, setSubObject] = useState("");
-  const [approvalType, setApprovalType] = useState("");
+  const [objectType, setObjectType] = useState(initial?.objectType ?? "");
+  const [subObject, setSubObject] = useState(initial && initial.subObject !== "all" ? initial.subObject : "");
+  const [approvalType, setApprovalType] = useState(initial?.approvalType ?? "");
   const [isNodePaletteOpen, setIsNodePaletteOpen] = useState(false);
-  const [workflowNodes, setWorkflowNodes] = useState<WorkflowCanvasNode[]>([]);
-  const [workflowEdges, setWorkflowEdges] = useState<WorkflowCanvasEdge[]>([]);
+  const [workflowNodes, setWorkflowNodes] = useState<WorkflowCanvasNode[]>(loaded?.nodes ?? []);
+  const [workflowEdges, setWorkflowEdges] = useState<WorkflowCanvasEdge[]>(loaded?.edges ?? []);
   const [workflowEdgePaths, setWorkflowEdgePaths] = useState<WorkflowEdgePath[]>([]);
-  const [workflowEdgeStyle, setWorkflowEdgeStyle] = useState<WorkflowEdgeStyle>("curved");
+  const [workflowEdgeStyle, setWorkflowEdgeStyle] = useState<WorkflowEdgeStyle>(loaded?.edgeStyle ?? "curved");
   const [canvasZoom, setCanvasZoom] = useState(1);
   const [connectionDraft, setConnectionDraft] = useState<WorkflowConnectionDraft | null>(null);
-  const [startNodePosition, setStartNodePosition] = useState({ x: 60, y: 172 });
+  const [startNodePosition, setStartNodePosition] = useState(loaded?.startNodePosition ?? { x: 60, y: 172 });
   const [nodeDrag, setNodeDrag] = useState<WorkflowNodeDrag | null>(null);
   const [editingApprovalNodeId, setEditingApprovalNodeId] = useState<string | null>(null);
   const [editingCommunicationNodeId, setEditingCommunicationNodeId] = useState<string | null>(null);
@@ -1752,16 +1827,16 @@ export function ApprovalWorkflowCreateBoard({
   const nodePaletteRef = useRef<HTMLDivElement | null>(null);
   const workflowCanvasRef = useRef<HTMLDivElement | null>(null);
   const workflowCanvasLaneRef = useRef<HTMLDivElement | null>(null);
-  const nodeSequenceRef = useRef(0);
-  const edgeSequenceRef = useRef(0);
-  const conditionSlotSequenceRef = useRef(0);
+  const nodeSequenceRef = useRef(loaded?.lastNode ?? 0);
+  const edgeSequenceRef = useRef(loaded?.lastEdge ?? 0);
+  const conditionSlotSequenceRef = useRef(loaded?.lastSlot ?? 0);
   const suppressNodeClickRef = useRef(false);
-  const snapshotRef = useRef<WorkflowSnapshot>({ nodes: [], edges: [], startNodePosition: { x: 60, y: 172 }, edgeStyle: "curved" });
+  const snapshotRef = useRef<WorkflowSnapshot>({ nodes: loaded?.nodes ?? [], edges: loaded?.edges ?? [], startNodePosition: loaded?.startNodePosition ?? { x: 60, y: 172 }, edgeStyle: loaded?.edgeStyle ?? "curved" });
   const undoStackRef = useRef<WorkflowSnapshot[]>([]);
   const redoStackRef = useRef<WorkflowSnapshot[]>([]);
   const dragHistorySnapshotRef = useRef<WorkflowSnapshot | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
-  const [state, formAction, isPending] = useActionState(createApprovalWorkflowAction, initialState);
+  const [state, formAction, isPending] = useActionState(initial ? updateApprovalWorkflowAction : createApprovalWorkflowAction, initialState);
   const activeEmployees = useMemo(
     () => employees.filter((item) => item.status === "active"),
     [employees]
@@ -2354,7 +2429,7 @@ export function ApprovalWorkflowCreateBoard({
 
   return (
     <section className="approval-workflow-create-card" aria-labelledby="approval-workflow-create-title">
-      <h2 className="sr-only" id="approval-workflow-create-title">Tạo mới quy trình duyệt</h2>
+      <h2 className="sr-only" id="approval-workflow-create-title">{initial ? "Sửa quy trình " + initial.name : "Tạo mới quy trình duyệt"}</h2>
       <form action={formAction} className="approval-workflow-form">
         <div className="approval-workflow-form-tabs" role="tablist" aria-label="Các bước cấu hình quy trình">
           <button className={activeTab === "general" ? "is-active" : undefined} type="button" role="tab" aria-selected={activeTab === "general"} onClick={() => setActiveTab("general")}>Thông tin chung</button>
@@ -2364,9 +2439,9 @@ export function ApprovalWorkflowCreateBoard({
         <div className={activeTab === "general" ? "approval-workflow-form-panel is-active" : "approval-workflow-form-panel"} role="tabpanel">
           <h3><CaretDown size={17} aria-hidden="true" /> Thông tin chung</h3>
           <div className="approval-workflow-field-grid">
-            <label className="approval-workflow-floating-field"><span>Mã quy trình</span><input name="code" placeholder="Mã quy trình" /></label>
+            <label className="approval-workflow-floating-field"><span>Mã quy trình</span><input name="code" placeholder="Mã quy trình" defaultValue={initial?.code ?? ""} /></label>
             <label className={`approval-workflow-floating-field approval-workflow-select${displayStatus ? " has-value" : ""}`}><span>Trạng thái <b aria-hidden="true">*</b></span><select name="displayStatus" required value={displayStatus} onChange={(event) => setDisplayStatus(event.target.value)}><option value="" disabled hidden></option><option value="active">Hoạt động</option><option value="inactive">Tạm dừng</option></select><CaretDown size={16} aria-hidden="true" /></label>
-            <label className="approval-workflow-floating-field is-wide"><span>Tên quy trình <b aria-hidden="true">*</b></span><input name="name" placeholder="Tên quy trình" required minLength={2} /></label>
+            <label className="approval-workflow-floating-field is-wide"><span>Tên quy trình <b aria-hidden="true">*</b></span><input name="name" placeholder="Tên quy trình" required minLength={2} defaultValue={initial?.name ?? ""} />{initial ? <input name="id" type="hidden" value={initial.id} /> : null}</label>
             <div
               className={`approval-workflow-floating-field approval-workflow-follower-picker is-wide${followerId || isFollowerOpen ? " has-value" : ""}${isFollowerOpen ? " is-open" : ""}`}
               ref={followerPickerRef}
@@ -2449,18 +2524,18 @@ export function ApprovalWorkflowCreateBoard({
           </div>
 
           <div className="approval-workflow-options">
-            <FormCheckbox name="showFlowInObject" label="Hiển thị quy trình trong đối tượng" />
-            <FormCheckbox name="allowAttachmentsAfterApproved" label="Cho phép đính kèm thêm tài liệu khi bản ghi đã duyệt" />
-            <FormCheckbox name="allowDocumentChangesAfterApproved" label="Cho phép sửa, xóa tài liệu khi đã duyệt" />
-            <FormCheckbox defaultChecked name="allowDiscussionAfterApproved" label="Cho phép thêm, sửa, xóa thảo luận khi bản ghi đã duyệt" />
+            <FormCheckbox defaultChecked={initial?.showFlowInObject ?? false} name="showFlowInObject" label="Hiển thị quy trình trong đối tượng" />
+            <FormCheckbox defaultChecked={initial?.allowAttachmentsAfterApproved ?? false} name="allowAttachmentsAfterApproved" label="Cho phép đính kèm thêm tài liệu khi bản ghi đã duyệt" />
+            <FormCheckbox defaultChecked={initial?.allowDocumentChangesAfterApproved ?? false} name="allowDocumentChangesAfterApproved" label="Cho phép sửa, xóa tài liệu khi đã duyệt" />
+            <FormCheckbox defaultChecked={initial?.allowDiscussionAfterApproved ?? true} name="allowDiscussionAfterApproved" label="Cho phép thêm, sửa, xóa thảo luận khi bản ghi đã duyệt" />
           </div>
 
           <fieldset className="approval-workflow-overdue-options">
             <legend><CaretDown size={17} aria-hidden="true" /> Cài đặt khi bước duyệt quá hạn</legend>
-            <label><input type="radio" name="overdueAction" value="auto_approve" /> Hệ thống tự động duyệt và chuyển sang bước tiếp theo</label>
-            <label><input type="radio" name="overdueAction" value="auto_reject" /> Hệ thống tự động không duyệt</label>
-            <label><input type="radio" name="overdueAction" value="substitute" /> Chuyển cho người duyệt thay thế</label>
-            <label><input defaultChecked type="radio" name="overdueAction" value="none" /> Không áp dụng xử lý</label>
+            <label><input defaultChecked={initial?.overdueAction === "auto_approve"} type="radio" name="overdueAction" value="auto_approve" /> Hệ thống tự động duyệt và chuyển sang bước tiếp theo</label>
+            <label><input defaultChecked={initial?.overdueAction === "auto_reject"} type="radio" name="overdueAction" value="auto_reject" /> Hệ thống tự động không duyệt</label>
+            <label><input defaultChecked={initial?.overdueAction === "substitute"} type="radio" name="overdueAction" value="substitute" /> Chuyển cho người duyệt thay thế</label>
+            <label><input defaultChecked={!initial || !["auto_approve", "auto_reject", "substitute"].includes(initial.overdueAction)} type="radio" name="overdueAction" value="none" /> Không áp dụng xử lý</label>
           </fieldset>
         </div>
 
@@ -2677,7 +2752,12 @@ export function ApprovalWorkflowCreateBoard({
           </div>
         </div>
 
-        {state.error ? <p className="approval-workflow-form-error" role="alert">{state.error}</p> : null}
+        {state.error ? (
+          <div className="approval-workflow-form-error" role="alert">
+            <p>{state.error}</p>
+            {state.errors?.length ? <ul>{state.errors.map((item) => <li key={item}>{item}</li>)}</ul> : null}
+          </div>
+        ) : null}
         <footer className="approval-workflow-form-actions">
           <button className="primary-button" disabled={isPending} name="intent" value="active" type="submit">{isPending ? "ĐANG LƯU" : "CẬP NHẬT"}</button>
           <a className="secondary-button" href="/admin/settings/approval-workflows">HỦY BỎ</a>

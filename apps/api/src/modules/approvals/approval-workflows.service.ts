@@ -185,8 +185,9 @@ export class ApprovalWorkflowsService {
     return this.update(id, { status: "active" }, actorId);
   }
 
+  // "Tạm dừng" in the list; running requests keep their version.
   deactivate(id: string, actorId?: string) {
-    return this.update(id, { status: "draft" }, actorId);
+    return this.update(id, { status: "archived" }, actorId);
   }
 
   async delete(id: string, actorId?: string) {

@@ -97,3 +97,38 @@ describe("splitAudience", () => {
     expect(splitAudience(undefined)).toEqual([]);
   });
 });
+
+describe("parseFlow with the designer's saved shape", () => {
+  // What approval-workflow-create-board.tsx posts: settings under `config`, condition slots under `conditions`.
+  const saved = {
+    nodes: [
+      { id: "start", type: "start", label: "Bắt đầu", x: 60, y: 172 },
+      { id: "node-1", type: "approval", label: "Bước duyệt", x: 300, y: 172, config: { name: "Quản lý", code: "", approverId: "automatic:direct_manager", followerId: "", substituteId: "", deadlineDays: "", deadlineHours: "", deadlineMinutes: "", overdueAction: "none" } },
+      { id: "node-2", type: "condition", label: "Điều kiện", x: 500, y: 172, conditions: [{ id: "node-2:condition-1", config: { name: "Dài ngày", groups: [{ id: "g", clauses: [{ id: "c", field: "total_days", operator: "greater_than", rightType: "value", rightValue: "3" }] }] } }] },
+      { id: "node-3", type: "notification", label: "Thông báo", x: 700, y: 100, config: { title: "HR", recipientId: "dynamic:created_by", content: "<p onclick=x>Đơn dài ngày</p>" } },
+      { id: "node-4", type: "approved", label: "Đã duyệt", x: 900, y: 172 }
+    ],
+    edges: [
+      { id: "e1", source: "start", target: "node-1", branch: "default" },
+      { id: "e2", source: "node-1", target: "node-2", branch: "default" },
+      { id: "e3", source: "node-2", target: "node-3", branch: "matched:node-2:condition-1" },
+      { id: "e4", source: "node-2", target: "node-4", branch: "unmatched" },
+      { id: "e5", source: "node-3", target: "node-4", branch: "default" }
+    ],
+    edgeStyle: "curved"
+  };
+
+  it("reads `config` and `conditions` and validates", () => {
+    const flow = parseFlow(saved);
+    expect(flow.nodes[1].approvalConfig?.approverId).toBe("automatic:direct_manager");
+    expect(flow.nodes[2].conditionSlots?.[0].config?.name).toBe("Dài ngày");
+    expect(flow.nodes[3].notificationConfig?.recipientId).toBe("dynamic:created_by");
+    expect(validateFlow(flow)).toEqual([]);
+  });
+
+  it("stores the canonical shape without the raw keys, cleaned", () => {
+    const node = sanitizeFlow(parseFlow(saved)).nodes[3] as FlowNode & { config?: unknown };
+    expect(node.config).toBeUndefined();
+    expect(node.notificationConfig?.content).toBe("<p>Đơn dài ngày</p>");
+  });
+});

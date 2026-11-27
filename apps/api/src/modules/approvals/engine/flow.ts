@@ -95,14 +95,35 @@ export function parseFlow(value: unknown): FlowDefinition {
 
   return {
     ...source,
-    nodes: nodes.filter(
-      (node): node is FlowNode =>
-        isObject(node) && typeof node.id === "string" && (FLOW_NODE_TYPES as readonly string[]).includes(node.type as string)
-    ),
+    nodes: nodes
+      .filter(
+        (node): node is Record<string, unknown> & FlowNode =>
+          isObject(node) && typeof node.id === "string" && (FLOW_NODE_TYPES as readonly string[]).includes(node.type as string)
+      )
+      .map(normalizeNode),
     edges: edges.filter(
       (edge): edge is FlowEdge => isObject(edge) && typeof edge.source === "string" && typeof edge.target === "string"
     )
   };
+}
+
+// The designer saves a node's settings as `config` (and a condition's slots as `conditions`); the
+// engine reads approvalConfig / notificationConfig / emailConfig / conditionSlots, the same names as
+// the designer's own canvas nodes. Both shapes are accepted and stored in the latter.
+function normalizeNode(raw: Record<string, unknown> & FlowNode): FlowNode {
+  const { config, conditions, ...node } = raw as Record<string, unknown> & FlowNode & { config?: unknown; conditions?: unknown };
+  const result: FlowNode = { ...node };
+  if (isObject(config)) {
+    if (node.type === "approval" && !node.approvalConfig) result.approvalConfig = config as ApprovalNodeConfig;
+    if (node.type === "notification" && !node.notificationConfig) result.notificationConfig = config as NotificationNodeConfig;
+    if (node.type === "email" && !node.emailConfig) result.emailConfig = config as EmailNodeConfig;
+  }
+  if (node.type === "condition" && !node.conditionSlots?.length && Array.isArray(conditions)) {
+    result.conditionSlots = conditions
+      .filter((slot): slot is { id: string; config?: ConditionConfig | null } => isObject(slot) && typeof slot.id === "string")
+      .map((slot) => ({ id: slot.id, config: slot.config ?? undefined }));
+  }
+  return result;
 }
 
 // The ordered condition slots of a condition node. Older diagrams keep a single conditionConfig.

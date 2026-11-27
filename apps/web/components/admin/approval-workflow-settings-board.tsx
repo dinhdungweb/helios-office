@@ -4,11 +4,17 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FormCheckbox } from "@/components/ui/form-controls";
 import { StateBlock } from "@/components/ui/primitives";
-import { deleteApprovalWorkflowsAction } from "@/lib/approval-workflow-actions";
+import { deleteApprovalWorkflowsAction, duplicateApprovalWorkflowAction, setApprovalWorkflowActiveAction } from "@/lib/approval-workflow-actions";
 import type { ApprovalWorkflowData, ApprovalWorkflowRecord } from "@/lib/approval-workflow-api";
 import { FileText, Plus, Trash, UserCircle } from "@/lib/icons";
 
 const objectLabels: Record<string, string> = {
+  leave: "Đơn xin nghỉ",
+  absence: "Đơn vắng mặt",
+  overtime: "Đơn làm thêm",
+  checkin_out: "Đơn giải trình chấm công",
+  shift_change: "Đơn đổi ca",
+  resignation: "Đơn xin thôi việc",
   decision: "Quyết định",
   personnel_profile: "Hồ sơ nhân sự",
   labor_contract: "Hợp đồng lao động",
@@ -40,6 +46,19 @@ export function ApprovalWorkflowSettingsBoard({ data, query = "" }: { data: Appr
     return term ? data.workflows.filter((item) => normalize(`${item.code ?? ""} ${item.name} ${item.objectType}`).includes(term)) : data.workflows;
   }, [data.workflows, query]);
   const allSelected = workflows.length > 0 && workflows.every((item) => selectedIds.includes(item.id));
+
+  // AP-07 / AP-08: the server checks the diagram before activating and explains what is missing.
+  const runRowAction = (work: () => Promise<{ ok: boolean; error?: string; errors?: string[] }>) => {
+    setMessage("");
+    startDelete(async () => {
+      const result = await work();
+      if (!result.ok) {
+        setMessage([result.error ?? "Không thực hiện được.", ...(result.errors ?? [])].join(" "));
+        return;
+      }
+      router.refresh();
+    });
+  };
 
   const deleteSelected = () => {
     if (!window.confirm(`Xóa ${selectedIds.length} quy trình đã chọn?`)) return;
@@ -88,7 +107,7 @@ export function ApprovalWorkflowSettingsBoard({ data, query = "" }: { data: Appr
                 <th><FormCheckbox label={<span className="sr-only">Chọn tất cả quy trình</span>} checked={allSelected} onChange={() => setSelectedIds(allSelected ? [] : workflows.map((item) => item.id))} /></th>
                 <th>Mã quy trình</th><th>Tên quy trình</th><th>Đối tượng</th><th>Đối tượng con</th><th>Trạng thái</th>
                 <th>Phiên bản</th><th>Loại duyệt</th><th>Người theo dõi</th><th>Hiển thị sơ đồ duyệt</th>
-                <th>Ngày tạo</th><th>Ngày cập nhật</th><th>Tạo bởi</th><th>Người cập nhật</th>
+                <th>Ngày tạo</th><th>Ngày cập nhật</th><th>Tạo bởi</th><th>Người cập nhật</th><th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -96,7 +115,7 @@ export function ApprovalWorkflowSettingsBoard({ data, query = "" }: { data: Appr
                 <tr key={item.id}>
                   <td><FormCheckbox label={<span className="sr-only">Chọn {item.name}</span>} checked={selectedIds.includes(item.id)} onChange={() => setSelectedIds((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])} /></td>
                   <td>{item.code ?? "--"}</td>
-                  <td><strong>{item.name}</strong></td>
+                  <td><a className="approval-workflow-name-link" href={`/admin/settings/approval-workflows/${item.id}`}><strong>{item.name}</strong></a></td>
                   <td>{objectLabels[item.objectType] ?? item.objectType}</td>
                   <td>{item.subObject === "all" ? "Tất cả" : item.subObject}</td>
                   <td><span className={`approval-workflow-status is-${item.status}`}>{item.status === "active" ? "Hoạt động" : item.status === "draft" ? "Bản nháp" : "Tạm dừng"}</span></td>
@@ -107,6 +126,13 @@ export function ApprovalWorkflowSettingsBoard({ data, query = "" }: { data: Appr
                   <td>{formatDateTime(item.createdAt)}</td><td>{formatDateTime(item.updatedAt)}</td>
                   <td><span className="approval-workflow-person" title={item.createdBy?.fullName ?? "Admin"}>{initials(item.createdBy)}</span></td>
                   <td><span className="approval-workflow-person" title={item.updatedBy?.fullName ?? "Admin"}>{initials(item.updatedBy)}</span></td>
+                  <td className="approval-workflow-row-actions">
+                    <a href={`/admin/settings/approval-workflows/${item.id}`}>Sửa</a>
+                    <button disabled={isDeleting} type="button" onClick={() => runRowAction(() => setApprovalWorkflowActiveAction(item.id, item.status !== "active"))}>
+                      {item.status === "active" ? "Tạm dừng" : "Kích hoạt"}
+                    </button>
+                    <button disabled={isDeleting} type="button" onClick={() => runRowAction(() => duplicateApprovalWorkflowAction(item.id))}>Nhân bản</button>
+                  </td>
                 </tr>
               ))}
             </tbody>

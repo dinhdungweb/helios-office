@@ -118,11 +118,11 @@ describe("ApprovalWorkflowsService", () => {
     await expect(service.activate("wf-1")).rejects.toMatchObject({ response: { errors: expect.arrayContaining([expect.stringContaining("Đã duyệt")]) } });
   });
 
-  it("deactivates to draft", async () => {
+  it("deactivates to archived (Tạm dừng)", async () => {
     const { service, tx } = setup();
 
     await service.deactivate("wf-1");
-    expect(tx.approvalWorkflowDefinition.update.mock.calls[0][0].data.status).toBe("draft");
+    expect(tx.approvalWorkflowDefinition.update.mock.calls[0][0].data.status).toBe("archived");
   });
 
   it("duplicates as an inactive copy (AP-07)", async () => {
